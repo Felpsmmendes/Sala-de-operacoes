@@ -1,0 +1,185 @@
+@import 'tailwindcss';
+/* fontes carregadas via <link> em index.html (evita o aviso de ordem de
+   @import — o do Tailwind expande antes deste, mesmo declarado depois) */
+
+/* =========================================================================
+   Sala de Operações — Em Cena Eventos
+   -------------------------------------------------------------------------
+   Design system "Mission Control Operations", herdado do painel anterior
+   (ver ../Texto/DESIGN.md) e refinado pelos modelos do Google Stitch em
+   ../Texto/docs/referencias/stitch_em_cena_design_system/. Tokens
+   registrados aqui como variáveis Tailwind v4 (@theme) — usar como
+   bg-bg, text-accent, font-mono etc. em qualquer componente.
+   ========================================================================= */
+@theme {
+  /* -- cor: base do painel (grafite quente, sem preto puro) -- */
+  --color-bg: #141311;
+  --color-panel: #1d1b19;
+  --color-raised: #242220;
+  --color-input: #0f0e0c;
+  --color-line: #2d2b27;
+  --color-line-strong: #413d37;
+
+  /* -- cor: texto -- */
+  --color-text: #f3eee2;
+  --color-text-dim: #b6ac9a;
+  /* 5.0:1 contra --color-panel (era #7d7562, 3.76:1 — abaixo do mínimo
+     WCAG AA de 4.5:1 pra texto normal; usado em rótulo pequeno/uppercase
+     em quase toda tela, ver auditoria de contraste 2026-09-07). */
+  --color-text-faint: #948a76;
+
+  /* -- cor: destaque único, reservado pra ação primária / "ativo agora" -- */
+  --color-accent: #e8a13d;
+  --color-accent-strong: #f4b658;
+  --color-accent-ink: #1c1206;
+
+  /* -- cor: estado semântico -- */
+  --color-success: #10b981;
+  --color-pending: #e8a13d;
+  --color-danger: #ef4444;
+  --color-neutral: #8a8272;
+
+  /* -- tipografia -- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+
+  /* -- raio -- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* -- realce de borda (ver regra `.border-line` embaixo) — no escuro,
+     um fiapo claro que faz a borda "brilhar" contra o fundo escuro; no
+     claro é o oposto (ver override abaixo), uma sombra escura suave. */
+  --shadow-borda: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 2px 6px rgba(0, 0, 0, 0.35);
+
+  /* -- profundidade de card (2026-09-08, achado do usuário: o sistema
+     estava "simples demais" — só o fiapo de borda acima, sem
+     profundidade de verdade). `--shadow-card` é pra CONTAINER de nível
+     de página (Panel, MetricCard) — nunca pra elemento pequeno/inline
+     (linha de lista, input), que continuam só com `--shadow-borda`.
+     3 camadas: um brilho de 1px no topo interno (bevel, luz "vindo de
+     cima"), um contorno fino (equivalente ao fiapo de borda) e uma
+     sombra ambiente larga e suave (a profundidade de verdade). Aplicado
+     via `.shadow-card`, que other-rides o box-shadow de `.border-line`
+     nesses componentes (ver nota na regra `.shadow-card` embaixo). */
+  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.06), 0 2px 4px rgba(0, 0, 0, 0.3), 0 20px 44px -20px rgba(0, 0, 0, 0.65);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Modo claro — botão no topo de cada tela (ver Layout.tsx/Cabecalho),
+   preferência salva em localStorage (ver src/lib/useTema.ts) e aplicada
+   via atributo `data-theme` na tag <html>. Mesma estrutura de tokens do
+   escuro, só invertendo os tons de base. */
+:root[data-theme='light'] {
+  --color-bg: #f6f4ef;
+  --color-panel: #ffffff;
+  --color-raised: #efebe2;
+  --color-input: #ffffff;
+  --color-line: #e1dbcd;
+  --color-line-strong: #c9c0ac;
+
+  --color-text: #292418;
+  --color-text-dim: #6b6252;
+  /* 5.5:1 contra --color-panel (era #948a76, 3.41:1 — mesmo achado do
+     texto claro/escuro, ver nota em --color-text-faint acima). */
+  --color-text-faint: #6f6857;
+
+  /* Achado de auditoria de contraste (2026-09-07): os tons de
+     sucesso/pendente/perigo/neutro do @theme foram calibrados pra
+     ficarem vívidos contra fundo ESCURO — a mesma cor, sem ajuste,
+     perde contraste demais contra fundo branco (verde e âmbar caem
+     pra ~2.2:1, bem abaixo do mínimo WCAG AA de 4.5:1 pra texto —
+     confere no Badge, em valores de receita/despesa, em qualquer
+     `text-success`/`text-pending`/`text-danger`/`text-neutral` solto).
+     Aqui embaixo são tons mais escuros da MESMA cor, só pro tema
+     claro — todos testados contra branco (texto solto) e contra o
+     próprio Badge (fundo tintado em 15% da cor), ambos ≥4.5:1.
+     `--color-accent` (o dourado dos botões) fica de fora de propósito:
+     mudar esse token também mudaria botão/foco/destaque de navegação
+     em cascata — risco maior que vale a pena evitar aqui. */
+  --color-success: #046b3d; /* era #10b981 (herdado) — 2.54:1 → 6.6:1 texto / 5.3:1 badge */
+  --color-pending: #8a5000; /* era #e8a13d (herdado) — 2.19:1 → 6.5:1 texto / 5.2:1 badge */
+  --color-danger: #b91c1c; /* era #ef4444 (herdado) — 3.76:1 → 6.5:1 texto / 5.0:1 badge */
+  --color-neutral: #6b6357; /* era #8a8272 (herdado) — 3.81:1 → 5.9:1 texto / 4.8:1 badge */
+
+  /* invertido: no claro a borda ganha uma sombra escura suave em vez do
+     fiapo claro do escuro (pedido do usuário). */
+  --shadow-borda: 0 0 0 1px rgba(41, 36, 24, 0.09), 0 2px 6px rgba(41, 36, 24, 0.07);
+
+  /* mesma ideia do escuro, invertida: brilho branco de verdade no topo
+     (o card é "de papel", luz vindo de cima), contorno suave e sombra
+     ambiente mais rasa (luz do dia não projeta sombra tão profunda
+     quanto um monitor no escuro). */
+  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.8), 0 0 0 1px rgba(41, 36, 24, 0.08), 0 2px 4px rgba(41, 36, 24, 0.04), 0 20px 36px -20px rgba(41, 36, 24, 0.18);
+}
+
+/* Tema padrão é escuro (não segue o SO) — sem `color-scheme` certo, o
+   navegador desenha os controles NATIVOS (ícone do seletor de data,
+   setas do input number, etc.) com a paleta clara padrão, destoando do
+   resto da tela. Avisa o navegador pra desenhar esses controles já no
+   tom certo pra cada modo, sem precisar reconstruir a peça do zero. */
+html {
+  color-scheme: dark;
+}
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  /* vinheta bem sutil (2026-09-08) — um degradê radial quase imperceptível
+     por trás do conteúdo, em vez de uma cor de fundo 100% chapada. É a
+     diferença entre "flat" e "tem profundidade" num fundo que não tem
+     nenhum outro elemento decorativo. */
+  background: radial-gradient(ellipse 1200px 800px at 50% -10%, color-mix(in srgb, var(--color-raised) 45%, transparent), transparent), var(--color-bg);
+  background-attachment: fixed;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Realce em toda borda do sistema — pedido do usuário: no escuro, um
+   fiapo branco/claro em volta de cada borda existente; no claro, o
+   oposto, uma sombra escura suave. Pega de carona na classe utilitária
+   `border-line` que TODO elemento com borda já usa (Panel, cards,
+   inputs, linhas de lista) — não precisa editar componente por
+   componente. `shadow-sm` foi tirado de Panel/Login pra não duplicar
+   sombra (ver Panel.tsx e Login.tsx). */
+.border-line {
+  box-shadow: var(--shadow-borda);
+}
+
+/* Profundidade de card de nível de página (Panel, MetricCard) — pega de
+   carona no MESMO mecanismo do `.border-line` acima (troca o box-shadow
+   inteiro, não soma; por isso vem DEPOIS na cascata: um elemento com as
+   duas classes junto — ex. `className="border border-line shadow-card"`
+   — fica só com a sombra mais rica daqui, que já inclui um contorno
+   equivalente ao fiapo de borda, então nada se perde). Nunca aplicar em
+   elemento pequeno/inline (linha de lista, input) — é pesada de
+   propósito, pensada pra um container do tamanho de um Panel. */
+.shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
