@@ -68,7 +68,7 @@ export default function App() {
               <Route path="/escala" element={<Escala />} />
               <Route path="/logistica" element={<Logistica />} />
               <Route path="/agenda" element={<Agenda />} />
-              <Route path="/cue-sheet" element={<CueSheet />} />
+              <Route path="/roteiro" element={<CueSheet />} />
               <Route path="/ponto" element={<Ponto />} />
               <Route path="/auditoria" element={<Auditoria />} />
               <Route path="/financeiro" element={<Financeiro />} />

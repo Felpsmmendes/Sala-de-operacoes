@@ -90,7 +90,7 @@ export default function Ponto() {
 
   return (
     <>
-      <Cabecalho titulo="Check-in de Equipe" subtitulo="Quem confirmou chegada por evento, sem geofence nem PIN — link público de check-in. (O ponto de verdade dos funcionários internos é outra tela: Ponto Eletrônico.)" />
+      <Cabecalho titulo="Confirmação de Chegada" subtitulo="Quem já chegou em cada evento, por um link público — sem senha nem localização por GPS. (O ponto oficial dos funcionários internos é outra tela: Ponto Eletrônico.)" />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Users} rotulo="Escalados no evento" valor={String(presenca.length)} legenda={eventoAtual ? formatarData(eventoAtual.data_evento) : '—'} />
@@ -109,7 +109,7 @@ export default function Ponto() {
         <Panel className="mb-4">
           <PanelHeader
             titulo="Presença do evento"
-            desc="Selecione o evento e copie o link de check-in pra mandar pra equipe."
+            desc="Selecione o evento e copie o link de confirmação de chegada pra mandar pra equipe."
             acao={
               <div className="flex items-center gap-2">
                 <select value={eventoId} onChange={(e) => setEventoId(e.target.value)} className="rounded-sm border border-line bg-input px-3 py-2 text-[12.5px] text-text outline-none focus:border-accent">

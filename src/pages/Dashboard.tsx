@@ -192,7 +192,7 @@ export default function Dashboard() {
             desc="Receita, custos e lucro líquido pagos — últimos 6 meses."
             acao={
               <Link to="/fechamento" className={linkPainel}>
-                Ver DRE completo <TrendingUp className="h-3.5 w-3.5" />
+                Ver fechamento completo <TrendingUp className="h-3.5 w-3.5" />
               </Link>
             }
           />
@@ -327,7 +327,7 @@ export default function Dashboard() {
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        <Link to={`/cue-sheet?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
+                        <Link to={`/roteiro?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
                           Ficha / Cues
                         </Link>
                         <Link to={`/escala?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">

@@ -126,7 +126,7 @@ export default function Escala() {
 
   return (
     <>
-      <Cabecalho titulo="Escala & Briefing de Equipe" subtitulo="Convocação de freelancers, checklist de trajes/EPIs e simulador de hora extra." />
+      <Cabecalho titulo="Equipe do Evento" subtitulo="Convocação de freelancers, checklist de uniforme e equipamento de segurança, e simulador de hora extra." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Users} rotulo="Equipe cadastrada" valor={String(equipe.length)} legenda="Freelancers ativos" />

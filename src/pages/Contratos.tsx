@@ -133,7 +133,7 @@ export default function Contratos() {
 
   return (
     <>
-      <Cabecalho titulo="Contratos & Faturamento 20/80" subtitulo="Sinal de 20% no fechamento, quitação dos 80% restantes até D-20." />
+      <Cabecalho titulo="Contratos" subtitulo="Sinal de 20% no fechamento, quitação dos 80% restantes até 20 dias antes do evento." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Wallet} rotulo="Total contratado" valor={formatarMoeda(metricas.totalContratado)} legenda={`${contratos.filter((c) => c.status === 'ativo').length} contrato(s) ativo(s)`} />

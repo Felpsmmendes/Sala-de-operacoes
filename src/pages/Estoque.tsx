@@ -143,7 +143,7 @@ export default function Estoque() {
 
   return (
     <>
-      <Cabecalho titulo="Estoque & Compras Críticas" subtitulo="Consumo estimado por convidado, nível mínimo do galpão e histórico de avarias." />
+      <Cabecalho titulo="Estoque" subtitulo="Consumo estimado por convidado, nível mínimo do galpão e histórico de avarias." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Package} rotulo="Itens cadastrados" valor={String(itens.length)} legenda="No galpão" />

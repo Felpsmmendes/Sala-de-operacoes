@@ -70,7 +70,7 @@ export default function Financeiro() {
 
   return (
     <>
-      <Cabecalho titulo="Finanças — Fluxo & Lançamentos" subtitulo="Despesas de campo, entradas de sinal e conciliação rápida." />
+      <Cabecalho titulo="Finanças" subtitulo="Despesas de campo, entradas de sinal e conciliação rápida." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={ArrowUpCircle} rotulo="A receber" valor={formatarMoeda(aReceber)} legenda="Receitas pendentes" />

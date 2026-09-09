@@ -88,7 +88,7 @@ export default function CueSheet() {
 
   return (
     <>
-      <Cabecalho titulo="Ficha Técnica & Cue Sheet" subtitulo="Cronograma minuto a minuto da equipe em campo, cue por cue." />
+      <Cabecalho titulo="Roteiro do Evento" subtitulo="Cronograma minuto a minuto da equipe em campo, passo a passo." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={ListChecks} rotulo="Cues do evento" valor={String(cues.length)} legenda={eventoAtual ? formatarData(eventoAtual.data_evento) : '—'} />

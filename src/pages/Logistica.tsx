@@ -173,7 +173,7 @@ export default function Logistica() {
 
   return (
     <>
-      <Cabecalho titulo="Carga, Romaneio & Logística" subtitulo="4 fases de conferência (galpão → embarque → doca → retorno) e cálculo de frete." />
+      <Cabecalho titulo="Frota e Entregas" subtitulo="4 fases de conferência (galpão → embarque → doca → retorno) e cálculo de frete." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Truck} rotulo="Veículos cadastrados" valor={String(veiculos.length)} legenda="Frota disponível" />

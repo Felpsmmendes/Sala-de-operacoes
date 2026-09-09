@@ -109,7 +109,7 @@ export default function Auditoria() {
 
   return (
     <>
-      <Cabecalho titulo="Pós-Evento & Auditoria" subtitulo="Reintegração de sobras, avarias, doca limpa e NPS do cliente." />
+      <Cabecalho titulo="Após o Evento" subtitulo="Reintegração de sobras, avarias, doca limpa e satisfação do cliente." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={ClipboardCheck} rotulo="Eventos auditados" valor={String(auditorias.length)} legenda={`de ${eventos.length} eventos`} />

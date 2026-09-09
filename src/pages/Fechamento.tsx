@@ -33,7 +33,7 @@ export default function Fechamento() {
 
   return (
     <>
-      <Cabecalho titulo="Fechamento Mensal & DRE" subtitulo="Receita bruta, custos operacionais, margem e lucro líquido real — sempre calculado a partir dos lançamentos pagos, nunca digitado à parte." />
+      <Cabecalho titulo="Fechamento Mensal" subtitulo="Receita bruta, custos operacionais, margem e lucro líquido real — sempre calculado a partir dos lançamentos pagos, nunca digitado à parte." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={TrendingUp} rotulo="Receita bruta do mês" valor={formatarMoeda(mesAtual?.receita_bruta ?? 0)} legenda="Lançamentos de receita pagos" />

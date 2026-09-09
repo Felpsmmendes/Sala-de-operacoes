@@ -40,7 +40,7 @@ const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
     itens: [
       { to: '/crm', rotulo: 'CRM & Pipeline', Icone: Filter },
       { to: '/orcamentos', rotulo: 'Gerador de Orçamentos', Icone: Receipt },
-      { to: '/contratos', rotulo: 'Contratos & Faturamento', Icone: ClipboardCheck },
+      { to: '/contratos', rotulo: 'Contratos', Icone: ClipboardCheck },
       { to: '/portal-cliente', rotulo: 'Portal do Cliente', Icone: Link2 },
     ],
   },
@@ -48,24 +48,24 @@ const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
     titulo: 'Planejamento & Pré-Produção',
     itens: [
       { to: '/agenda', rotulo: 'Agenda Operacional', Icone: Calendar },
-      { to: '/escala', rotulo: 'Escala & Equipe', Icone: Users },
-      { to: '/estoque', rotulo: 'Estoque & Compras', Icone: Package },
-      { to: '/logistica', rotulo: 'Carga & Logística', Icone: Truck },
+      { to: '/escala', rotulo: 'Equipe do Evento', Icone: Users },
+      { to: '/estoque', rotulo: 'Estoque', Icone: Package },
+      { to: '/logistica', rotulo: 'Frota e Entregas', Icone: Truck },
     ],
   },
   {
     titulo: 'Execução em Tempo Real',
     itens: [
-      { to: '/cue-sheet', rotulo: 'Ficha Técnica / Cues', Icone: ListChecks },
-      { to: '/ponto', rotulo: 'Check-in de Equipe', Icone: Fingerprint },
+      { to: '/roteiro', rotulo: 'Roteiro do Evento', Icone: ListChecks },
+      { to: '/ponto', rotulo: 'Confirmação de Chegada', Icone: Fingerprint },
     ],
   },
   {
     titulo: 'Encerramento & Controladoria',
     itens: [
-      { to: '/auditoria', rotulo: 'Pós-Evento & Auditoria', Icone: ClipboardCheck },
+      { to: '/auditoria', rotulo: 'Após o Evento', Icone: ClipboardCheck },
       { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
-      { to: '/fechamento', rotulo: 'Fechamento & DRE', Icone: BarChart3 },
+      { to: '/fechamento', rotulo: 'Fechamento Mensal', Icone: BarChart3 },
     ],
   },
 ];
@@ -76,7 +76,7 @@ const BOTTOMBAR: ItemNav[] = [
   { to: '/crm', rotulo: 'CRM', Icone: Filter },
   { to: '/orcamentos', rotulo: 'Orçamento', Icone: Receipt },
   { to: '/agenda', rotulo: 'Agenda', Icone: Calendar },
-  { to: '/ponto', rotulo: 'Check-in', Icone: Fingerprint },
+  { to: '/ponto', rotulo: 'Chegada', Icone: Fingerprint },
   { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
   { to: '/fechamento', rotulo: 'Fechamento', Icone: BarChart3 },
 ];
