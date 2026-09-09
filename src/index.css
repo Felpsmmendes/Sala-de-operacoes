@@ -269,8 +269,13 @@ body {
    visível o tempo todo e ancora visualmente o sistema. */
 .sidebar-glass {
   background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 60%, transparent), color-mix(in srgb, var(--color-bg) 70%, transparent));
-  backdrop-filter: blur(16px);
+  /* Ordem importa (2026-09-09, bug reportado pelo usuário): o Lightning
+     CSS do pipeline de build (@tailwindcss/vite) deduplica esse par e
+     descarta uma das duas — com a padrão por ÚLTIMO ele mantém ela (é a
+     que os navegadores modernos realmente precisam; -webkit- sozinho é
+     ignorado no Chrome/Edge/Firefox atuais). Nunca inverter essa ordem. */
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
@@ -323,8 +328,9 @@ body {
    fundo sólido `bg-panel` chapado. */
 .panel-glass {
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)), var(--color-bg);
-  backdrop-filter: blur(20px);
+  /* ordem importa — ver nota em .sidebar-glass acima (2026-09-09). */
   -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.09);
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.45);
 }
@@ -357,8 +363,9 @@ body {
   background: linear-gradient(160deg, color-mix(in srgb, var(--row-color) var(--row-grad-1), transparent), color-mix(in srgb, var(--row-color) var(--row-grad-2), transparent)), var(--color-bg);
 }
 .list-row-blur {
-  backdrop-filter: blur(8px);
+  /* ordem importa — ver nota em .sidebar-glass acima (2026-09-09). */
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 ::selection {
