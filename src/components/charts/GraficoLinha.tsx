@@ -17,6 +17,66 @@ function calcularTicks(min: number, max: number, alvo = 5): number[] {
   return Array.from({ length: qtd }, (_, i) => minLimpo + i * passoLimpo);
 }
 
+/** Curva suave "monotone" (mesmo algoritmo do d3-shape `curveMonotoneX`,
+    reimplementado sem lib — projeto não usa biblioteca de gráfico, ver
+    doc do componente) — troca o path reto (M/L ponta-a-ponta) por Bezier
+    cúbica, escolhendo a tangente de cada ponto de um jeito que NUNCA
+    ultrapassa (overshoot) os valores dos pontos vizinhos, ao contrário de
+    uma Catmull-Rom simples — pedido explícito do usuário (2026-09-09):
+    visual mais orgânico sem distorcer o dado real. */
+function pathSuave(pontos: { x: number; y: number }[]): string {
+  const n = pontos.length;
+  if (n === 0) return '';
+  if (n === 1) return `M ${pontos[0].x} ${pontos[0].y}`;
+  if (n === 2) return `M ${pontos[0].x} ${pontos[0].y} L ${pontos[1].x} ${pontos[1].y}`;
+
+  const dx: number[] = [];
+  const m: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const d = pontos[i + 1].x - pontos[i].x;
+    dx.push(d);
+    m.push(d === 0 ? 0 : (pontos[i + 1].y - pontos[i].y) / d);
+  }
+
+  // tangente inicial de cada ponto: 0 num extremo local (evita "barriga"
+  // passando da crista), média das secantes vizinhas caso contrário.
+  const t: number[] = new Array(n).fill(0);
+  t[0] = m[0];
+  t[n - 1] = m[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  }
+  // restrição de Fritsch-Carlson: limita a tangente pra curva nunca
+  // ultrapassar o valor real dos pontos vizinhos (garante monotonicidade).
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) {
+      t[i] = 0;
+      t[i + 1] = 0;
+      continue;
+    }
+    const alpha = t[i] / m[i];
+    const beta = t[i + 1] / m[i];
+    const soma = alpha * alpha + beta * beta;
+    if (soma > 9) {
+      const tau = 3 / Math.sqrt(soma);
+      t[i] = tau * alpha * m[i];
+      t[i + 1] = tau * beta * m[i];
+    }
+  }
+
+  let d = `M ${pontos[0].x} ${pontos[0].y}`;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = pontos[i];
+    const p1 = pontos[i + 1];
+    const c1x = p0.x + dx[i] / 3;
+    const c1y = p0.y + (t[i] * dx[i]) / 3;
+    const c2x = p1.x - dx[i] / 3;
+    const c2y = p1.y - (t[i + 1] * dx[i]) / 3;
+    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p1.x} ${p1.y}`;
+  }
+  return d;
+}
+
 function formatarEixoY(v: number): string {
   if (v === 0) return '0';
   const sinal = v < 0 ? '-' : '';
@@ -32,7 +92,8 @@ function formatarEixoY(v: number): string {
     ou mais séries por cima do mesmo eixo de categorias (mês, dia da
     semana etc.). Uma série só ganha preenchimento em área; 2+ séries
     (ex.: "esta semana" x "semana passada") ficam só como linhas, pra não
-    virar uma bagunça de camadas sobrepostas. */
+    virar uma bagunça de camadas sobrepostas. Curva suavizada (não mais
+    segmentos retos), ver `pathSuave` acima. */
 export function GraficoLinha({ categorias, series, formatarValor = (v: number) => String(v) }: { categorias: string[]; series: SerieLinha[]; formatarValor?: (v: number) => string }) {
   const [entrou, setEntrou] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
@@ -60,8 +121,8 @@ export function GraficoLinha({ categorias, series, formatarValor = (v: number) =
 
   const seriesComPath = series.map((s) => {
     const pontos = s.pontos.map((v, i) => ({ x: i * largura + largura / 2, y: escala(v) }));
-    const pathLinha = pontos.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-    const pathArea = `M ${pontos[0].x} ${yZero} ` + pontos.map((p) => `L ${p.x} ${p.y}`).join(' ') + ` L ${pontos[pontos.length - 1].x} ${yZero} Z`;
+    const pathLinha = pathSuave(pontos);
+    const pathArea = `${pathSuave(pontos)} L ${pontos[pontos.length - 1].x} ${yZero} L ${pontos[0].x} ${yZero} Z`;
     return { ...s, pontos, pathLinha, pathArea };
   });
 
@@ -127,6 +188,14 @@ export function GraficoLinha({ categorias, series, formatarValor = (v: number) =
                   <path key={`${s.rotulo}-area`} d={s.pathArea} fill={`url(#${gradId})`} className={s.corClasse} style={{ opacity: entrou ? 1 : 0, transition: `opacity 700ms ease-out ${atrasoBase}ms` }} />
                 ))}
 
+              {/* Fade de opacidade, não "desenhar linha" (2026-09-09, bug
+                  reportado pelo usuário): pathLength=1 + strokeDasharray/
+                  strokeDashoffset animado via transição CSS tem bug
+                  conhecido entre navegadores em paths multi-segmento — a
+                  transição interpola o offset errado e a linha chega a
+                  renderizar como um traço reto cortando o gráfico, em vez
+                  de seguir a curva real. Fade simples é mais seguro e já é
+                  a mesma técnica usada nos pontos/área abaixo. */}
               {seriesComPath.map((s, si) => (
                 <path
                   key={s.rotulo}
@@ -136,12 +205,10 @@ export function GraficoLinha({ categorias, series, formatarValor = (v: number) =
                   strokeWidth={1.6}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  pathLength={1}
                   className={s.corClasse}
                   style={{
-                    strokeDasharray: 1,
-                    strokeDashoffset: entrou ? 0 : 1,
-                    transition: `stroke-dashoffset 900ms cubic-bezier(.22,1,.36,1) ${atrasoBase + si * 120}ms`,
+                    opacity: entrou ? 1 : 0,
+                    transition: `opacity 500ms ease-out ${atrasoBase + si * 120}ms`,
                   }}
                 />
               ))}

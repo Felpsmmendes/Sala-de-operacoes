@@ -54,14 +54,15 @@ spacing:
 
 Um sistema pensado pra ficar aberto o dia inteiro numa sala de operações real — grafite quente e quase-preto (nunca preto puro) como base — mas onde as métricas e ações de destaque ganham profundidade visual real: vidro (glassmorphism), gradiente sutil e cor com significado fixo. Não é mais um sistema de acento único; é um sistema de **cor por categoria**, onde cada tipo de informação (dinheiro, pessoas, agenda, operação) carrega sempre a mesma cor em qualquer tela — a cor vira atalho de leitura, não decoração solta. Dado real (números, horários, status) continua sempre em fonte monoespaçada, como um painel de controle de verdade.
 
-Redesenhado (2026-09-08) inspirado numa referência de dashboard trazida pelo usuário — estrutura "produto de dado" (cards de métrica, gráfico grande, donut, barra de proporção). Revisado (2026-09-09) para incorporar glassmorphism e paleta por significado, após o usuário avaliar o resultado do primeiro redesign e pedir mais vida visual, comparando com referências de dashboards modernos.
+Redesenhado (2026-09-08) inspirado numa referência de dashboard trazida pelo usuário — estrutura "produto de dado" (cards de métrica, gráfico grande, donut, barra de proporção). Revisado (2026-09-09, duas rodadas) para incorporar glassmorphism: primeiro restrito a elementos de destaque, depois — após o usuário notar que o resultado parecia "dois estilos colados" (cards modernos, resto do sistema simples) — expandido para ser a identidade visual de TODO o sistema, em duas intensidades (vidro leve na base, vidro forte no destaque), não uma exceção pontual.
 
 **Key Characteristics:**
-- Grafite quente (nunca preto puro) como base; vidro + gradiente reservados aos elementos de destaque (métricas, botão primário, item ativo do menu)
+- Vidro (glassmorphism) é a identidade visual de todo container do sistema — em duas intensidades: leve como padrão (Panel, listas, formulários), forte nos elementos de destaque (MetricCard, botão primário, sidebar)
+- Grafite quente (nunca preto puro) como base sobre a qual todo o vidro se apoia
 - 5 cores fixas por significado — nunca decorativas, nunca escolhidas ao acaso (ver Colors)
 - Todo dado real (valor, hora, contagem) em `IBM Plex Mono`, nunca na fonte de UI
 - Estado nunca só por cor — todo Badge tem ícone junto (legível em escala de cinza)
-- Tema claro e escuro são o mesmo sistema, tokens invertidos, nunca dois designs
+- Tema claro e escuro são o mesmo sistema, tokens invertidos (com opacidade recalibrada por tema — ver The Theme-Intensity Rule), nunca dois designs
 
 ## Colors
 
@@ -88,9 +89,14 @@ Verde/vermelho/âmbar continuam também reservados para estado semântico (suces
 ### Named Rules
 **The Meaning-Color Rule.** Toda cor de categoria (âmbar/verde/azul/roxo/teal) é fixa por significado, nunca por preferência estética da tela. Se uma métrica é sobre dinheiro, é verde — em qualquer tela do sistema, sempre.
 
-**The Glass-For-Emphasis Rule.** Vidro (blur) e gradiente aparecem só em elementos de destaque: MetricCard principal, botão de ação primária, item ativo da sidebar, card em hover na sidebar. Tabelas, formulários, listas e inputs continuam sólidos e sem blur — o vidro nunca compromete a leitura de dado denso.
+**The Glass-Everywhere Rule (revisada 2026-09-09, substitui a Glass-For-Emphasis Rule original).** Vidro (blur + gradiente sutil) deixou de ser exclusividade de 3 elementos — agora é a linguagem visual padrão de TODO container do sistema, em duas intensidades:
+  - **Vidro forte** (destaque): MetricCard principal, botão de ação primária, item ativo/hover da sidebar. Gradiente mais opaco, blur mais alto, sombra colorida mais presente — ver valores em Components.
+  - **Vidro leve** (base): Panel/container de qualquer painel (inclusive os que envolvem tabelas e formulários), e cada LINHA de conteúdo dentro de listas (ex.: uma linha de contrato, um item de checklist) — que deixam de ser `<tr>`/linha crua e passam a ser mini-cards com vidro leve, gradiente quase neutro (ou na cor de status/categoria quando fizer sentido, ex.: linha de contrato pago com leve tom verde) e borda quase invisível.
+  Isso resolve a sensação de "dois sistemas colados" — o vidro passa a ser a identidade visual de TUDO, com a intensidade variando por importância, nunca por presença/ausência total do efeito.
 
-**The Theme-Intensity Rule.** Todo elemento com vidro/gradiente usa opacidades DIFERENTES entre os temas — nunca os mesmos números só com a cor de base invertida. Fundo claro dilui cor visualmente mais que fundo escuro (se aproxima do branco), então o tema claro precisa de opacidade sensivelmente mais alta (na prática, cerca do dobro) para o efeito parecer igualmente presente nos dois temas. A meta é o mesmo EFEITO PERCEBIDO, não os mesmos valores de opacidade.
+**The Legibility-First Rule (nova).** Mesmo com vidro em tudo, o TEXTO de dado real (número, nome, status) nunca fica sobre um fundo tão translúcido que prejudique a leitura — o vidro leve usa opacidade baixa o suficiente para nunca comprometer contraste. Listas com muitas linhas (ex.: 50 leads) não precisam de blur pesado em cada linha — o mini-card pode usar só gradiente + borda sutil, sem `backdrop-filter`, se a performance ou legibilidade justificar (ver nota de performance em Components > Tables).
+
+**The Theme-Intensity Rule.** Todo elemento com vidro/gradiente usa opacidades DIFERENTES entre os temas — nunca os mesmos números só com a cor de base invertida. Fundo claro dilui cor visualmente mais que fundo escuro (se aproxima do branco), então o tema claro precisa de opacidade sensivelmente mais alta (na prática, cerca do dobro) para o efeito parecer igualmente presente nos dois temas. A meta é o mesmo EFEITO PERCEBIDO, não os mesmos valores de opacidade. Isso vale tanto pro vidro forte quanto pro vidro leve.
 
 **The Icon-Plus-Color Rule.** Nenhum estado (sucesso/pendente/perigo) é comunicado só por cor — todo `Badge` carrega um ícone (`Check`/`Clock`/`AlertTriangle`/`Circle`), pensado pra continuar legível em escala de cinza.
 
@@ -113,21 +119,21 @@ Verde/vermelho/âmbar continuam também reservados para estado semântico (suces
 
 ## Layout
 
-Container de conteúdo com teto de 1680px (`Conteudo`, `Cabecalho`), respiro lateral de 20–32px. Grid responsivo (`grid-cols-1` → `lg:grid-cols-N`), nunca largura fixa em pixel pro conteúdo principal. Sidebar fixa à esquerda no desktop (≥960px), recolhível entre 220px (com rótulo) e 64px (só ícone) — preferência por dispositivo salva em `localStorage`. Abaixo de 960px, a navegação vira barra inferior fixa com os módulos mais usados; sidebar e barra inferior nunca coexistem.
+Container de conteúdo com teto de 1680px (`Conteudo`, `Cabecalho`), respiro lateral de 20–32px. Grid responsivo (`grid-cols-1` — `lg:grid-cols-N`), nunca largura fixa em pixel pro conteúdo principal. Sidebar fixa à esquerda no desktop (≥960px), recolhível entre 220px (com rótulo) e 64px (só ícone) — preferência por dispositivo salva em `localStorage`. Abaixo de 960px, a navegação vira barra inferior fixa com os módulos mais usados; sidebar e barra inferior nunca coexistem.
 
-Ritmo de página padrão: grade de métricas glass (2–3 colunas, cor por categoria) → gráfico grande isolado, largura total → faixa de 2–3 painéis complementares (donut, número em destaque, barra de proporção) → conteúdo operacional principal (cards ricos ou tabela sólida) + coluna lateral estreita (ações/lista compacta).
+Ritmo de página padrão: grade de métricas glass (2–3 colunas, cor por categoria) — gráfico grande isolado, largura total — faixa de 2–3 painéis complementares (donut, número em destaque, barra de proporção) — conteúdo operacional principal (cards ricos com vidro leve) + coluna lateral estreita (ações/lista compacta).
 
 ## Elevation & Depth
 
-Duas camadas de profundidade coexistem, cada uma com seu papel:
+Duas intensidades de vidro coexistem, cobrindo o sistema inteiro (revisado 2026-09-09 — ver The Glass-Everywhere Rule):
 
-1. **Camada base (a maior parte do sistema)**: profundidade por tom (`bg` → `panel` → `raised` → `input`), sem sombra dramática — igual antes. Usada em tabelas, formulários, listas, painéis de conteúdo denso.
-2. **Camada de destaque (nova)**: vidro + gradiente + sombra colorida suave, usada só nos elementos que devem chamar atenção primeiro numa tela (MetricCard, botão primário, item ativo/hover da sidebar). A sombra aqui é intencional e colorida (`box-shadow` na cor da categoria, opacidade baixa), diferente do resto do sistema.
+1. **Vidro leve (a maior parte do sistema — NOVO padrão)**: todo Panel/container, e cada linha de conteúdo dentro de listas (contratos, leads, itens de checklist) usa gradiente sutil quase neutro (ou com leve tom da cor de status/categoria), borda quase invisível, sombra suave — sem o brilho forte do vidro de destaque. Substitui o antigo "tom sólido sem sombra" como base do sistema.
+2. **Vidro forte (destaque)**: gradiente mais opaco, blur mais alto, borda e sombra coloridas mais presentes — reservado a MetricCard principal, botão de ação primária, item ativo/hover da sidebar. Continua sendo o que "chama atenção primeiro" numa tela — a diferença de intensidade em relação ao vidro leve é o que cria hierarquia visual, não a ausência total de vidro num dos dois.
 
 ### Named Rules
-**The Tone-Not-Shadow Rule (mantida para a camada base).** Fora dos elementos de destaque, elevação continua sendo mudança de tom de fundo, não sombra projetada.
+**The Tone-Not-Shadow Rule (mantida, mas escopo reduzido).** Elementos que não usam vidro (raro agora — ex.: um input de texto simples dentro de um formulário) continuam preferindo tom de fundo a sombra projetada quando precisam indicar profundidade sem o efeito de vidro completo.
 
-**The Glass-For-Emphasis Rule (ver Colors).** Vidro e sombra colorida só nos elementos de destaque — nunca espalhados pelo sistema inteiro.
+**The Glass-Everywhere Rule (ver Colors).** Vidro (nas duas intensidades) é a linguagem visual padrão de todo container do sistema — não uma exceção pontual.
 
 ## Shapes
 
@@ -157,24 +163,73 @@ Cantos consistentemente arredondados em 3 passos: `6px` (botão secundário, inp
 - **Categoria obrigatória:** todo MetricCard precisa declarar a qual categoria pertence (dinheiro/pessoas/agenda/operação/ação) — isso decide a cor. Uma métrica que não se encaixa em nenhuma categoria usa o cinza neutro (`neutral`), sem forçar em uma das 5.
 - **Internal Padding:** 20px.
 
-### Charts (SVG à mão, sem biblioteca)
-- **Donut** (`GraficoDonut`): rosca + legenda lateral (bolinha colorida + rótulo + valor mono), texto no centro mostra o total ou a fatia em hover. Cores dos segmentos seguem a paleta de categoria quando fizer sentido (ex.: funil de leads usa tons de azul/roxo, não cores arbitrárias).
-- **Barra de proporção** (`GraficoBarraSplit`): 2+ segmentos empilhados na horizontal (`rounded-full`, 8px de altura) + legenda com bolinha, pra comparação parte/todo onde um donut seria exagero.
-- **Combo de faturamento** (`GraficoFaturamento`, ex-`GraficoDRE`): barras (receita/custo) + linha (lucro, pode ser negativo). Usa a cor `money` (verde) como cor principal, já que é sobre dinheiro.
-- Gráficos continuam sólidos, sem vidro — o efeito de destaque já vem do MetricCard ao redor; aplicar blur no próprio gráfico prejudicaria a leitura da linha/barra.
+### Panel (container — atualizado 2026-09-09)
+- **Corner:** `16px` (`rounded-lg`).
+- **Background (vidro leve):** gradiente quase neutro sobre o fundo base — escuro: `linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)), var(--bg)`; claro: `linear-gradient(160deg, rgba(0,0,0,0.04), rgba(0,0,0,0.01)), var(--bg)` (Theme-Intensity Rule também vale aqui — testar visualmente antes de travar o número exato).
+- **Backdrop-filter:** `blur(20px)` — mais alto que o MetricCard, porque o gradiente de base é bem mais sutil, então o blur é o que garante a sensação de vidro real sem depender de cor forte.
+- **Borda:** `1px solid rgba(255,255,255,0.09)` no escuro / `rgba(0,0,0,0.08)` no claro.
+- **Sombra:** `0 12px 40px rgba(0,0,0,0.45)` no escuro / `rgba(0,0,0,0.12)` no claro + `inset 0 1px 0 rgba(255,255,255,0.06)` (fiapo de luz no topo, igual aos outros elementos de vidro).
+- Todo `PanelHeader`, formulário e bloco de conteúdo dentro do Panel herda esse fundo — não é preciso vidro duplicado dentro do vidro.
+
+### Charts (SVG à mão, sem biblioteca — revisado 2026-09-09)
+- **Linha** (`GraficoLinha`, `GraficoFaturamento`/ex-`GraficoDRE`): curva suavizada (Bezier/`curveMonotone`, não segmentos retos ponta-a-ponta) — visual mais orgânico, alinhado à referência "Efferd". Continua com pontos marcados e área preenchida em gradiente por baixo. **Atenção:** a troca para curva deve ser feita com cuidado, dado o bug de renderização já identificado (linha aparecendo como traço reto diagonal) — validar visualmente após a troca, não assumir que resolve o bug sozinho.
+- **Barras** (`GraficoFaturamento`/ex-`GraficoDRE`, qualquer gráfico de barra): cantos superiores arredondados (`rx` ~6px) em vez de retos, com gradiente vertical sutil (cor cheia no topo — ~35% opacidade na base) em vez de preenchimento sólido uniforme.
+- **Donut** (`GraficoDonut`): anel mais fino que o atual (testar espessura ~8-10% do raio, contra o padrão anterior mais grosso), com leve `drop-shadow`/glow (blur pequeno, 3-4px, na cor da fatia) na fatia principal ou em hover — mesma lógica de destaque sutil do resto do sistema. Legenda lateral e número central continuam como já eram.
+- **Sparkline (novo componente)**: mini-gráfico de linha sem eixo, sem grade, sem rótulo — só a curva do valor ao longo do tempo, dimensão pequena (ex. 60×24px), inserido dentro do próprio MetricCard de métricas com tendência histórica (ex.: Faturamento do Mês). Usa a cor da categoria daquele card. Não substitui o gráfico grande da tela — é um resumo visual adicional dentro do card.
+- **Barra de proporção** (`GraficoBarraSplit`): sem mudança — 2+ segmentos empilhados na horizontal (`rounded-full`, 8px de altura) + legenda com bolinha.
+- Gráficos em si continuam desenhados sem vidro/blur pesado no próprio SVG traço (isso prejudicaria a legibilidade da linha/barra fina) — o glow do donut e o gradiente das barras são exceções pontuais e sutis, não uma aplicação geral de blur.
 
 ### Navigation (Sidebar — redesenhada 2026-09-09)
-- **Contêiner:** fundo em vidro — escuro: `linear-gradient(180deg, panel a 60%, bg a 70%)` + `blur(16px)`, borda branca a 8%, sombra `0 8px 32px rgba(0,0,0,0.4)`; claro: `linear-gradient(180deg, panel a 75%, bg a 85%)` + `blur(16px)` (opacidade mais alta, mesma lógica da Theme-Intensity Rule), borda preta a 6%, sombra `0 8px 24px rgba(0,0,0,0.10)`. É o único painel "estrutural" (não-métrica) que ganha vidro, porque fica visível o tempo todo e ancora visualmente o resto do sistema.
+- **Contêiner:** fundo em vidro — escuro: `linear-gradient(180deg, panel a 60%, bg a 70%)` + `blur(16px)`, borda branca a 8%, sombra `0 8px 32px rgba(0,0,0,0.4)`; claro: `linear-gradient(180deg, panel a 75%, bg a 85%)` + `blur(16px)` (opacidade mais alta, mesma lógica da Theme-Intensity Rule), borda preta a 6%, sombra `0 8px 24px rgba(0,0,0,0.10)`.
 - **Item em repouso:** sem cor de fundo, ícone na cor da categoria daquele módulo (ex.: ícone do CRM em azul, ícone do Estoque em teal), texto em `text-dim`.
 - **Item em hover:** fundo ganha um gradiente leve na cor da categoria daquele item — escuro: ~16%/4%; claro: ~32%/8% (Theme-Intensity Rule), borda sutil na mesma cor (25% escuro / 40% claro), texto sobe para a cor da categoria (usando o tom mais escuro/saturado no claro para manter contraste, igual ao MetricCard).
 - **Item ativo:** mesmo tratamento do hover, mais intenso (escuro: gradiente 22%/6%, borda 35%, sombra colorida `0 4px 16px` na cor a 15%; claro: gradiente 45%/12%, borda 55%, sombra a 22%) — reforça "você está aqui" sem precisar de texto extra.
 - Item "Painel" (Dashboard, sempre no topo, fora dos núcleos) usa a cor âmbar (ação/marca), não uma categoria específica.
 
-### Tables (sólidas, sem vidro)
-- **Header:** rótulo uppercase 10–10.5px, `text-faint`, borda inferior `line`.
-- **Linha:** borda inferior `line/50`, sem fundo alternado (nunca zebra-striping).
-- **Status:** sempre via `Badge`, nunca texto colorido cru numa célula.
-- Tabelas ficam **fora** da regra de vidro — são conteúdo denso de leitura prolongada (Contratos, Financeiro, Estoque), e blur ali prejudicaria a leitura rápida de linha por linha.
+### Tables & Lists (redesenhado 2026-09-09 — mini-cards de vidro leve, substitui a tabela crua)
+- **Estrutura:** listas de registro (contratos, leads, itens de checklist, lançamentos financeiros) deixam de ser uma `<table>`/`<tr>` tradicional e passam a ser uma coluna de **mini-cards** — cada linha de dado é seu próprio container com vidro leve, não uma linha dividida por borda inferior.
+- **Corner:** `12px` por linha (um pouco menor que o Panel que as envolve, para dar noção de hierarquia).
+- **Background:** gradiente quase neutro (igual ao Panel), OU, quando a linha tem um status/categoria clara (ex.: contrato pago = dinheiro, item crítico de estoque = operação), gradiente sutil na cor daquele status — escuro: cor a 10%/2%; claro: cor a 22%/5% (Theme-Intensity Rule).
+- **Borda:** `1px solid`, quase invisível quando neutro (`rgba(255,255,255,0.06)` escuro / `rgba(0,0,0,0.05)` claro) ou na cor do status quando aplicável (~18% escuro / ~30% claro).
+- **Backdrop-filter:** opcional por lista — ver nota de performance abaixo. Quando presente, `blur(8px)` (mais leve que o Panel, para não empilhar blur sobre blur em excesso).
+- **Nota de performance/legibilidade:** listas muito longas (50+ linhas visíveis ao mesmo tempo, ex. uma tabela de leads sem paginação) podem omitir o `backdrop-filter` de cada linha individual — o gradiente + borda sutil já comunicam a mesma identidade visual sem o custo de repetir blur dezenas de vezes na tela. O Panel que envolve a lista continua com blur normal; a omissão é só nas linhas internas, e só quando a contagem justificar.
+- **Status:** sempre via `Badge`, nunca texto colorido cru numa célula/linha.
+- **Cabeçalho de coluna** (quando a lista precisar, ex.: para ordenação): rótulo uppercase 10–10.5px, `text-faint`, sem fundo próprio — repousa diretamente sobre o vidro leve do Panel.
+
+## Motion (novo, 2026-09-09)
+
+Princípios gerais (seguindo a orientação de motion design consultada): animar só `transform` e `opacity` (nunca propriedades de layout como `top`/`width`/`height`), manter uma única linguagem de movimento em todo o sistema, stagger só em grupos pequenos (uma grade de métricas — não uma lista de 50 linhas), e sempre respeitar `prefers-reduced-motion` (remover/reduzir drasticamente qualquer animação automática para quem pediu menos movimento no sistema operacional).
+
+### Entrada de página (cascata diagonal)
+- Todo grupo pequeno de elementos de destaque (grade de MetricCards, painéis complementares) entra com fade + leve deslocamento diagonal de cima-esquerda (`translate(-24px, -18px)` → `translate(0,0)`, opacidade 0 → 1).
+- Duração ~900-950ms por elemento, `cubic-bezier(.22,1,.36,1)` (easing "overshoot suave", mesmo já usado nas animações existentes do sistema).
+- Delay em cascata de ~180ms entre um elemento e o próximo, na ordem em que aparecem na grade (esquerda pra direita, cima pra baixo).
+- Aplica-se à entrada inicial da tela — não repete a cada re-render ou troca de filtro, só no carregamento/navegação para aquela tela.
+
+### Hover elevado
+- Cards clicáveis (MetricCard quando for link, linha de lista, card de contrato) sobem levemente (`translateY(-3px)`) e a sombra colorida já existente na categoria daquele elemento intensifica, ao passar o mouse.
+- Transição rápida: ~200ms, mesmo easing da entrada.
+- Não aplicar em elementos que não são clicáveis — hover elevado sinaliza interatividade, então usá-lo em algo estático confunde o usuário.
+
+### Skeleton loading
+- Enquanto um dado real (métrica, lista, gráfico) ainda não chegou do banco, mostrar um placeholder no formato/tamanho aproximado do conteúdo final, com um brilho horizontal (`background-position` animado em loop, gradiente claro passando da esquerda pra direita) — nunca um spinner genérico sozinho para conteúdo estruturado.
+- Usar nos mesmos lugares que hoje mostrariam "Carregando..." em texto puro.
+
+### Indicador "ao vivo" pulsante
+- Uma bolinha pequena (~7px), na cor de status ou categoria relevante, com uma animação de pulso suave (`box-shadow` crescendo e desaparecendo em loop, ~2s de ciclo) — usada ao lado de métricas que representam algo em tempo real ou "hoje" (ex.: "eventos hoje", "equipe confirmada agora").
+- Não usar em métricas históricas/estáticas (ex.: faturamento do mês passado) — o pulso comunica "isso pode mudar a qualquer momento", então só cabe onde isso é verdade.
+
+### Feedback de clique
+- Todo botão e controle clicável encolhe ligeiramente (`scale(0.96)`) no exato momento do clique/toque, retornando ao normal ao soltar — transição bem rápida (~100ms), sem easing elaborado (o objetivo é resposta imediata, não uma animação vistosa).
+
+### Número contando
+- Valores grandes em destaque (o número principal de um MetricCard, especialmente ao carregar a tela pela primeira vez) sobem de 0 até o valor real numa animação curta (~1s), em vez de aparecer já no valor final.
+- Usar com moderação — só no valor "herói" de cada tela (1-2 números por carregamento de página), nunca em toda métrica pequena, ou o efeito perde força e a tela demora a "assentar" visualmente.
+
+### Named Rules
+**The One-Motion-Language Rule.** Todo o sistema usa o mesmo easing (`cubic-bezier(.22,1,.36,1)`) e a mesma filosofia de movimento (transform + opacity, nunca layout) em qualquer animação — nunca misturar uma tela com springs físicos e outra com easing linear, por exemplo.
+
+**The Reduced-Motion Rule.** Toda animação automática ou decorativa (entrada em cascata, pulso, número contando, skeleton shimmer) precisa de um fallback dentro de `@media (prefers-reduced-motion: reduce)` que remova ou reduza drasticamente o movimento — animações que só respondem a uma ação direta do usuário (hover, clique) podem se manter mais leves, mas também precisam respeitar essa preferência.
 
 ## Do's and Don'ts
 
@@ -182,13 +237,17 @@ Cantos consistentemente arredondados em 3 passos: `6px` (botão secundário, inp
 - **Do** usar `IBM Plex Mono` pra todo número/hora real vindo do banco — nunca Inter pra dado numérico.
 - **Do** dar ícone a todo Badge de status — nunca cor sozinha.
 - **Do** manter a cor de uma categoria (dinheiro/pessoas/agenda/operação) sempre igual em qualquer tela — nunca reescolher a cor por gosto pontual daquela tela.
-- **Do** reservar vidro/gradiente para os elementos de destaque (MetricCard, botão primário, sidebar) — nunca aplicar em tabela, formulário ou lista densa.
+- **Do** aplicar vidro em TODO container (Panel, lista, formulário) — vidro leve como padrão, vidro forte só nos elementos de destaque (MetricCard, botão primário, sidebar). A diferença é de intensidade, não de presença/ausência.
+- **Do** manter o texto de dado real (número, nome, status) sempre legível sobre o vidro — se uma lista muito longa sofrer de performance ou legibilidade com blur em cada linha, omitir só o `backdrop-filter` daquela linha (mantendo gradiente + borda), nunca abandonar a identidade visual por completo.
 - **Do** só mostrar selo de tendência (↑/↓ %) quando houver comparação real de período — omitir o selo é sempre válido, fabricar o número nunca é.
+- **Do** aplicar a entrada em cascata diagonal em toda grade pequena de destaque (MetricCards, painéis complementares) ao carregar uma tela — mas nunca repetir a animação em toda troca de filtro/re-render, só na entrada real da página.
 
 ### Don't:
 - **Don't** usar preto puro (`#000`) — a base escura é grafite quente (`#141311`), nunca preto absoluto.
 - **Don't** criar um botão vermelho sólido — ações destrutivas usam a mesma receita tintada dos banners de erro (`border-danger/40 bg-danger/10 text-danger`).
-- **Don't** aplicar zebra-striping em tabela — linhas se diferenciam só pela borda inferior.
-- **Don't** aplicar blur/vidro em tabelas, formulários ou qualquer superfície de leitura densa e prolongada.
+- **Don't** aplicar zebra-striping — mini-cards de vidro leve já diferenciam cada linha visualmente, um fundo alternado por cima seria redundante.
+- **Don't** deixar qualquer painel, tabela ou lista "sólido cru" sem nenhum vidro — isso é o que causava a sensação de "dois estilos colados" que motivou esta revisão; toda superfície do sistema participa da mesma linguagem visual, ainda que em intensidade leve.
 - **Don't** inventar uma 6ª cor de categoria — se uma métrica não encaixa nas 5 (dinheiro/pessoas/agenda/operação/ação), ela é neutra (cinza), nunca ganha uma cor nova sem essa decisão passar por revisão do design system.
+- **Don't** aplicar stagger (entrada em cascata) em listas longas (dezenas de linhas) — o efeito vira lentidão perceptível em vez de polimento; reservar cascata para grupos pequenos (uma grade de métricas, poucos painéis).
+- **Don't** usar número contando em toda métrica pequena da tela — reservar para 1-2 números "herói" por tela, ou o efeito perde força.
 - **Don't** misturar tema: nenhuma cor pode existir só no `@theme` escuro sem uma contrapartida em `:root[data-theme='light']`, e vice-versa.

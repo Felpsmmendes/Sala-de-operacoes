@@ -1,5 +1,5 @@
 import { ArrowDownCircle, ArrowUpCircle, BarChart3, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { atualizarStatusLancamento, criarLancamento, excluirLancamento, listarDreMensal, listarLancamentos } from '../lib/api/financeiro';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
@@ -137,8 +137,15 @@ export default function Financeiro() {
             <p className="text-sm text-text-dim">Nenhum lançamento aqui.</p>
           ) : (
             <div className="flex flex-col gap-2">
+              {/* Mini-card de vidro leve por lançamento (DESIGN.md > Tables &
+                  Lists, 2026-09-09) — pago ganha um tom verde bem sutil
+                  (é dinheiro, categoria da tela), pendente fica neutro. */}
               {visiveis.map((l) => (
-                <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2.5 text-sm">
+                <div
+                  key={l.id}
+                  className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm ${l.status === 'pago' ? 'list-row-tint' : 'list-row'}`}
+                  style={l.status === 'pago' ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : undefined}
+                >
                   <div className="min-w-0">
                     <strong className={l.tipo === 'receita' ? 'text-success' : 'text-text'}>{l.tipo === 'receita' ? '+' : '−'} {formatarMoeda(l.valor)}</strong>
                     <span className="ml-2 text-text">{l.descricao}</span>
@@ -187,31 +194,30 @@ export default function Financeiro() {
                 <GraficoDRE meses={dreMeses} formatarMes={formatarMes} formatarValor={formatarMoeda} />
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left text-[12.5px]">
-                  <thead>
-                    <tr className="border-b border-line text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
-                      <th className="pb-2 pr-3">Mês</th>
-                      <th className="pb-2 pr-3">Receita bruta</th>
-                      <th className="pb-2 pr-3">Custos</th>
-                      <th className="pb-2 pr-3">Lucro líquido</th>
-                      <th className="pb-2">Margem</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dreMeses.map((m) => {
-                      const margem = m.receita_bruta > 0 ? (m.lucro_liquido / m.receita_bruta) * 100 : null;
-                      return (
-                        <tr key={m.mes} className="border-b border-line/50">
-                          <td className="py-2 pr-3 text-text">{formatarMes(m.mes)}</td>
-                          <td className="py-2 pr-3 font-mono text-success">{formatarMoeda(m.receita_bruta)}</td>
-                          <td className="py-2 pr-3 font-mono text-danger">{formatarMoeda(m.custos_totais)}</td>
-                          <td className="py-2 pr-3 font-mono text-text">{formatarMoeda(m.lucro_liquido)}</td>
-                          <td className="py-2 font-mono text-text-dim">{margem != null ? `${margem.toFixed(1)}%` : '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {/* Lista de meses do DRE em mini-cards de vidro leve (DESIGN.md >
+                    Tables & Lists, 2026-09-09), não mais <table>/<tr> crua —
+                    cabeçalho de coluna repousa direto sobre o vidro do Panel. */}
+                <div className="flex min-w-[520px] flex-col gap-2">
+                  <div className="grid grid-cols-5 gap-3 px-3 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                    <span>Mês</span>
+                    <span>Receita bruta</span>
+                    <span>Custos</span>
+                    <span>Lucro líquido</span>
+                    <span>Margem</span>
+                  </div>
+                  {dreMeses.map((m) => {
+                    const margem = m.receita_bruta > 0 ? (m.lucro_liquido / m.receita_bruta) * 100 : null;
+                    return (
+                      <div key={m.mes} className="list-row grid grid-cols-5 items-center gap-3 px-3 py-2 text-[12.5px]">
+                        <span className="text-text">{formatarMes(m.mes)}</span>
+                        <span className="font-mono text-success">{formatarMoeda(m.receita_bruta)}</span>
+                        <span className="font-mono text-danger">{formatarMoeda(m.custos_totais)}</span>
+                        <span className="font-mono text-text">{formatarMoeda(m.lucro_liquido)}</span>
+                        <span className="font-mono text-text-dim">{margem != null ? `${margem.toFixed(1)}%` : '—'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </>
           )}

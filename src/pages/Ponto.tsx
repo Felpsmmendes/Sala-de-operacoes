@@ -137,7 +137,7 @@ export default function Ponto() {
           ) : (
             <div className="flex flex-col gap-2">
               {presenca.map((p) => (
-                <div key={p.escala_id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2.5 text-sm">
+                <div key={p.escala_id} className="list-row flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm">
                   <div>
                     <strong className="text-text">{p.membro_nome}</strong>
                     <span className="ml-2 text-[11.5px] text-text-faint">{FUNCAO_EQUIPE_ROTULO[p.membro_funcao] ?? p.membro_funcao}</span>
@@ -159,37 +159,33 @@ export default function Ponto() {
             <p className="text-sm text-text-dim">Nenhum evento futuro cadastrado.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-[12.5px]">
-                <thead>
-                  <tr className="border-b border-line text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
-                    <th className="pb-2 pr-3">Data</th>
-                    <th className="pb-2 pr-3">Cliente</th>
-                    <th className="pb-2 pr-3">Confirmados</th>
-                    <th className="pb-2 pr-3">Chegaram</th>
-                    <th className="pb-2">Situação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {eventos.map((ev) => {
-                    const r = resumoPorEvento.get(ev.id) ?? { confirmados: 0, total: 0, chegaram: 0 };
-                    return (
-                      <tr key={ev.id} className="border-b border-line/50">
-                        <td className="py-2 pr-3 text-text-dim">{formatarData(ev.data_evento)}</td>
-                        <td className="py-2 pr-3 text-text">{ev.contrato?.lead?.nome ?? '—'}</td>
-                        <td className="py-2 pr-3 font-mono text-text-dim">
-                          {r.confirmados}/{r.total}
-                        </td>
-                        <td className="py-2 pr-3 font-mono text-text-dim">
-                          {r.chegaram}/{r.total}
-                        </td>
-                        <td className="py-2">
-                          {r.total === 0 ? <Badge tom="perigo" texto="Sem ninguém escalado" /> : r.confirmados === 0 ? <Badge tom="perigo" texto="0 confirmados" /> : <Badge tom="sucesso" texto="OK" />}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              {/* Mini-cards de vidro leve (DESIGN.md > Tables & Lists,
+                  2026-09-09), não mais <table>/<tr> crua. */}
+              <div className="flex min-w-[560px] flex-col gap-2">
+                <div className="grid grid-cols-[110px_1fr_110px_110px_150px] gap-3 px-3 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                  <span>Data</span>
+                  <span>Cliente</span>
+                  <span>Confirmados</span>
+                  <span>Chegaram</span>
+                  <span>Situação</span>
+                </div>
+                {eventos.map((ev) => {
+                  const r = resumoPorEvento.get(ev.id) ?? { confirmados: 0, total: 0, chegaram: 0 };
+                  return (
+                    <div key={ev.id} className="list-row grid grid-cols-[110px_1fr_110px_110px_150px] items-center gap-3 px-3 py-2 text-[12.5px]">
+                      <span className="text-text-dim">{formatarData(ev.data_evento)}</span>
+                      <span className="truncate text-text">{ev.contrato?.lead?.nome ?? '—'}</span>
+                      <span className="font-mono text-text-dim">
+                        {r.confirmados}/{r.total}
+                      </span>
+                      <span className="font-mono text-text-dim">
+                        {r.chegaram}/{r.total}
+                      </span>
+                      {r.total === 0 ? <Badge tom="perigo" texto="Sem ninguém escalado" /> : r.confirmados === 0 ? <Badge tom="perigo" texto="0 confirmados" /> : <Badge tom="sucesso" texto="OK" />}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </Panel>

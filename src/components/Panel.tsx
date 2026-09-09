@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 
 /** Cartão de seção — equivalente ao `.painel` do painel anterior.
-    `shadow-card` (2026-09-08) dá profundidade de verdade (brilho no topo +
-    sombra ambiente), não só o fiapo de borda que `border-line` já dava. */
+    `panel-glass` (DESIGN.md > Panel, "The Glass-Everywhere Rule",
+    2026-09-09) substitui o fundo sólido `bg-panel` + `shadow-card` por
+    vidro leve (gradiente quase neutro + blur + borda/sombra próprias) —
+    afeta automaticamente toda tela que usa `Panel`. */
 export function Panel({ children, className = '', id }: { children: ReactNode; className?: string; id?: string }) {
   return (
-    <section id={id} className={`min-w-0 rounded-lg border border-line bg-panel p-5 shadow-card ${className}`}>
+    <section id={id} className={`min-w-0 panel-glass rounded-lg p-5 ${className}`}>
       {children}
     </section>
   );

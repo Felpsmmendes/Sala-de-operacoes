@@ -16,6 +16,9 @@ export function GraficoDonut({ fatias, centroRotulo, formatarValor = (v) => Stri
 
   const total = fatias.reduce((s, f) => s + f.valor, 0);
   const raio = 40;
+  // Anel mais fino (DESIGN.md > Charts, 2026-09-09) — ~9% do raio, contra
+  // os 14 (35% do raio) de antes.
+  const espessura = raio * 0.09;
   const perimetro = 2 * Math.PI * raio;
   // soma acumulada de cada fatia ANTES dela — onde no círculo ela começa.
   const offsets: number[] = [];
@@ -23,6 +26,9 @@ export function GraficoDonut({ fatias, centroRotulo, formatarValor = (v) => Stri
     offsets.push(acumulado);
     return acumulado + (f.valor / total) * perimetro;
   }, 0);
+  // fatia principal (maior valor) ganha o glow quando nada está em hover;
+  // em hover, o glow segue a fatia sob o mouse.
+  const indexMaior = fatias.reduce((maiorI, f, i) => (f.valor > fatias[maiorI].valor ? i : maiorI), 0);
 
   if (total <= 0) return <p className="py-8 text-center text-sm text-text-dim">Sem dados ainda.</p>;
 
@@ -30,12 +36,16 @@ export function GraficoDonut({ fatias, centroRotulo, formatarValor = (v) => Stri
     <div className="flex items-center gap-5">
       <div className="relative h-[132px] w-[132px] flex-shrink-0">
         <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-          <circle cx="50" cy="50" r={raio} fill="none" strokeWidth="14" className="text-line" stroke="currentColor" opacity={0.3} />
+          <circle cx="50" cy="50" r={raio} fill="none" strokeWidth={espessura} className="text-line" stroke="currentColor" opacity={0.3} />
           <g style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
             {fatias.map((f, i) => {
               const fracao = f.valor / total;
               const comprimento = fracao * perimetro;
               const offsetInicial = offsets[i];
+              // glow sutil (DESIGN.md > Charts, 2026-09-09) — mesma lógica
+              // de destaque discreto do resto do sistema, só na fatia
+              // principal ou na fatia em hover.
+              const emGlow = hover != null ? hover === i : i === indexMaior;
               return (
                 <circle
                   key={f.rotulo}
@@ -43,7 +53,7 @@ export function GraficoDonut({ fatias, centroRotulo, formatarValor = (v) => Stri
                   cy="50"
                   r={raio}
                   fill="none"
-                  strokeWidth="14"
+                  strokeWidth={espessura}
                   strokeLinecap="butt"
                   className={`${f.corClasse} cursor-pointer transition-opacity`}
                   stroke="currentColor"
@@ -53,7 +63,8 @@ export function GraficoDonut({ fatias, centroRotulo, formatarValor = (v) => Stri
                     strokeDashoffset: entrou ? perimetro - comprimento : perimetro,
                     transform: `rotate(${(offsetInicial / perimetro) * 360}deg)`,
                     transformOrigin: '50% 50%',
-                    transition: `stroke-dashoffset 700ms cubic-bezier(.22,1,.36,1) ${i * 120}ms, opacity 150ms`,
+                    filter: emGlow ? 'drop-shadow(0 0 3.5px currentColor)' : undefined,
+                    transition: `stroke-dashoffset 700ms cubic-bezier(.22,1,.36,1) ${i * 120}ms, opacity 150ms, filter 150ms`,
                   }}
                   onMouseEnter={() => setHover(i)}
                   onMouseLeave={() => setHover(null)}

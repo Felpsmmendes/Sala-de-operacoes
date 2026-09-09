@@ -67,22 +67,20 @@ export default function Fechamento() {
             <Panel>
               <PanelHeader titulo="Histórico mensal" desc="Quer ver receita/custo/lucro líquido real (só o que foi pago)? Isso agora mora em Finanças." />
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[280px] text-left text-[12.5px]">
-                  <thead>
-                    <tr className="border-b border-line text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
-                      <th className="pb-2 pr-3">Mês</th>
-                      <th className="pb-2">Faturado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...meses].reverse().map((m) => (
-                      <tr key={m.mes} className="border-b border-line/50">
-                        <td className="py-2 pr-3 text-text">{formatarMes(m.mes)}</td>
-                        <td className="py-2 font-mono text-text">{formatarMoeda(m.valor)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {/* Mini-cards de vidro leve (DESIGN.md > Tables & Lists,
+                    2026-09-09), não mais <table>/<tr> crua. */}
+                <div className="flex min-w-[280px] flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-3 px-3 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                    <span>Mês</span>
+                    <span>Faturado</span>
+                  </div>
+                  {[...meses].reverse().map((m) => (
+                    <div key={m.mes} className="list-row grid grid-cols-2 items-center gap-3 px-3 py-2 text-[12.5px]">
+                      <span className="text-text">{formatarMes(m.mes)}</span>
+                      <span className="font-mono text-text">{formatarMoeda(m.valor)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </Panel>
           </>

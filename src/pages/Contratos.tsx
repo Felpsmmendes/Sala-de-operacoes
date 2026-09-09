@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, Clock, Pencil, Plus, Wallet } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { bloqueioNaData, listarBloqueios } from '../lib/api/bloqueiosAgenda';
 import { atualizarContrato, cancelarContrato, criarContrato, diasAteEvento, excluirContrato, listarContratos, marcarSinalPago, atualizarStatusSaldo, type EdicaoContrato } from '../lib/api/contratos';
 import { listarLeads } from '../lib/api/leads';
@@ -260,8 +260,15 @@ export default function Contratos() {
           {!carregando && !erro && contratos.length === 0 && <p className="text-sm text-text-dim">Nenhum contrato ainda.</p>}
 
           <div className="flex flex-col gap-3">
+            {/* Mini-card de vidro leve por contrato (DESIGN.md > Tables &
+                Lists, 2026-09-09) — saldo quitado ganha um tom verde bem
+                sutil (é dinheiro, categoria da tela), o resto fica neutro. */}
             {contratos.map((c) => (
-              <div key={c.id} className="rounded-md border border-line bg-input p-4">
+              <div
+                key={c.id}
+                className={`p-4 ${c.saldo_status === 'quitado' ? 'list-row-tint' : 'list-row'}`}
+                style={c.saldo_status === 'quitado' ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : undefined}
+              >
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <strong className="text-[15px] text-text">{c.lead?.nome ?? '—'}</strong>

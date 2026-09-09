@@ -18,6 +18,70 @@ function calcularTicks(min: number, max: number, alvo = 5): number[] {
   return Array.from({ length: qtd }, (_, i) => minLimpo + i * passoLimpo);
 }
 
+/** Curva suave "monotone" (mesmo algoritmo do d3-shape `curveMonotoneX`,
+    reimplementado sem lib, duplicado de GraficoLinha.tsx de propósito —
+    arquivo próprio, sem import cruzado entre gráficos, mesmo padrão do
+    resto do sistema) — Bezier cúbica que nunca ultrapassa (overshoot) os
+    valores dos pontos vizinhos. Pedido do usuário (2026-09-09): visual
+    mais orgânico pra linha de lucro, sem distorcer o dado real. */
+function pathSuave(pontos: { x: number; y: number }[]): string {
+  const n = pontos.length;
+  if (n === 0) return '';
+  if (n === 1) return `M ${pontos[0].x} ${pontos[0].y}`;
+  if (n === 2) return `M ${pontos[0].x} ${pontos[0].y} L ${pontos[1].x} ${pontos[1].y}`;
+
+  const dx: number[] = [];
+  const m: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const d = pontos[i + 1].x - pontos[i].x;
+    dx.push(d);
+    m.push(d === 0 ? 0 : (pontos[i + 1].y - pontos[i].y) / d);
+  }
+
+  const t: number[] = new Array(n).fill(0);
+  t[0] = m[0];
+  t[n - 1] = m[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  }
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) {
+      t[i] = 0;
+      t[i + 1] = 0;
+      continue;
+    }
+    const alpha = t[i] / m[i];
+    const beta = t[i + 1] / m[i];
+    const soma = alpha * alpha + beta * beta;
+    if (soma > 9) {
+      const tau = 3 / Math.sqrt(soma);
+      t[i] = tau * alpha * m[i];
+      t[i + 1] = tau * beta * m[i];
+    }
+  }
+
+  let d = `M ${pontos[0].x} ${pontos[0].y}`;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = pontos[i];
+    const p1 = pontos[i + 1];
+    const c1x = p0.x + dx[i] / 3;
+    const c1y = p0.y + (t[i] * dx[i]) / 3;
+    const c2x = p1.x - dx[i] / 3;
+    const c2y = p1.y - (t[i + 1] * dx[i]) / 3;
+    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p1.x} ${p1.y}`;
+  }
+  return d;
+}
+
+/** Retângulo de barra com só os cantos SUPERIORES arredondados (a base
+    fica reta, encostada na linha de zero) — `rect` puro não faz isso, daí
+    o path à mão. `r` já vem limitado ao menor entre metade da largura e a
+    altura da barra, pra nunca deformar uma barra baixinha/fina. */
+function pathBarraTopo(x: number, y: number, w: number, h: number, r: number): string {
+  const raio = Math.max(0, Math.min(r, w / 2, h));
+  return `M ${x} ${y + h} L ${x} ${y + raio} Q ${x} ${y} ${x + raio} ${y} L ${x + w - raio} ${y} Q ${x + w} ${y} ${x + w} ${y + raio} L ${x + w} ${y + h} Z`;
+}
+
 /** Rótulo compacto pro eixo Y (25k, -5k, 0) — mesmo formato enxuto da
     referência de design, só valor abreviado (a tooltip já mostra o valor
     cheio em R$). */
@@ -67,8 +131,9 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
   const yZero = escala(0);
 
   const pontos = meses.map((m, i) => ({ x: i * largura + largura / 2, y: escala(m.lucro_liquido) }));
-  const pathLucro = pontos.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const pathLucro = pathSuave(pontos);
   const atrasoLinha = n * 70 + 200;
+  const RAIO_TOPO_BARRA = 3.5;
 
   return (
     <div>
@@ -106,6 +171,22 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
             )}
 
             <svg viewBox={`0 0 100 ${altura}`} preserveAspectRatio="none" className="w-full overflow-visible" style={{ height: altura }}>
+              {/* Gradiente vertical sutil pras barras (DESIGN.md > Charts,
+                  2026-09-09) — cor cheia no topo, ~35% de opacidade na
+                  base, em vez do preenchimento sólido uniforme de antes.
+                  `className` no próprio <linearGradient> pra `currentColor`
+                  herdar a cor de status (success/danger). */}
+              <defs>
+                <linearGradient id="dre-grad-receita" className="text-success" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0.35" />
+                </linearGradient>
+                <linearGradient id="dre-grad-custo" className="text-danger" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0.35" />
+                </linearGradient>
+              </defs>
+
               {ticks.map((t) => (
                 <line key={t} x1={0} x2={100} y1={escala(t)} y2={escala(t)} className="text-line" stroke="currentColor" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />
               ))}
@@ -123,30 +204,30 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
                 return (
                   <g key={m.mes} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className="cursor-pointer">
                     <rect x={xBase} y={0} width={largura} height={altura} fill="transparent" />
-                    <rect
-                      x={xReceita}
-                      y={yReceita}
-                      width={wBar}
-                      height={hReceita}
-                      rx={1.5}
-                      fill="currentColor"
-                      className={`text-success transition-opacity ${emFoco ? 'opacity-40' : 'opacity-100'}`}
+                    <path
+                      d={pathBarraTopo(xReceita, yReceita, wBar, hReceita, RAIO_TOPO_BARRA)}
+                      fill="url(#dre-grad-receita)"
+                      className={`transition-opacity ${emFoco ? 'opacity-40' : 'opacity-100'}`}
                       style={{ transformBox: 'fill-box', transformOrigin: 'bottom', transform: entrou ? 'scaleY(1)' : 'scaleY(0)', transition: `transform 550ms cubic-bezier(.22,1,.36,1) ${i * 70}ms, opacity 150ms` }}
                     />
-                    <rect
-                      x={xCusto}
-                      y={yCusto}
-                      width={wBar}
-                      height={hCusto}
-                      rx={1.5}
-                      fill="currentColor"
-                      className={`text-danger transition-opacity ${emFoco ? 'opacity-40' : 'opacity-100'}`}
+                    <path
+                      d={pathBarraTopo(xCusto, yCusto, wBar, hCusto, RAIO_TOPO_BARRA)}
+                      fill="url(#dre-grad-custo)"
+                      className={`transition-opacity ${emFoco ? 'opacity-40' : 'opacity-100'}`}
                       style={{ transformBox: 'fill-box', transformOrigin: 'bottom', transform: entrou ? 'scaleY(1)' : 'scaleY(0)', transition: `transform 550ms cubic-bezier(.22,1,.36,1) ${i * 70 + 40}ms, opacity 150ms` }}
                     />
                   </g>
                 );
               })}
 
+              {/* Fade de opacidade, não "desenhar linha" (2026-09-09, bug
+                  reportado pelo usuário): pathLength=1 + strokeDasharray/
+                  strokeDashoffset animado via transição CSS tem bug
+                  conhecido entre navegadores em paths multi-segmento — a
+                  transição interpola o offset errado e a linha chega a
+                  renderizar como um traço reto cortando o gráfico, em vez
+                  de seguir a curva real. Fade simples é mais seguro e já é
+                  a mesma técnica usada nos pontos abaixo/barras acima. */}
               <path
                 d={pathLucro}
                 fill="none"
@@ -154,12 +235,10 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
                 strokeWidth={1.6}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                pathLength={1}
                 className="text-money"
                 style={{
-                  strokeDasharray: 1,
-                  strokeDashoffset: entrou ? 0 : 1,
-                  transition: `stroke-dashoffset 900ms cubic-bezier(.22,1,.36,1) ${atrasoLinha}ms`,
+                  opacity: entrou ? 1 : 0,
+                  transition: `opacity 500ms ease-out ${atrasoLinha}ms`,
                 }}
               />
               {pontos.map((p, i) => (

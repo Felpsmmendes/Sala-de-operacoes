@@ -88,6 +88,15 @@
   --nav-active-border: 35%;
   --nav-active-shadow: 15%;
 
+  /* vidro leve (DESIGN.md > Panel + Tables & Lists, "The Glass-Everywhere
+     Rule", 2026-09-09) — linha de lista tintada por status/categoria
+     quando fizer sentido (ex.: contrato pago = leve tom verde); a versão
+     neutra do Panel/linha usa os literais rgba(255,255,255,*)/rgba(0,0,0,*)
+     direto nas regras abaixo, sem token, porque não varia por cor. */
+  --row-grad-1: 10%;
+  --row-grad-2: 2%;
+  --row-border-op: 18%;
+
   /* -- tipografia -- */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
@@ -184,6 +193,10 @@ body,
   --nav-active-2: 12%;
   --nav-active-border: 55%;
   --nav-active-shadow: 22%;
+
+  --row-grad-1: 22%;
+  --row-grad-2: 5%;
+  --row-border-op: 30%;
 
   /* invertido: no claro a borda ganha uma sombra escura suave em vez do
      fiapo claro do escuro (pedido do usuário). */
@@ -301,6 +314,53 @@ body {
    das exceções do DESIGN.md (botão primário, item ativo do menu, selo
    "pendente", marca). Vira neutro, igual a qualquer métrica/elemento sem
    categoria clara (mesma regra do MetricCard). */
+/* Panel/container em vidro leve (DESIGN.md > Panel, "The Glass-Everywhere
+   Rule", substitui a "Glass-For-Emphasis Rule", 2026-09-09) — todo
+   container do sistema agora usa vidro, só que numa intensidade bem mais
+   sutil que o vidro forte do MetricCard/sidebar: gradiente quase neutro
+   (sem cor de categoria), blur mais alto (o gradiente é tão sutil que o
+   blur é o que garante a sensação de vidro real). Substitui o antigo
+   fundo sólido `bg-panel` chapado. */
+.panel-glass {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)), var(--color-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+:root[data-theme='light'] .panel-glass {
+  background: linear-gradient(160deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.01)), var(--color-bg);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* Mini-card de linha de lista (DESIGN.md > Tables & Lists, 2026-09-09) —
+   substitui <tr>/linha crua por um container com vidro leve. `.list-row`
+   é a variante neutra (gradiente igual ao Panel); `.list-row-tint` é a
+   variante tintada por status/categoria — cada instância define
+   `--row-color` inline (mesmo mecanismo do `--item-color` da sidebar).
+   `.list-row-blur` é opt-in: listas curtas ligam o blur, listas longas
+   (30-40+ linhas visíveis) omitem por performance/legibilidade, mantendo
+   só gradiente + borda (ver nota do DESIGN.md). */
+.list-row {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)), var(--color-bg);
+}
+:root[data-theme='light'] .list-row {
+  border-color: rgba(0, 0, 0, 0.05);
+  background: linear-gradient(160deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.01)), var(--color-bg);
+}
+.list-row-tint {
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--row-color) var(--row-border-op), transparent);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--row-color) var(--row-grad-1), transparent), color-mix(in srgb, var(--row-color) var(--row-grad-2), transparent)), var(--color-bg);
+}
+.list-row-blur {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 ::selection {
   background: var(--color-neutral);
   color: var(--color-bg);
@@ -309,6 +369,180 @@ body {
   outline: 2px solid var(--color-neutral);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* =========================================================================
+   Motion (DESIGN.md > Motion, 2026-09-09) — 6 padrões, um único idioma de
+   movimento (The One-Motion-Language Rule): sempre este easing
+   (cubic-bezier(.22,1,.36,1)), sempre transform/opacity, nunca layout.
+   "Número contando" fica fora daqui — é JS (ver src/lib/useContagem.ts),
+   não dá pra fazer só com CSS. Tudo aqui respeita prefers-reduced-motion
+   (bloco @media no fim desta seção, The Reduced-Motion Rule).
+   ========================================================================= */
+
+/* -- 1. Entrada em cascata diagonal — grade pequena de destaque
+   (MetricCards, painéis complementares). `.metric-grid` no container pai;
+   cada filho direto entra com esse delay, na ordem em que aparece. Só
+   entrada real de tela — nunca reaplicado em re-render/troca de filtro,
+   porque é puro CSS rodando uma vez na montagem do elemento. -- */
+@keyframes cascata-entrada {
+  from {
+    opacity: 0;
+    transform: translate(-24px, -18px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+.metric-grid > * {
+  opacity: 0;
+  animation: cascata-entrada 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.metric-grid > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.metric-grid > *:nth-child(2) {
+  animation-delay: 180ms;
+}
+.metric-grid > *:nth-child(3) {
+  animation-delay: 360ms;
+}
+.metric-grid > *:nth-child(4) {
+  animation-delay: 540ms;
+}
+.metric-grid > *:nth-child(5) {
+  animation-delay: 720ms;
+}
+.metric-grid > *:nth-child(6) {
+  animation-delay: 900ms;
+}
+.metric-grid > *:nth-child(7) {
+  animation-delay: 1080ms;
+}
+.metric-grid > *:nth-child(8) {
+  animation-delay: 1260ms;
+}
+
+/* -- 2. Hover elevado — só em card/linha que É clicável (nunca em algo
+   estático). `.list-row`/`.list-row-tint` já são sempre clicáveis (toda
+   linha de lista tem controle interativo dentro), então o hover vai
+   embutido na própria classe. `.hover-elevado` é a versão opt-in pra
+   quem mais precisar (ex.: MetricCard quando embrulhado num Link). -- */
+.list-row,
+.list-row-tint,
+.hover-elevado {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms, border-color 200ms;
+}
+.list-row:hover,
+.list-row-tint:hover,
+.hover-elevado:hover {
+  transform: translateY(-3px);
+}
+.list-row:hover,
+.list-row-tint:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+:root[data-theme='light'] .list-row:hover,
+:root[data-theme='light'] .list-row-tint:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+.list-row-tint:hover {
+  --row-border-op: 26%;
+}
+:root[data-theme='light'] .list-row-tint:hover {
+  --row-border-op: 42%;
+}
+/* sombra colorida do MetricCard intensifica no hover — sobe a opacidade
+   do MESMO token que o glass do card já usa (--glass-shadow-op), sem
+   duplicar a receita de sombra. */
+.hover-elevado:hover {
+  --glass-shadow-op: 20%;
+}
+:root[data-theme='light'] .hover-elevado:hover {
+  --glass-shadow-op: 28%;
+}
+
+/* -- 3. Skeleton loading — brilho horizontal em loop, no lugar de
+   qualquer "Carregando..." em texto puro pra conteúdo estruturado. -- */
+@keyframes skeleton-shimmer {
+  from {
+    background-position: -120% 0;
+  }
+  to {
+    background-position: 220% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--color-raised) 25%, color-mix(in srgb, var(--color-raised) 55%, var(--color-line-strong)) 50%, var(--color-raised) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* -- 4. Indicador "ao vivo" pulsante — só em métrica que representa algo
+   em tempo real/hoje, nunca em métrica histórica. `--pulso-cor` definido
+   inline por instância (mesmo mecanismo do `--item-color` da sidebar). -- */
+@keyframes pulso-vivo {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--pulso-cor, var(--color-accent)) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--pulso-cor, var(--color-accent)) 0%, transparent);
+  }
+}
+.pulso-vivo {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--pulso-cor, var(--color-accent));
+  animation: pulso-vivo 2s ease-in-out infinite;
+}
+
+/* -- 5. Feedback de clique — todo botão encolhe ligeiramente no clique.
+   Regra global (elemento <button>), não precisa de classe por botão.
+   CUIDADO: usa `transition-property` (lista), nunca o shorthand
+   `transition` — o shorthand SUBSTITUI qualquer transition-colors/
+   transition-opacity que o botão já tenha via Tailwind (`hover:bg-*`,
+   `hover:text-*` etc.), quebrando esses hovers em toda a base de código.
+   A lista abaixo é a mesma do utilitário `transition` padrão do Tailwind
+   (cor/fundo/borda/opacidade/sombra) + `transform` — soma, não troca. */
+button:not(:disabled) {
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+button:not(:disabled):active {
+  transform: scale(0.96);
+  transition-duration: 100ms;
+}
+
+/* -- The Reduced-Motion Rule — remove/reduz toda animação automática ou
+   decorativa; hover/clique (resposta a ação direta) ficam mais leves mas
+   sem o deslocamento. -- */
+@media (prefers-reduced-motion: reduce) {
+  .metric-grid > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .list-row:hover,
+  .list-row-tint:hover,
+  .hover-elevado:hover {
+    transform: none;
+  }
+  .skeleton {
+    animation: none;
+  }
+  .pulso-vivo {
+    animation: none;
+  }
+  button:not(:disabled):active {
+    transform: none;
+  }
 }
 
 /* Botão "Imprimir" do checklist de carga (Estoque, 2026-09-09) — truque

@@ -18,6 +18,7 @@ import { GraficoDRE } from '../components/charts/GraficoDRE';
 import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Skeleton } from '../components/Skeleton';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { STATUS_EVENTO_INFO, corFunilPorIndice, formatarData, formatarMoeda } from '../lib/status';
 import type { AuditoriaPosEvento, ContratoComLead, DreMes, EscalaPresenca, EventoComLead, FunilLead, Lead } from '../lib/types';
@@ -242,8 +243,8 @@ export default function Dashboard() {
     <>
       <Cabecalho titulo="Sala de Operações" subtitulo="Visão geral do negócio + monitor ao vivo dos eventos de hoje e cobertura de equipe." />
       <Conteudo>
-        <section className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
-          <MetricCard Icone={Calendar} rotulo="Eventos hoje" valor={String(eventosHoje.length)} legenda={formatarData(hoje)} categoria="agenda" />
+        <section className="metric-grid mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <MetricCard Icone={Calendar} rotulo="Eventos hoje" valor={String(eventosHoje.length)} legenda={formatarData(hoje)} categoria="agenda" aoVivo />
           <MetricCard
             Icone={Banknote}
             rotulo="Faturamento do mês"
@@ -251,14 +252,12 @@ export default function Dashboard() {
             legenda="Soma de contratos ativos no mês"
             tendencia={tendenciaFaturamentoMes ?? undefined}
             categoria="dinheiro"
+            historico={faturamentoPorMes.map((m) => m.valor)}
+            valorAnimado={{ alvo: faturamentoMes, formatar: formatarMoeda }}
           />
-          <MetricCard Icone={Users} rotulo="Equipe confirmada hoje" valor={String(totalConfirmadosHoje)} legenda={`de ${presenca.length} escalados`} categoria="pessoas" />
-          <Link to="/contratos" className="block rounded-lg transition-opacity hover:opacity-80">
-            <MetricCard Icone={AlertTriangle} rotulo="Contratos em risco D-20" valor={String(contratosEmRisco)} legenda="Saldo pendente, evento em ≤20 dias" categoria="dinheiro" />
-          </Link>
-          <Link to="/estoque" className="block rounded-lg transition-opacity hover:opacity-80">
-            <MetricCard Icone={Package} rotulo="Estoque em nível crítico" valor={String(itensCriticos)} legenda="Itens abaixo do mínimo" categoria="operacao" />
-          </Link>
+          <MetricCard Icone={Users} rotulo="Equipe confirmada hoje" valor={String(totalConfirmadosHoje)} legenda={`de ${presenca.length} escalados`} categoria="pessoas" aoVivo />
+          <MetricCard Icone={AlertTriangle} rotulo="Contratos em risco D-20" valor={String(contratosEmRisco)} legenda="Saldo pendente, evento em ≤20 dias" categoria="dinheiro" comoLink="/contratos" />
+          <MetricCard Icone={Package} rotulo="Estoque em nível crítico" valor={String(itensCriticos)} legenda="Itens abaixo do mínimo" categoria="operacao" comoLink="/estoque" />
         </section>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -297,7 +296,7 @@ export default function Dashboard() {
         {/* 2 gráficos novos (pedido do usuário, 2026-09-08/09), estilo
             discreto seguindo a referência "Efferd" — linha/área simples,
             sem o combo barras+linha do painel acima. */}
-        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="metric-grid mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Panel>
             <PanelHeader titulo="Faturamento mensal" desc="Valor total dos contratos fechados por mês (independe de já ter sido pago ou não)." />
             <GraficoLinha
@@ -323,7 +322,7 @@ export default function Dashboard() {
         {/* faixa de 3 painéis — mesma ideia da referência de design (funil
             com donut+legenda / número em destaque / estatística com barra
             de proporção), só que com dado real do negócio em cada um. */}
-        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="metric-grid mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Panel>
             <PanelHeader
               titulo="Leads por funil"
@@ -402,7 +401,20 @@ export default function Dashboard() {
             />
 
             {carregando ? (
-              <p className="text-sm text-text-dim">Carregando…</p>
+              // Skeleton (DESIGN.md > Motion, 2026-09-09) no formato
+              // aproximado de 2 cards de evento, no lugar do texto puro.
+              <div className="flex flex-col gap-3">
+                {[0, 1].map((i) => (
+                  <div key={i} className="rounded-lg border border-line bg-input p-4">
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <Skeleton w="140px" h="15px" />
+                      <Skeleton w="70px" h="20px" className="rounded-full" />
+                    </div>
+                    <Skeleton h="52px" className="mb-3" />
+                    <Skeleton w="60%" h="22px" />
+                  </div>
+                ))}
+              </div>
             ) : eventosHoje.length === 0 ? (
               <p className="text-sm text-text-dim">Nenhum evento hoje. {proximosEventos[0] ? `Próximo: ${formatarData(proximosEventos[0].data_evento)} — ${proximosEventos[0].contrato?.lead?.nome ?? 'sem nome'}.` : ''}</p>
             ) : (
@@ -517,26 +529,22 @@ export default function Dashboard() {
                 <p className="text-sm text-text-dim">Nenhum evento futuro além de hoje.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[260px] border-collapse text-[12.5px]">
-                    <thead>
-                      <tr className="border-b border-line text-[10px] font-bold uppercase tracking-wide text-text-faint">
-                        <th className="pb-1.5 text-left font-bold">Data</th>
-                        <th className="pb-1.5 text-left font-bold">Cliente</th>
-                        <th className="pb-1.5 text-right font-bold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {proximosEventos.map((ev) => (
-                        <tr key={ev.id} className="border-b border-line/50 last:border-0">
-                          <td className="py-2 pr-2 text-text-dim">{formatarData(ev.data_evento)}</td>
-                          <td className="max-w-0 truncate py-2 pr-2 text-text">{ev.contrato?.lead?.nome ?? '—'}</td>
-                          <td className="py-2 text-right">
-                            <Badge tom={STATUS_EVENTO_INFO[ev.status].tom} texto={STATUS_EVENTO_INFO[ev.status].rotulo} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {/* Mini-cards de vidro leve (DESIGN.md > Tables & Lists,
+                      2026-09-09), não mais <table>/<tr> crua. */}
+                  <div className="flex min-w-[260px] flex-col gap-1.5">
+                    <div className="grid grid-cols-[70px_1fr_auto] gap-2 text-[10px] font-bold uppercase tracking-wide text-text-faint">
+                      <span>Data</span>
+                      <span>Cliente</span>
+                      <span className="text-right">Status</span>
+                    </div>
+                    {proximosEventos.map((ev) => (
+                      <div key={ev.id} className="list-row grid grid-cols-[70px_1fr_auto] items-center gap-2 px-2.5 py-1.5 text-[12.5px]">
+                        <span className="text-text-dim">{formatarData(ev.data_evento)}</span>
+                        <span className="max-w-0 truncate text-text">{ev.contrato?.lead?.nome ?? '—'}</span>
+                        <Badge tom={STATUS_EVENTO_INFO[ev.status].tom} texto={STATUS_EVENTO_INFO[ev.status].rotulo} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </Panel>

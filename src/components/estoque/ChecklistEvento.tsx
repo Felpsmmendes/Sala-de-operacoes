@@ -81,8 +81,10 @@ export function ChecklistEvento({ contrato }: { contrato: ContratoComLead }) {
               </p>
             ) : (
               <div className="flex flex-col gap-1.5">
+                {/* Mini-card de vidro leve por item (DESIGN.md > Tables &
+                    Lists, 2026-09-09), não mais linha sólida crua. */}
                 {padrao.map((item, i) => (
-                  <div key={`p-${i}`} className="flex items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2 text-sm">
+                  <div key={`p-${i}`} className="list-row flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span className="text-text">{item.descricao}</span>
                     <span className="font-mono text-text-dim">
                       {item.quantidade} {item.unidade ?? ''}
@@ -90,7 +92,7 @@ export function ChecklistEvento({ contrato }: { contrato: ContratoComLead }) {
                   </div>
                 ))}
                 {(extras ?? []).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-3 rounded-sm border border-line bg-raised px-3 py-2 text-sm">
+                  <div key={item.id} className="list-row flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span className="text-text">
                       {item.descricao} <span className="text-[10.5px] uppercase tracking-wide text-text-faint">brinde</span>
                     </span>

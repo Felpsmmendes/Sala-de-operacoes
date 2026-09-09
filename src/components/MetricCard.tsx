@@ -1,5 +1,8 @@
 import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { useContagem } from '../lib/useContagem';
+import { Sparkline } from './charts/Sparkline';
 
 /** 5 categorias fixas por significado (DESIGN.md, "The Meaning-Color
     Rule", 2026-09-09) + "neutro" pra métrica que não se encaixa em
@@ -45,7 +48,17 @@ const CATEGORIA_LABEL: Record<CategoriaMetrica, string> = {
     `tendencia` (opcional, 2026-09-08): selo de variação — só passe
     quando houver uma comparação REAL de período (ex.: faturamento deste
     mês vs. mês anterior); nunca inventar uma tendência só pra preencher
-    o card. */
+    o card.
+
+    Motion (DESIGN.md > Motion, 2026-09-09) — 3 recursos opcionais, todos
+    desligados por padrão (zero risco pros ~55 usos existentes):
+    `historico` desenha um Sparkline na cor da categoria ao lado do valor;
+    `aoVivo` acende a bolinha pulsante (só métrica em tempo real/"hoje",
+    nunca histórica); `valorAnimado` troca o `valor` estático por uma
+    contagem de 0 até `alvo` — reservado ao valor "herói" da tela, nunca
+    toda métrica pequena. `comoLink` embrulha o card num `Link` com o
+    hover elevado do sistema (só faz sentido se o card for mesmo
+    clicável). */
 export function MetricCard({
   Icone,
   rotulo,
@@ -53,6 +66,10 @@ export function MetricCard({
   legenda,
   tendencia,
   categoria = 'neutro',
+  historico,
+  aoVivo = false,
+  valorAnimado,
+  comoLink,
 }: {
   Icone: LucideIcon;
   rotulo: string;
@@ -60,9 +77,15 @@ export function MetricCard({
   legenda: string;
   tendencia?: { percentual: number; positivo: boolean };
   categoria?: CategoriaMetrica;
+  historico?: number[];
+  aoVivo?: boolean;
+  valorAnimado?: { alvo: number; formatar: (v: number) => string };
+  comoLink?: string;
 }) {
   const cor = CATEGORIA_COR[categoria];
   const corLabel = CATEGORIA_LABEL[categoria];
+  const contado = useContagem(valorAnimado?.alvo ?? 0, 1000);
+  const valorExibido = valorAnimado ? valorAnimado.formatar(contado) : valor;
 
   // vidro + gradiente (The Glass-For-Emphasis Rule) — opacidades vêm dos
   // tokens --glass-* (index.css), que trocam de valor por tema (The
@@ -77,11 +100,12 @@ export function MetricCard({
     boxShadow: `0 8px 32px color-mix(in srgb, ${cor} var(--glass-shadow-op), transparent), inset 0 1px 0 0 var(--glass-inset)`,
   };
 
-  return (
+  const conteudo = (
     <div className="flex flex-col gap-3 rounded-lg p-4" style={estiloGlass}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: corLabel }}>
+        <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: corLabel }}>
           {rotulo}
+          {aoVivo && <span className="pulso-vivo" style={{ '--pulso-cor': cor } as CSSProperties} title="Ao vivo" />}
         </span>
         <span
           className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md"
@@ -90,27 +114,39 @@ export function MetricCard({
           <Icone className="h-3.5 w-3.5" strokeWidth={2} style={{ color: corLabel }} />
         </span>
       </div>
-      <div className="flex items-baseline justify-between gap-2">
-        {/* valor grande sempre na cor de texto principal, nunca na cor da
-            categoria — precisa de contraste máximo pra leitura rápida
-            (DESIGN.md, seção Cards/MetricCard). */}
-        <strong className="font-mono text-2xl font-semibold tracking-tight tabular-nums text-text">{valor}</strong>
-        {tendencia && (
-          <span
-            className={`flex flex-shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold ${
-              tendencia.positivo ? 'border-success/25 bg-success/15 text-success' : 'border-danger/25 bg-danger/15 text-danger'
-            }`}
-          >
-            {tendencia.positivo ? <ArrowUp className="h-2.5 w-2.5" strokeWidth={3} /> : <ArrowDown className="h-2.5 w-2.5" strokeWidth={3} />}
-            {Math.abs(tendencia.percentual).toFixed(1)}%
-          </span>
-        )}
+      <div className="flex items-end justify-between gap-2">
+        <div className="flex items-baseline gap-2">
+          {/* valor grande sempre na cor de texto principal, nunca na cor da
+              categoria — precisa de contraste máximo pra leitura rápida
+              (DESIGN.md, seção Cards/MetricCard). */}
+          <strong className="font-mono text-2xl font-semibold tracking-tight tabular-nums text-text">{valorExibido}</strong>
+          {tendencia && (
+            <span
+              className={`flex flex-shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold ${
+                tendencia.positivo ? 'border-success/25 bg-success/15 text-success' : 'border-danger/25 bg-danger/15 text-danger'
+              }`}
+            >
+              {tendencia.positivo ? <ArrowUp className="h-2.5 w-2.5" strokeWidth={3} /> : <ArrowDown className="h-2.5 w-2.5" strokeWidth={3} />}
+              {Math.abs(tendencia.percentual).toFixed(1)}%
+            </span>
+          )}
+        </div>
+        {historico && historico.length > 1 && <Sparkline pontos={historico} cor={cor} />}
       </div>
       <span className="text-[11.5px] text-text-dim">{legenda}</span>
     </div>
   );
+
+  if (comoLink) {
+    return (
+      <Link to={comoLink} className="hover-elevado block rounded-lg">
+        {conteudo}
+      </Link>
+    );
+  }
+  return conteudo;
 }
 
 export function MetricGrid({ children }: { children: ReactNode }) {
-  return <section className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">{children}</section>;
+  return <section className="metric-grid mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">{children}</section>;
 }

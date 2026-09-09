@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { atualizarLead, criarLead, excluirLead, listarLeads, obterLead } from '../lib/api/leads';
 import { atualizarFunil, criarFunil, excluirFunil, listarFunis, reordenarFunis } from '../lib/api/funis';
 import { Cabecalho, Conteudo } from '../components/Layout';
-import { GraficoBarras } from '../components/charts/GraficoBarras';
+import { GraficoDonut } from '../components/charts/GraficoDonut';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader, Segmented } from '../components/Panel';
 import { Conversas } from '../components/crm/Conversas';
@@ -193,8 +193,9 @@ export default function Crm() {
             {funis.length > 0 && leads.length > 0 && (
               <Panel className="mb-4">
                 <PanelHeader titulo="Leads por funil" desc="Quantos leads estão em cada coluna do Pipeline, nesta busca/filtro." />
-                <GraficoBarras
-                  dados={funis.map((f, i) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: corFunilPorIndice(i) }))}
+                <GraficoDonut
+                  centroRotulo="Leads"
+                  fatias={funis.map((f, i) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: corFunilPorIndice(i) }))}
                   formatarValor={(v) => `${v} lead${v === 1 ? '' : 's'}`}
                 />
               </Panel>
