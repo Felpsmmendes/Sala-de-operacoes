@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import type { FuncaoEquipe, NovoMembroEquipe } from '../../lib/types';
 import { FUNCAO_EQUIPE_ROTULO } from '../../lib/status';
 
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent';
+const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-people';
 const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 export function MembroForm({ onSalvar, salvando }: { onSalvar: (dados: NovoMembroEquipe) => void; salvando: boolean }) {

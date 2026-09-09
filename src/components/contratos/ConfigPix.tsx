@@ -33,7 +33,7 @@ export function ConfigPix({ onSalvar }: { onSalvar: (dados: ConfigPixDados) => v
           value={dados.chave}
           onChange={(e) => setDados({ ...dados, chave: e.target.value })}
           placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
-          className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent"
+          className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-money"
         />
       </label>
       <div className="flex items-end">

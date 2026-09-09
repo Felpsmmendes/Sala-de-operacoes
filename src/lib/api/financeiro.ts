@@ -48,7 +48,7 @@ export async function listarDreMensal(): Promise<DreMes[]> {
  * (cada prefixo só tem 1 lançamento vivo por evento).
  *
  * `ativar: false` remove o lançamento (a ação de origem foi desfeita —
- * ex.: desmarcou pagamento, removeu escala, excluiu romaneio).
+ * ex.: desmarcou pagamento, removeu escala).
  */
 /** Escapa os curingas do LIKE/ILIKE (`%`, `_`, e o próprio escape `\`) —
     sem isso, um prefixo com `%`/`_` de verdade (ex.: "Sinal (20%)") vira

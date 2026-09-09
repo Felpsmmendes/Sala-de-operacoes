@@ -23,7 +23,7 @@ export function ModalConvocar({ membros, onFechar, onConfirmar }: { membros: Mem
           <>
             <label className="mb-3 block">
               <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Membro</span>
-              <select value={membroId} onChange={(e) => setMembroId(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent">
+              <select value={membroId} onChange={(e) => setMembroId(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-people">
                 {membros.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.nome} — {FUNCAO_EQUIPE_ROTULO[m.funcao] ?? m.funcao}
@@ -34,7 +34,7 @@ export function ModalConvocar({ membros, onFechar, onConfirmar }: { membros: Mem
 
             <label className="mb-4 block">
               <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Diária (R$)</span>
-              <input type="number" min={0} step="0.01" value={diaria} onChange={(e) => setDiaria(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent" />
+              <input type="number" min={0} step="0.01" value={diaria} onChange={(e) => setDiaria(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-people" />
             </label>
 
             <button

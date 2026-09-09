@@ -64,7 +64,7 @@ export function ConfirmDialog({ titulo, mensagem, textoConfirmar = 'Confirmar', 
               autoFocus
               value={digitado}
               onChange={(e) => setDigitado(e.target.value)}
-              className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent"
+              className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral"
             />
           </label>
         )}

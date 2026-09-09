@@ -2,7 +2,15 @@ import { calcularStaffNecessario } from './staffing';
 import type { CategoriaServico, Lead, Servico } from './types';
 import { formatarMoeda, formatarData } from './status';
 
-export type ItemSelecionado = { servico: Servico; valor: number };
+export type ItemSelecionado = {
+  servico: Servico;
+  /** Valor base do item (sem hora adicional) — igual ao cálculo de sempre. */
+  valor: number;
+  /** Horas além da duração padrão (5h bar / 4h atração), 0 quando não marcado. */
+  horasAdicionais: number;
+  /** Quanto vale 1h adicional deste item — 0 pra categorias sem esse conceito. */
+  valorHoraAdicional: number;
+};
 
 /** Emoji do cabeçalho de cada item — Bar Sem Álcool ganha um emoji
     próprio (🍹, "drink tropical") pra se diferenciar visualmente dos
@@ -27,6 +35,14 @@ const INTRO_CATEGORIA: Record<CategoriaServico, string> = {
   adicional: 'Serviços extras pra deixar a experiência ainda mais completa.',
 };
 
+/** "1.5" -> "1h30", "2" -> "2h" — mesma leitura de horário quebrado que o
+    usuário já usa (ex.: "1.5 para 1h30"). */
+function formatarHoras(horas: number): string {
+  const h = Math.floor(horas);
+  const minutos = Math.round((horas - h) * 60);
+  return minutos === 0 ? `${h}h` : `${h}h${String(minutos).padStart(2, '0')}`;
+}
+
 const ORDEM_CATEGORIA: CategoriaServico[] = ['bar', 'atracao', 'adicional'];
 const NOME_CATEGORIA_RESUMO: Record<CategoriaServico, string> = { bar: 'bar', atracao: 'atrações', adicional: 'serviços adicionais' };
 
@@ -44,7 +60,7 @@ function resumoCategorias(itens: ItemSelecionado[]): string {
     venda + duração + equipe escalada (só bar, calculada de verdade pela
     regra de staffing — não é um número solto) + lista de benefícios. */
 function blocoServico(item: ItemSelecionado, convidados: number | null): string {
-  const { servico, valor } = item;
+  const { servico, valor, horasAdicionais, valorHoraAdicional } = item;
   const linhas = [`${emojiServico(servico)} ${servico.nome.toUpperCase()} — ${formatarMoeda(valor)}`];
 
   const descricao = servico.mensagem_descricao ?? servico.descricao;
@@ -56,6 +72,13 @@ function blocoServico(item: ItemSelecionado, convidados: number | null): string 
     const { bartender, barback } = calcularStaffNecessario(convidados);
     const equipe = [bartender > 1 ? `${bartender} bartenders` : '1 bartender', barback > 1 ? `${barback} barbacks` : '1 barback'].join(' + ');
     detalhes.push(`👤 Equipe escalada para ${convidados} convidados: ${equipe}`);
+  }
+  // hora adicional marcada pro item (2026-09-09, pedido do usuário) — só
+  // aparece quando horasAdicionais > 0, nunca em todos os itens automaticamente.
+  if (horasAdicionais > 0) {
+    const valorExtra = horasAdicionais * valorHoraAdicional;
+    detalhes.push(`⏱️ Hora extra (${formatarHoras(horasAdicionais)}): ${formatarMoeda(valorExtra)}`);
+    detalhes.push(`💰 Total deste serviço com hora extra: ${formatarMoeda(valor + valorExtra)}`);
   }
   if (detalhes.length) linhas.push(detalhes.join('\n'));
 
@@ -78,12 +101,17 @@ export function montarMensagemOrcamento({
   convidados,
   itens,
   total,
+  frete,
 }: {
   lead: Lead;
   dataEvento: string | null;
   convidados: number | null;
   itens: ItemSelecionado[];
   total: number;
+  /** Frete cobrado do cliente (2026-09-09) — null/valor 0 quando o
+      orçamento não cobra frete separado. Só aparece na mensagem quando
+      tem valor de verdade, igual à hora adicional. */
+  frete?: { regiaoNome: string; valor: number } | null;
 }): string {
   const sinal = Math.round(total * 0.2 * 100) / 100;
   const saldo = Math.round(total * 0.8 * 100) / 100;
@@ -112,6 +140,7 @@ export function montarMensagemOrcamento({
     partes.push(blocoServico(item, convidados));
   }
 
+  if (frete && frete.valor > 0) partes.push(`🚚 Frete (${frete.regiaoNome}): ${formatarMoeda(frete.valor)}`);
   partes.push(`💰 Valor total: ${formatarMoeda(total)}`);
   partes.push(`💳 Condição: 20% de sinal (${formatarMoeda(sinal)}) + 80% até 20 dias antes do evento (${formatarMoeda(saldo)})`);
   partes.push(

@@ -39,6 +39,55 @@
   --color-danger: #ef4444;
   --color-neutral: #8a8272;
 
+  /* -- cor: categoria (DESIGN.md 2026-09-09, "The Meaning-Color Rule") --
+     5 cores fixas por SIGNIFICADO de informação (dinheiro/pessoas/agenda/
+     operação/ação), usadas nos elementos de destaque (MetricCard, botão
+     primário, sidebar) — nunca trocadas por preferência estética de uma
+     tela. Tom estável entre os dois temas (só a opacidade muda, ver
+     --glass-* abaixo); âmbar reaproveita --color-accent, já existente. */
+  --color-money: #4ade80;
+  --color-people: #5b9bff;
+  --color-schedule: #a855f7;
+  --color-ops: #2dd4bf;
+
+  /* -- cor: rótulo de categoria dentro do MetricCard glass — precisa de
+     TOM DIFERENTE por tema pra manter contraste de leitura (tom claro
+     sobre fundo escuro, tom escuro/saturado sobre fundo claro); no
+     escuro, a própria cor de categoria já é clara o bastante. Âmbar usa
+     --color-accent-strong (já existente) como tom claro. */
+  --color-accent-label: var(--color-accent-strong);
+  --color-money-label: var(--color-money);
+  --color-people-label: var(--color-people);
+  --color-schedule-label: var(--color-schedule);
+  --color-ops-label: var(--color-ops);
+
+  /* -- glassmorphism (The Glass-For-Emphasis Rule + The Theme-Intensity
+     Rule): opacidades do gradiente/borda/sombra dos elementos de
+     destaque — valores do tema ESCURO aqui; o claro precisa de bem mais
+     opacidade pro mesmo efeito PERCEBIDO (fundo claro dilui cor), ver
+     override abaixo. Nunca usado em tabela/formulário/lista/input. */
+  --glass-grad-1: 22%;
+  --glass-grad-2: 5%;
+  --glass-border-op: 35%;
+  --glass-shadow-op: 12%;
+  --glass-inset: rgba(255, 255, 255, 0.08);
+
+  /* botão de ação primária (DESIGN.md > Components > Buttons) — sombra
+     colorida com opacidade PRÓPRIA (mais forte que a do MetricCard),
+     também theme-tunada: sombra colorida pesa mais visualmente sobre
+     fundo claro, por isso o claro usa MENOS opacidade aqui (é o inverso
+     da regra do card — o botão já é cor sólida forte, não um wash). */
+  --btn-shadow-op: 35%;
+
+  /* sidebar — item de menu por categoria (DESIGN.md > Navigation) */
+  --nav-hover-1: 16%;
+  --nav-hover-2: 4%;
+  --nav-hover-border: 25%;
+  --nav-active-1: 22%;
+  --nav-active-2: 6%;
+  --nav-active-border: 35%;
+  --nav-active-shadow: 15%;
+
   /* -- tipografia -- */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
@@ -108,6 +157,34 @@ body,
   --color-danger: #b91c1c; /* era #ef4444 (herdado) — 3.76:1 → 6.5:1 texto / 5.0:1 badge */
   --color-neutral: #6b6357; /* era #8a8272 (herdado) — 3.81:1 → 5.9:1 texto / 4.8:1 badge */
 
+  /* rótulo de categoria no claro precisa de um tom bem mais escuro/
+     saturado que o wash de fundo pra continuar legível (mesma lógica da
+     tabela acima) — tons "700" da mesma família de cor, testados contra
+     branco (≥4.5:1 WCAG AA). Âmbar usa o valor do próprio DESIGN.md. */
+  --color-accent-label: #7a4d0c;
+  --color-money-label: #15803d;
+  --color-people-label: #1d4ed8;
+  --color-schedule-label: #7e22ce;
+  --color-ops-label: #0f766e;
+
+  /* Theme-Intensity Rule: mesmo efeito percebido do vidro exige bem mais
+     opacidade no claro (fundo claro dilui cor, se aproxima do branco). */
+  --glass-grad-1: 45%;
+  --glass-grad-2: 12%;
+  --glass-border-op: 50%;
+  --glass-shadow-op: 18%;
+  --glass-inset: rgba(255, 255, 255, 0.5);
+
+  --btn-shadow-op: 25%;
+
+  --nav-hover-1: 32%;
+  --nav-hover-2: 8%;
+  --nav-hover-border: 40%;
+  --nav-active-1: 45%;
+  --nav-active-2: 12%;
+  --nav-active-border: 55%;
+  --nav-active-shadow: 22%;
+
   /* invertido: no claro a borda ganha uma sombra escura suave em vez do
      fiapo claro do escuro (pedido do usuário). */
   --shadow-borda: 0 0 0 1px rgba(41, 36, 24, 0.09), 0 2px 6px rgba(41, 36, 24, 0.07);
@@ -174,12 +251,84 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+/* Sidebar em vidro (DESIGN.md > Navigation, 2026-09-09) — único painel
+   "estrutural" (não-métrica) que ganha glassmorphism, porque fica
+   visível o tempo todo e ancora visualmente o sistema. */
+.sidebar-glass {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 60%, transparent), color-mix(in srgb, var(--color-bg) 70%, transparent));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+:root[data-theme='light'] .sidebar-glass {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), color-mix(in srgb, var(--color-bg) 85%, transparent));
+  border-right-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Item de menu da sidebar por categoria (DESIGN.md > Navigation) — cada
+   NavLink define `--item-color`/`--item-label` inline (ver Layout.tsx);
+   estas regras só reagem a essas variáveis, então funcionam pra
+   qualquer uma das 5 categorias sem precisar de uma classe por cor.
+   Ícone sempre na cor da categoria (mesmo em repouso); o texto só sobe
+   pra essa cor no hover/ativo (fica `text-dim` em repouso). */
+.nav-item {
+  color: var(--color-text-dim);
+  border: 1px solid transparent;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+.nav-item .nav-icon {
+  color: var(--item-label, currentColor);
+}
+.nav-item:hover,
+.nav-item.is-active {
+  color: var(--item-label);
+}
+.nav-item:hover {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--item-color) var(--nav-hover-1), transparent), color-mix(in srgb, var(--item-color) var(--nav-hover-2), transparent));
+  border-color: color-mix(in srgb, var(--item-color) var(--nav-hover-border), transparent);
+}
+.nav-item.is-active {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--item-color) var(--nav-active-1), transparent), color-mix(in srgb, var(--item-color) var(--nav-active-2), transparent));
+  border-color: color-mix(in srgb, var(--item-color) var(--nav-active-border), transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--item-color) var(--nav-active-shadow), transparent);
+}
+
+/* Foco/seleção de texto são chrome de INTERAÇÃO, não carregam nenhum
+   significado de categoria — auditoria do usuário (2026-09-09) encontrou
+   isso usando o âmbar antigo como se fosse a única cor do sistema, fora
+   das exceções do DESIGN.md (botão primário, item ativo do menu, selo
+   "pendente", marca). Vira neutro, igual a qualquer métrica/elemento sem
+   categoria clara (mesma regra do MetricCard). */
 ::selection {
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--color-neutral);
+  color: var(--color-bg);
 }
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-neutral);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Botão "Imprimir" do checklist de carga (Estoque, 2026-09-09) — truque
+   clássico de "imprimir só esta parte": esconde tudo por visibilidade
+   (não display, que um `display:none` num ancestral não deixaria o
+   `.print-area` filho voltar a aparecer) e só a área marcada volta a
+   ficar visível, ocupando a folha inteira. Só um checklist fica expandido
+   por vez na tela, então marcar a área expandida já basta — sem precisar
+   de classe no <body> nem JS extra pra isso. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
 }

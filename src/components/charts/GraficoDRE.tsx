@@ -38,7 +38,10 @@ function formatarEixoY(v: number): string {
     usa uma linha de zero real, não assume tudo positivo.
     Eixo Y com marcações + grade horizontal (2026-09-08, pedido do
     usuário: nada de brilho/gradiente/sombra "3D" na linha — estilo plano
-    e legível, igual à referência visual, com valor no Y e mês no X). */
+    e legível, igual à referência visual, com valor no Y e mês no X).
+    Linha de lucro na cor "money" (verde), não mais "pending"/âmbar —
+    DESIGN.md renomeou este gráfico pra "GraficoFaturamento" (ex-DRE):
+    é sobre dinheiro, então usa a cor de categoria fixa (2026-09-09). */
 export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMes[]; formatarMes: (mes: string) => string; formatarValor: (v: number) => string }) {
   const [entrou, setEntrou] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
@@ -77,7 +80,7 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
           <span className="h-2 w-2 rounded-full bg-danger" /> Custos
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-0.5 w-3 rounded-full bg-pending" /> Lucro líquido
+          <span className="h-0.5 w-3 rounded-full bg-money" /> Lucro líquido
         </span>
       </div>
 
@@ -98,7 +101,7 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-text-faint">{formatarMes(meses[hover].mes)}</p>
                 <p className="text-success">Receita: {formatarValor(meses[hover].receita_bruta)}</p>
                 <p className="text-danger">Custos: {formatarValor(meses[hover].custos_totais)}</p>
-                <p className="text-pending">Lucro: {formatarValor(meses[hover].lucro_liquido)}</p>
+                <p className="text-money">Lucro: {formatarValor(meses[hover].lucro_liquido)}</p>
               </div>
             )}
 
@@ -152,7 +155,7 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 pathLength={1}
-                className="text-pending"
+                className="text-money"
                 style={{
                   strokeDasharray: 1,
                   strokeDashoffset: entrou ? 0 : 1,
@@ -166,7 +169,7 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
                   cy={p.y}
                   r={hover === i ? 2.4 : 1.6}
                   fill="currentColor"
-                  className="text-pending cursor-pointer transition-[r]"
+                  className="text-money cursor-pointer transition-[r]"
                   style={{ opacity: entrou ? 1 : 0, transition: `opacity 300ms ${atrasoLinha + 150}ms, r 150ms` }}
                   onMouseEnter={() => setHover(i)}
                   onMouseLeave={() => setHover(null)}

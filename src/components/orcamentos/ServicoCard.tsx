@@ -12,7 +12,7 @@ export function ServicoCard({ servico, selecionado, valor, onToggle }: { servico
       <input type="checkbox" checked={selecionado} onChange={onToggle} className="sr-only" />
       <span
         className={`absolute left-3 top-3.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border transition-colors ${
-          selecionado ? 'border-accent bg-accent text-accent-ink' : 'border-line-strong text-transparent'
+          selecionado ? 'border-money bg-money text-accent-ink' : 'border-line-strong text-transparent'
         }`}
       >
         <Check className="h-2.5 w-2.5" strokeWidth={3} />

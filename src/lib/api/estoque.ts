@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { sincronizarLancamento } from './financeiro';
+import type { ChecklistExtraItem } from '../types';
 
 export type CategoriaEstoque = 'bebida' | 'insumo' | 'gelo' | 'descartavel' | 'outro';
 export type TipoMovimento = 'entrada' | 'saida' | 'avaria' | 'reintegracao';
@@ -37,6 +38,10 @@ export type Compra = {
   valor_total: number;
   status: StatusCompra;
   criado_em: string;
+  /** Previsão de chegada (2026-09-09) — alimenta a seção "Compras
+      chegando" da Logística. Opcional: nem toda compra tem ETA na hora
+      em que é gerada. */
+  data_chegada_prevista: string | null;
 };
 
 export type CompraComItem = Compra & { item: Pick<ItemEstoque, 'id' | 'nome' | 'unidade'> | null };
@@ -90,8 +95,18 @@ export async function listarCompras(): Promise<CompraComItem[]> {
   return data as unknown as CompraComItem[];
 }
 
-export async function criarCompra(dados: { itemId: string; quantidade: number; valorTotal: number }): Promise<void> {
-  const { error } = await supabase.from('compras').insert({ item_id: dados.itemId, quantidade: dados.quantidade, valor_total: dados.valorTotal });
+export async function criarCompra(dados: { itemId: string; quantidade: number; valorTotal: number; dataChegadaPrevista?: string | null }): Promise<void> {
+  const { error } = await supabase
+    .from('compras')
+    .insert({ item_id: dados.itemId, quantidade: dados.quantidade, valor_total: dados.valorTotal, data_chegada_prevista: dados.dataChegadaPrevista ?? null });
+  if (error) throw new Error(error.message);
+}
+
+/** Define/edita a previsão de chegada de uma compra já criada — a
+    Logística usa isso quando o ETA só é conhecido depois (ex.: o
+    fornecedor confirma o prazo por telefone). */
+export async function definirDataChegadaCompra(id: string, data: string | null): Promise<void> {
+  const { error } = await supabase.from('compras').update({ data_chegada_prevista: data }).eq('id', id);
   if (error) throw new Error(error.message);
 }
 
@@ -139,5 +154,71 @@ export async function listarDescricoesChecklistNaoVinculadas(): Promise<string[]
     uma vez. */
 export async function vincularDescricaoAoEstoque(descricao: string, estoqueItemId: string): Promise<void> {
   const { error } = await supabase.from('checklist_padrao_itens').update({ estoque_item_id: estoqueItemId }).eq('descricao', descricao).is('estoque_item_id', null);
+  if (error) throw new Error(error.message);
+}
+
+/* -------------------- Checklist de carga por contrato (2026-09-09) --------------------
+   Reaproveita a mesma lógica que existia na Logística antes de o
+   romaneio ser removido: contrato → orçamento → serviços → checklist
+   padrão filtrado por faixa de convidados. Nunca persistido — é sempre
+   recalculado (o padrão pode mudar, e não tem "fase" pra rastrear mais). */
+
+export type ItemChecklistPadrao = { descricao: string; quantidade: number; unidade: string | null };
+
+export async function buscarChecklistPadrao(orcamentoId: string | null, convidados: number | null): Promise<ItemChecklistPadrao[]> {
+  if (!orcamentoId) return [];
+  const { data: itensOrcamento, error: erroItens } = await supabase.from('orcamento_itens').select('servico_id').eq('orcamento_id', orcamentoId);
+  if (erroItens) throw new Error(erroItens.message);
+  const servicoIds = [...new Set((itensOrcamento ?? []).map((i) => i.servico_id))];
+  if (servicoIds.length === 0) return [];
+
+  const cv = convidados ?? 0;
+  const { data: checklist, error: erroChecklist } = await supabase.from('checklist_padrao_itens').select('*').in('servico_id', servicoIds);
+  if (erroChecklist) throw new Error(erroChecklist.message);
+
+  return (checklist ?? [])
+    .filter((c) => (c.convidados_min == null || cv >= c.convidados_min) && (c.convidados_max == null || cv <= c.convidados_max))
+    .map((c) => ({ descricao: c.descricao, quantidade: c.quantidade, unidade: c.unidade }));
+}
+
+export async function listarChecklistExtra(contratoId: string): Promise<ChecklistExtraItem[]> {
+  const { data, error } = await supabase.from('contrato_checklist_extra').select('*').eq('contrato_id', contratoId).order('criado_em');
+  if (error) throw new Error(error.message);
+  return data as ChecklistExtraItem[];
+}
+
+/** Sincroniza os itens extras do checklist a partir de
+    `contratos.observacoes_brindes` (pedido do usuário, "Etapa 7"): cada
+    linha não-vazia vira uma linha em `contrato_checklist_extra`, quantidade
+    1 por padrão. Chamado toda vez que o contrato é salvo (`atualizarContrato`)
+    E toda vez que o checklist é aberto em Estoque (rede de segurança pra
+    contratos cujas observações já existiam antes desta sincronização
+    existir). Descrição já cadastrada MANTÉM a quantidade editada — só
+    entra com 1 se for linha nova; linha removida do texto é apagada daqui. */
+export async function sincronizarChecklistExtraDoContrato(contratoId: string, observacoesBrindes: string | null): Promise<void> {
+  const linhas = [...new Set((observacoesBrindes ?? '').split('\n').map((l) => l.trim()).filter(Boolean))];
+
+  const { data: existentes, error: erroExistentes } = await supabase.from('contrato_checklist_extra').select('id, descricao').eq('contrato_id', contratoId);
+  if (erroExistentes) throw new Error(erroExistentes.message);
+
+  const descricoesExistentes = new Set((existentes ?? []).map((e) => e.descricao));
+  const novas = linhas.filter((l) => !descricoesExistentes.has(l));
+  const remover = (existentes ?? []).filter((e) => !linhas.includes(e.descricao));
+
+  if (novas.length > 0) {
+    const { error } = await supabase.from('contrato_checklist_extra').insert(novas.map((descricao) => ({ contrato_id: contratoId, descricao })));
+    if (error) throw new Error(error.message);
+  }
+  if (remover.length > 0) {
+    const { error } = await supabase
+      .from('contrato_checklist_extra')
+      .delete()
+      .in('id', remover.map((r) => r.id));
+    if (error) throw new Error(error.message);
+  }
+}
+
+export async function atualizarQuantidadeChecklistExtra(id: string, quantidade: number): Promise<void> {
+  const { error } = await supabase.from('contrato_checklist_extra').update({ quantidade }).eq('id', id);
   if (error) throw new Error(error.message);
 }

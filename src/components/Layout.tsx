@@ -17,75 +17,99 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTema } from '../lib/useTema';
+import type { CategoriaMetrica } from './MetricCard';
 
-type ItemNav = { to: string; rotulo: string; Icone: typeof LayoutDashboard };
+type ItemNav = { to: string; rotulo: string; Icone: typeof LayoutDashboard; categoria: CategoriaMetrica };
+
+/* cor de cada categoria (DESIGN.md > Colors > "The Meaning-Color Rule")
+   — mesmas 5 cores fixas do MetricCard, agora também na sidebar. Item
+   sem categoria clara na tabela do DESIGN.md (Portal do Cliente, Após o
+   Evento) cai em "neutro", nunca inventa uma cor nova. */
+const CATEGORIA_VAR: Record<CategoriaMetrica, { cor: string; label: string }> = {
+  dinheiro: { cor: 'var(--color-money)', label: 'var(--color-money-label)' },
+  pessoas: { cor: 'var(--color-people)', label: 'var(--color-people-label)' },
+  agenda: { cor: 'var(--color-schedule)', label: 'var(--color-schedule-label)' },
+  operacao: { cor: 'var(--color-ops)', label: 'var(--color-ops-label)' },
+  acao: { cor: 'var(--color-accent)', label: 'var(--color-accent-label)' },
+  neutro: { cor: 'var(--color-neutral)', label: 'var(--color-neutral)' },
+};
+
+function estiloCategoria(categoria: CategoriaMetrica): CSSProperties {
+  const { cor, label } = CATEGORIA_VAR[categoria];
+  return { '--item-color': cor, '--item-label': label } as CSSProperties;
+}
 
 const CHAVE_SIDEBAR_COLAPSADA = 'emcena_sidebar_colapsada';
 
 /* -- Painel fica sozinho no topo, fora dos núcleos — é a tela-lar ("/"),
    não faz sentido enterrada dentro de um núcleo lá embaixo. */
-const PAINEL: ItemNav = { to: '/', rotulo: 'Sala de Operações', Icone: LayoutDashboard };
+const PAINEL: ItemNav = { to: '/', rotulo: 'Sala de Operações', Icone: LayoutDashboard, categoria: 'acao' };
 
 /* -- núcleos operacionais (ver PRD, seção 3), reordenados pra seguir o
    fluxo real do negócio de cima a baixo (reviu 2026-09-06 a pedido do
    usuário: ordem original enterrava o Painel dentro de "Execução" e
-   deixava o Portal do Cliente sem link nenhum no menu — corrigidos). -- */
+   deixava o Portal do Cliente sem link nenhum no menu — corrigidos).
+   `categoria` (2026-09-09, ver DESIGN.md > Colors): mesma cor fixa por
+   significado do MetricCard, agora também no ícone do menu — item que
+   não está na tabela do DESIGN.md (Portal do Cliente, Após o Evento)
+   fica "neutro", nunca inventa uma 6ª cor. -- */
 const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
   {
     titulo: 'Comercial & Cliente',
     itens: [
-      { to: '/crm', rotulo: 'CRM & Pipeline', Icone: Filter },
-      { to: '/orcamentos', rotulo: 'Gerador de Orçamentos', Icone: Receipt },
-      { to: '/contratos', rotulo: 'Contratos', Icone: ClipboardCheck },
-      { to: '/portal-cliente', rotulo: 'Portal do Cliente', Icone: Link2 },
+      { to: '/crm', rotulo: 'CRM & Pipeline', Icone: Filter, categoria: 'pessoas' },
+      { to: '/orcamentos', rotulo: 'Gerador de Orçamentos', Icone: Receipt, categoria: 'dinheiro' },
+      { to: '/contratos', rotulo: 'Contratos', Icone: ClipboardCheck, categoria: 'dinheiro' },
+      { to: '/portal-cliente', rotulo: 'Portal do Cliente', Icone: Link2, categoria: 'neutro' },
     ],
   },
   {
     titulo: 'Planejamento & Pré-Produção',
     itens: [
-      { to: '/agenda', rotulo: 'Agenda Operacional', Icone: Calendar },
-      { to: '/escala', rotulo: 'Equipe do Evento', Icone: Users },
-      { to: '/estoque', rotulo: 'Estoque', Icone: Package },
-      { to: '/logistica', rotulo: 'Frota e Entregas', Icone: Truck },
+      { to: '/agenda', rotulo: 'Agenda Operacional', Icone: Calendar, categoria: 'agenda' },
+      { to: '/escala', rotulo: 'Equipe do Evento', Icone: Users, categoria: 'pessoas' },
+      { to: '/estoque', rotulo: 'Estoque', Icone: Package, categoria: 'operacao' },
+      { to: '/logistica', rotulo: 'Frota e Entregas', Icone: Truck, categoria: 'operacao' },
     ],
   },
   {
     titulo: 'Execução em Tempo Real',
     itens: [
-      { to: '/roteiro', rotulo: 'Roteiro do Evento', Icone: ListChecks },
-      { to: '/ponto', rotulo: 'Confirmação de Chegada', Icone: Fingerprint },
+      { to: '/roteiro', rotulo: 'Roteiro do Evento', Icone: ListChecks, categoria: 'agenda' },
+      { to: '/ponto', rotulo: 'Confirmação de Chegada', Icone: Fingerprint, categoria: 'pessoas' },
     ],
   },
   {
     titulo: 'Encerramento & Controladoria',
     itens: [
-      { to: '/auditoria', rotulo: 'Após o Evento', Icone: ClipboardCheck },
-      { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
-      { to: '/fechamento', rotulo: 'Fechamento Mensal', Icone: BarChart3 },
+      { to: '/auditoria', rotulo: 'Após o Evento', Icone: ClipboardCheck, categoria: 'neutro' },
+      { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet, categoria: 'dinheiro' },
+      { to: '/fechamento', rotulo: 'Fechamento Mensal', Icone: BarChart3, categoria: 'dinheiro' },
     ],
   },
 ];
 
-/* -- barra inferior mobile: só os 7 módulos que o PRD marca como "Mobile" -- */
+/* -- barra inferior mobile: só os 7 módulos que o PRD marca como "Mobile".
+   Sem o vidro da sidebar desktop (DESIGN.md só pede glass pra sidebar),
+   mas o item ativo agora usa a MESMA cor de categoria do menu lateral
+   (2026-09-09, auditoria do usuário: antes era âmbar fixo em todo item,
+   inconsistente com a sidebar já recolorida por categoria). -- */
 const BOTTOMBAR: ItemNav[] = [
-  { to: '/', rotulo: 'Painel', Icone: LayoutDashboard },
-  { to: '/crm', rotulo: 'CRM', Icone: Filter },
-  { to: '/orcamentos', rotulo: 'Orçamento', Icone: Receipt },
-  { to: '/agenda', rotulo: 'Agenda', Icone: Calendar },
-  { to: '/ponto', rotulo: 'Chegada', Icone: Fingerprint },
-  { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
-  { to: '/fechamento', rotulo: 'Fechamento', Icone: BarChart3 },
+  { to: '/', rotulo: 'Painel', Icone: LayoutDashboard, categoria: 'acao' },
+  { to: '/crm', rotulo: 'CRM', Icone: Filter, categoria: 'pessoas' },
+  { to: '/orcamentos', rotulo: 'Orçamento', Icone: Receipt, categoria: 'dinheiro' },
+  { to: '/agenda', rotulo: 'Agenda', Icone: Calendar, categoria: 'agenda' },
+  { to: '/ponto', rotulo: 'Chegada', Icone: Fingerprint, categoria: 'pessoas' },
+  { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet, categoria: 'dinheiro' },
+  { to: '/fechamento', rotulo: 'Fechamento', Icone: BarChart3, categoria: 'dinheiro' },
 ];
 
 function classesLink({ isActive }: { isActive: boolean }) {
-  return [
-    'flex items-center gap-2.5 rounded-sm px-3 py-2 text-sm font-medium transition-colors',
-    isActive ? 'bg-raised text-accent' : 'text-text-dim hover:bg-raised hover:text-text',
-  ].join(' ');
+  return ['nav-item flex items-center gap-2.5 rounded-sm px-3 py-2 text-sm font-medium', isActive ? 'is-active' : ''].join(' ');
 }
 
 export default function Layout() {
@@ -119,7 +143,7 @@ export default function Layout() {
           Pipeline do CRM, ficavam apertadas). Preferência salva no
           navegador, cada aparelho lembra o que você escolheu. -- */}
       <aside
-        className={`fixed inset-y-0 left-0 hidden flex-col gap-6 overflow-y-auto overflow-x-hidden border-r border-line bg-panel py-5 transition-[width] duration-200 lg:flex ${
+        className={`sidebar-glass fixed inset-y-0 left-0 hidden flex-col gap-6 overflow-y-auto overflow-x-hidden py-5 transition-[width] duration-200 lg:flex ${
           colapsada ? 'w-16 px-2' : 'w-[220px] px-3'
         }`}
       >
@@ -145,8 +169,8 @@ export default function Layout() {
 
         <nav className="flex flex-1 flex-col gap-5">
           <div className="flex flex-col gap-1 border-b border-line pb-4">
-            <NavLink key={PAINEL.to} to={PAINEL.to} end title={colapsada ? PAINEL.rotulo : undefined} className={classesLink}>
-              <PAINEL.Icone className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
+            <NavLink key={PAINEL.to} to={PAINEL.to} end title={colapsada ? PAINEL.rotulo : undefined} className={classesLink} style={estiloCategoria(PAINEL.categoria)}>
+              <PAINEL.Icone className="nav-icon h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
               {!colapsada && <span className="truncate">{PAINEL.rotulo}</span>}
             </NavLink>
           </div>
@@ -154,8 +178,8 @@ export default function Layout() {
             <div key={nucleo.titulo} className="flex flex-col gap-1">
               {!colapsada && <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-text-faint">{nucleo.titulo}</p>}
               {nucleo.itens.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.to === '/'} title={colapsada ? item.rotulo : undefined} className={classesLink}>
-                  <item.Icone className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
+                <NavLink key={item.to} to={item.to} end={item.to === '/'} title={colapsada ? item.rotulo : undefined} className={classesLink} style={estiloCategoria(item.categoria)}>
+                  <item.Icone className="nav-icon h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
                   {!colapsada && <span className="truncate">{item.rotulo}</span>}
                 </NavLink>
               ))}
@@ -170,10 +194,17 @@ export default function Layout() {
           to="/configuracoes"
           title={colapsada ? 'Configurações' : undefined}
           className={({ isActive }) =>
-            `flex items-center gap-2.5 rounded-sm border-t border-line px-3 pt-3 text-sm font-medium transition-colors ${isActive ? 'text-accent' : 'text-text-dim hover:text-text'}`
+            `flex items-center gap-2.5 rounded-sm border-t border-line px-3 pt-3 text-sm font-medium transition-colors ${isActive ? 'text-[var(--item-label)]' : 'text-text-dim hover:text-text'}`
           }
+          style={estiloCategoria('neutro')}
         >
-          <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+          {/* Configurações não está na tabela de categorias do DESIGN.md
+              — neutro, igual a qualquer item de menu sem categoria clara
+              (2026-09-09, auditoria do usuário: era âmbar fixo). */}
+          <span
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[var(--item-label)]"
+            style={{ background: 'color-mix(in srgb, var(--item-color) 15%, transparent)' }}
+          >
             <User className="h-4 w-4" strokeWidth={1.75} />
           </span>
           {!colapsada && (
@@ -199,10 +230,11 @@ export default function Layout() {
             end={item.to === '/'}
             className={({ isActive }) =>
               [
-                'flex flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1 text-[9.5px] font-semibold',
-                isActive ? 'text-accent' : 'text-text-faint',
+                'flex flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1 text-[9.5px] font-semibold transition-colors',
+                isActive ? 'text-[var(--item-label)]' : 'text-text-faint',
               ].join(' ')
             }
+            style={estiloCategoria(item.categoria)}
           >
             <item.Icone className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="truncate">{item.rotulo}</span>
@@ -243,7 +275,7 @@ function RelogioStatus() {
         type="button"
         onClick={alternar}
         title={tema === 'escuro' ? 'Mudar pro modo claro' : 'Mudar pro modo escuro'}
-        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm text-text-faint transition-colors hover:bg-raised hover:text-accent"
+        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm text-text-faint transition-colors hover:bg-raised hover:text-text"
       >
         {tema === 'escuro' ? <Sun className="h-3.5 w-3.5" strokeWidth={2} /> : <Moon className="h-3.5 w-3.5" strokeWidth={2} />}
       </button>

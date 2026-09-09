@@ -15,6 +15,9 @@ export const TARIFA_FRETE = {
 
 export type EntradaFrete = {
   tipoVeiculo: 'caminhao' | 'sedan' | 'van';
+  /** Consumo médio real do veículo (km/l), quando cadastrado — usa isso
+      no lugar da média por tipo. Ver nota abaixo em `calcularFrete`. */
+  consumoMedio?: number | null;
   kmIdaVolta: number;
   pedagios: number;
   qtdBarmenCarro: number;
@@ -36,10 +39,15 @@ export type ResultadoFrete = {
     custoBarmen      = ajudaDeCusto * qtdBarmen + pedágios dos barmen
     custoReal        = custoCombustivel + custoBarmen + pedágios do veículo + Lalamove
     freteComMargem   = custoReal * (1 + margem)
-    valorFrete       = maior valor entre freteComMargem e freteMínimo */
+    valorFrete       = maior valor entre freteComMargem e freteMínimo
+
+    `consumo`: usa o `consumo_medio` cadastrado NO VEÍCULO quando existe
+    (o formulário de veículo já promete isso — "se vazio usa a média
+    padrão da fórmula" — só que antes dessa revisão o cálculo nunca lia
+    esse campo de verdade); sem isso cadastrado, cai na média por tipo. */
 export function calcularFrete(entrada: EntradaFrete): ResultadoFrete {
   const precoCombustivel = entrada.tipoVeiculo === 'caminhao' ? TARIFA_FRETE.precoDiesel : TARIFA_FRETE.precoGasolina;
-  const consumo = entrada.tipoVeiculo === 'caminhao' ? TARIFA_FRETE.consumoCaminhao : TARIFA_FRETE.consumoCarro;
+  const consumo = entrada.consumoMedio || (entrada.tipoVeiculo === 'caminhao' ? TARIFA_FRETE.consumoCaminhao : TARIFA_FRETE.consumoCarro);
 
   const custoCombustivel = consumo > 0 ? (entrada.kmIdaVolta / consumo) * precoCombustivel : 0;
   const custoBarmen = TARIFA_FRETE.ajudaCustoPorBarman * entrada.qtdBarmenCarro + entrada.pedagiosBarmen;

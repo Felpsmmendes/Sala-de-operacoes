@@ -23,8 +23,22 @@ export function PanelHeader({ titulo, desc, acao }: { titulo: string; desc?: str
   );
 }
 
-/** Controle segmentado (ex.: Pipeline/Tabela) — mesmo padrão `.seg` do painel anterior. */
-export function Segmented<T extends string>({ valor, opcoes, onMudar }: { valor: T; opcoes: { valor: T; rotulo: string }[]; onMudar: (v: T) => void }) {
+/** Controle segmentado (ex.: Pipeline/Tabela) — mesmo padrão `.seg` do painel anterior.
+    `corAtiva` (2026-09-09, auditoria do usuário): classe Tailwind de texto pra opção
+    ativa — o âmbar fixo de antes não tinha relação com nenhuma categoria; cada tela
+    agora passa a cor da sua própria categoria (ex. "text-people"), com neutro como
+    default pra quem não passar nada. */
+export function Segmented<T extends string>({
+  valor,
+  opcoes,
+  onMudar,
+  corAtiva = 'text-neutral',
+}: {
+  valor: T;
+  opcoes: { valor: T; rotulo: string }[];
+  onMudar: (v: T) => void;
+  corAtiva?: string;
+}) {
   return (
     <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
       {opcoes.map((op) => (
@@ -33,7 +47,7 @@ export function Segmented<T extends string>({ valor, opcoes, onMudar }: { valor:
           type="button"
           onClick={() => onMudar(op.valor)}
           className={`rounded-[5px] px-3 py-1.5 text-[13px] font-medium transition-colors ${
-            op.valor === valor ? 'bg-raised text-accent' : 'text-text-dim hover:text-text'
+            op.valor === valor ? `bg-raised ${corAtiva}` : 'text-text-dim hover:text-text'
           }`}
         >
           {op.rotulo}

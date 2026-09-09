@@ -43,7 +43,7 @@ export default function Login() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-text outline-none focus:border-accent"
+            className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-text outline-none focus:border-neutral"
             placeholder="voce@emcenaeventos.com"
           />
         </label>
@@ -55,7 +55,7 @@ export default function Login() {
             required
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
-            className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-text outline-none focus:border-accent"
+            className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-text outline-none focus:border-neutral"
           />
         </label>
 

@@ -93,15 +93,16 @@ export default function Ponto() {
       <Cabecalho titulo="Confirmação de Chegada" subtitulo="Quem já chegou em cada evento, por um link público — sem senha nem localização por GPS. (O ponto oficial dos funcionários internos é outra tela: Ponto Eletrônico.)" />
       <Conteudo>
         <MetricGrid>
-          <MetricCard Icone={Users} rotulo="Escalados no evento" valor={String(presenca.length)} legenda={eventoAtual ? formatarData(eventoAtual.data_evento) : '—'} />
-          <MetricCard Icone={CheckCircle2} rotulo="Já chegaram" valor={String(chegaram)} legenda={`de ${presenca.length} escalados`} />
+          <MetricCard Icone={Users} rotulo="Escalados no evento" valor={String(presenca.length)} legenda={eventoAtual ? formatarData(eventoAtual.data_evento) : '—'} categoria="pessoas" />
+          <MetricCard Icone={CheckCircle2} rotulo="Já chegaram" valor={String(chegaram)} legenda={`de ${presenca.length} escalados`} categoria="pessoas" />
           <MetricCard
             Icone={AlertTriangle}
             rotulo="Eventos com falta de gente"
             valor={String([...resumoPorEvento.values()].filter((r) => r.confirmados === 0).length)}
             legenda="Nas próximas datas, 0 confirmados"
+            categoria="pessoas"
           />
-          <MetricCard Icone={Users} rotulo="Próximas datas monitoradas" valor={String(eventos.length)} legenda="Eventos futuros, não cancelados" />
+          <MetricCard Icone={Users} rotulo="Próximas datas monitoradas" valor={String(eventos.length)} legenda="Eventos futuros, não cancelados" categoria="pessoas" />
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -112,7 +113,7 @@ export default function Ponto() {
             desc="Selecione o evento e copie o link de confirmação de chegada pra mandar pra equipe."
             acao={
               <div className="flex items-center gap-2">
-                <select value={eventoId} onChange={(e) => setEventoId(e.target.value)} className="rounded-sm border border-line bg-input px-3 py-2 text-[12.5px] text-text outline-none focus:border-accent">
+                <select value={eventoId} onChange={(e) => setEventoId(e.target.value)} className="rounded-sm border border-line bg-input px-3 py-2 text-[12.5px] text-text outline-none focus:border-people">
                   {eventos.length === 0 && <option value="">Nenhum evento</option>}
                   {eventos.map((ev) => (
                     <option key={ev.id} value={ev.id}>

@@ -125,7 +125,7 @@ export function PipelineLeads({
           type="button"
           onClick={() => setEditandoFunis((v) => !v)}
           className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
-            editandoFunis ? 'border-accent bg-accent/10 text-accent' : 'border-line text-text-dim hover:bg-raised hover:text-text'
+            editandoFunis ? 'border-people bg-people/10 text-people' : 'border-line text-text-dim hover:bg-raised hover:text-text'
           }`}
         >
           <Settings2 className="h-3.5 w-3.5" strokeWidth={2} />
@@ -134,7 +134,7 @@ export function PipelineLeads({
       </div>
 
       {editandoFunis && (
-        <p className="mb-2.5 rounded-sm border border-accent/30 bg-accent/10 px-3 py-2 text-[12.5px] text-text-dim">
+        <p className="mb-2.5 rounded-sm border border-people/30 bg-people/10 px-3 py-2 text-[12.5px] text-text-dim">
           Arraste uma coluna pelo <GripVertical className="inline h-3 w-3 -translate-y-px" strokeWidth={2} /> pra reordenar. Clique no nome pra renomear, na cor pra recolorir.
         </p>
       )}
@@ -155,7 +155,7 @@ export function PipelineLeads({
               onDragLeave={() => setColunaHover(null)}
               onDrop={(ev) => (editandoFunis ? aoSoltarColuna(ev, funil.id) : aoSoltarLead(ev, funil.id))}
               className={`flex w-[220px] flex-shrink-0 flex-col gap-2 rounded-md transition-colors ${
-                colunaHover === funil.id && !editandoFunis ? 'bg-accent/10' : ''
+                colunaHover === funil.id && !editandoFunis ? 'bg-people/10' : ''
               } ${funilArrastado === funil.id ? 'opacity-40' : ''}`}
             >
               <div className="flex items-center justify-between gap-1.5 border-b border-line px-0.5 pb-1.5">
@@ -171,7 +171,7 @@ export function PipelineLeads({
                       if (e.key === 'Enter') aoConfirmarRenomear(funil.id);
                       if (e.key === 'Escape') setRenomeandoId(null);
                     }}
-                    className="min-w-0 flex-1 rounded-sm border border-accent bg-input px-1.5 py-0.5 text-[11.5px] text-text outline-none"
+                    className="min-w-0 flex-1 rounded-sm border border-people bg-input px-1.5 py-0.5 text-[11.5px] text-text outline-none"
                   />
                 ) : (
                   <h3
@@ -228,7 +228,7 @@ export function PipelineLeads({
                     onClick={() => onSelecionar(lead.id)}
                     className={`flex flex-col gap-0.5 rounded-sm border bg-input p-2.5 text-left text-sm transition-colors hover:border-line-strong hover:bg-raised ${
                       editandoFunis ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
-                    } ${lead.id === selecionadoId ? 'border-accent' : 'border-line'}`}
+                    } ${lead.id === selecionadoId ? 'border-people' : 'border-line'}`}
                   >
                     <strong className="text-[13px] font-semibold text-text">{lead.nome}</strong>
                     {lead.telefone && <span className="text-[11.5px] text-text-dim">{lead.telefone}</span>}
@@ -250,7 +250,7 @@ export function PipelineLeads({
                   onChange={(e) => setNovoNome(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && aoCriarFunil()}
                   placeholder="Nome do funil"
-                  className="rounded-sm border border-line bg-input px-2 py-1.5 text-[12.5px] text-text outline-none focus:border-accent"
+                  className="rounded-sm border border-line bg-input px-2 py-1.5 text-[12.5px] text-text outline-none focus:border-people"
                 />
                 <div className="flex gap-1.5">
                   {CORES.map((c) => (
@@ -259,7 +259,7 @@ export function PipelineLeads({
                       type="button"
                       onClick={() => setNovaCor(c.valor)}
                       title={c.rotulo}
-                      className={`h-5 w-5 rounded-full ${c.classe} ${novaCor === c.valor ? 'ring-2 ring-accent ring-offset-2 ring-offset-raised' : ''}`}
+                      className={`h-5 w-5 rounded-full ${c.classe} ${novaCor === c.valor ? 'ring-2 ring-people ring-offset-2 ring-offset-raised' : ''}`}
                     />
                   ))}
                 </div>
@@ -281,7 +281,7 @@ export function PipelineLeads({
               <button
                 type="button"
                 onClick={() => setMostrarNovoFunil(true)}
-                className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-line-strong py-3 text-[12.5px] font-medium text-text-dim hover:border-accent hover:text-accent"
+                className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-line-strong py-3 text-[12.5px] font-medium text-text-dim hover:border-people hover:text-people"
               >
                 <Plus className="h-4 w-4" strokeWidth={2} />
                 Novo funil

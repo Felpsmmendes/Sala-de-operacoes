@@ -1,7 +1,7 @@
-import { AlertTriangle, Calculator, Link2, Package, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, Calculator, ClipboardList, Link2, Package, ShoppingCart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { listarContratos } from '../lib/api/contratos';
 import {
-  cancelarCompra,
   criarCompra,
   criarItem,
   excluirItem,
@@ -9,7 +9,6 @@ import {
   listarDescricoesChecklistNaoVinculadas,
   listarItens,
   listarMovimentos,
-  receberCompra,
   registrarMovimento,
   vincularDescricaoAoEstoque,
   type CompraComItem,
@@ -22,17 +21,22 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { ChecklistEvento } from '../components/estoque/ChecklistEvento';
 import { ItemForm } from '../components/estoque/ItemForm';
 import { ModalCompra } from '../components/estoque/ModalCompra';
 import { ModalMovimento } from '../components/estoque/ModalMovimento';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData, formatarMoeda } from '../lib/status';
+import type { ContratoComLead } from '../lib/types';
 
 function ehCritico(item: ItemEstoque) {
   return item.estoque_atual <= item.estoque_minimo;
 }
 
-type Aba = 'itens' | 'compras' | 'avarias' | 'vinculos';
+// "Itens" virou "avancado" (pedido do usuário, 2026-09-09): cadastro de
+// produto por produto e calculadora preditiva pausados por enquanto —
+// código mantido, só saiu da aba principal (que agora é "Checklists").
+type Aba = 'checklists' | 'avancado' | 'avarias' | 'vinculos';
 
 /** Toda ação de uma linha (excluir/receber/cancelar) precisa tratar erro —
     sem isso, uma restrição do banco (ex.: item com movimentação não pode
@@ -48,7 +52,9 @@ export default function Estoque() {
   // numa rolagem só — o gestor entrava querendo fazer UMA coisa (ex.
   // marcar uma compra recebida) e precisava rolar por tudo antes de
   // chegar lá. Vira abas, mesmo padrão já usado no CRM (`Crm.tsx`).
-  const [aba, setAba] = useState<Aba>('itens');
+  const [aba, setAba] = useState<Aba>('checklists');
+  const [contratos, setContratos] = useState<ContratoComLead[]>([]);
+  const [checklistAbertoId, setChecklistAbertoId] = useState<string | null>(null);
   const [itens, setItens] = useState<ItemEstoque[]>([]);
   const [compras, setCompras] = useState<CompraComItem[]>([]);
   const [avarias, setAvarias] = useState<MovimentoComItem[]>([]);
@@ -65,11 +71,12 @@ export default function Estoque() {
     setCarregando(true);
     setErro(null);
     try {
-      const [i, c, a, nv] = await Promise.all([listarItens(), listarCompras(), listarMovimentos('avaria'), listarDescricoesChecklistNaoVinculadas()]);
+      const [i, c, a, nv, ct] = await Promise.all([listarItens(), listarCompras(), listarMovimentos('avaria'), listarDescricoesChecklistNaoVinculadas(), listarContratos()]);
       setItens(i);
       setCompras(c);
       setAvarias(a);
       setNaoVinculados(nv);
+      setContratos(ct.filter((c2) => c2.status !== 'cancelado'));
     } catch (e) {
       setErro(mensagemDeErro(e));
     } finally {
@@ -116,10 +123,10 @@ export default function Estoque() {
     }
   }
 
-  async function aoConfirmarCompra(quantidade: number, valorTotal: number) {
+  async function aoConfirmarCompra(quantidade: number, valorTotal: number, dataChegadaPrevista: string | null) {
     if (!compraAberta) return;
     try {
-      await criarCompra({ itemId: compraAberta.id, quantidade, valorTotal });
+      await criarCompra({ itemId: compraAberta.id, quantidade, valorTotal, dataChegadaPrevista });
       setCompraAberta(null);
       await carregar();
     } catch (e) {
@@ -143,13 +150,13 @@ export default function Estoque() {
 
   return (
     <>
-      <Cabecalho titulo="Estoque" subtitulo="Consumo estimado por convidado, nível mínimo do galpão e histórico de avarias." />
+      <Cabecalho titulo="Estoque" subtitulo="Checklist de carga por evento — cadastro de itens e calculadora ficam em Avançado." />
       <Conteudo>
         <MetricGrid>
-          <MetricCard Icone={Package} rotulo="Itens cadastrados" valor={String(itens.length)} legenda="No galpão" />
-          <MetricCard Icone={AlertTriangle} rotulo="Nível crítico" valor={String(itensCriticos.length)} legenda="Abaixo do mínimo" />
-          <MetricCard Icone={ShoppingCart} rotulo="Compras pendentes" valor={String(comprasPendentes.length)} legenda={formatarMoeda(comprasPendentes.reduce((s, c) => s + c.valor_total, 0))} />
-          <MetricCard Icone={AlertTriangle} rotulo="Avarias registradas" valor={String(avarias.length)} legenda="Últimos 50 registros" />
+          <MetricCard Icone={Package} rotulo="Itens cadastrados" valor={String(itens.length)} legenda="No galpão" categoria="operacao" />
+          <MetricCard Icone={AlertTriangle} rotulo="Nível crítico" valor={String(itensCriticos.length)} legenda="Abaixo do mínimo" categoria="operacao" />
+          <MetricCard Icone={ShoppingCart} rotulo="Compras pendentes" valor={String(comprasPendentes.length)} legenda={formatarMoeda(comprasPendentes.reduce((s, c) => s + c.valor_total, 0))} categoria="operacao" />
+          <MetricCard Icone={AlertTriangle} rotulo="Avarias registradas" valor={String(avarias.length)} legenda="Últimos 50 registros" categoria="operacao" />
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -158,8 +165,8 @@ export default function Estoque() {
         <div className="mb-5 flex gap-1 border-b border-line">
           {(
             [
-              { id: 'itens', rotulo: 'Itens', Icone: Package },
-              { id: 'compras', rotulo: 'Compras', Icone: ShoppingCart, contagem: comprasPendentes.length },
+              { id: 'checklists', rotulo: 'Checklists', Icone: ClipboardList, contagem: contratos.length },
+              { id: 'avancado', rotulo: 'Avançado', Icone: Package },
               { id: 'avarias', rotulo: 'Avarias', Icone: AlertTriangle, contagem: avarias.length },
               { id: 'vinculos', rotulo: 'Vínculos', Icone: Link2, contagem: naoVinculados.length },
             ] as const
@@ -169,7 +176,7 @@ export default function Estoque() {
               type="button"
               onClick={() => setAba(item.id)}
               className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-colors ${
-                aba === item.id ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text'
+                aba === item.id ? 'border-ops text-ops' : 'border-transparent text-text-dim hover:text-text'
               }`}
             >
               <item.Icone className="h-4 w-4" strokeWidth={2} />
@@ -179,7 +186,35 @@ export default function Estoque() {
           ))}
         </div>
 
-        {aba === 'itens' && (
+        {aba === 'checklists' && (
+          <Panel>
+            <PanelHeader titulo="Checklist de carga por evento" desc="Itens do pacote contratado (padrão) + observações/brindes do contrato, por evento." />
+            {carregando ? (
+              <p className="text-sm text-text-dim">Carregando…</p>
+            ) : contratos.length === 0 ? (
+              <p className="text-sm text-text-dim">Nenhum contrato ativo ainda.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {contratos.map((c) => (
+                  <div key={c.id} className="rounded-md border border-line bg-input p-4">
+                    <button type="button" onClick={() => setChecklistAbertoId((atual) => (atual === c.id ? null : c.id))} className="flex w-full flex-wrap items-center justify-between gap-2 text-left">
+                      <div>
+                        <strong className="text-[15px] text-text">{c.lead?.nome ?? '—'}</strong>
+                        <p className="text-[12.5px] text-text-dim">
+                          {formatarData(c.data_evento)} · {c.local || 'local não informado'} · {c.convidados ?? '—'} convidados
+                        </p>
+                      </div>
+                      <span className="text-[12.5px] font-medium text-ops">{checklistAbertoId === c.id ? 'Fechar' : 'Ver checklist'}</span>
+                    </button>
+                    {checklistAbertoId === c.id && <ChecklistEvento contrato={c} />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+        )}
+
+        {aba === 'avancado' && (
           <>
             <Panel className="mb-4">
               <PanelHeader titulo="Calculadora preditiva" desc="Quanto vai ser consumido pra X convidados, comparado com o que tem no galpão." acao={<Calculator className="h-4 w-4 text-text-faint" />} />
@@ -189,7 +224,7 @@ export default function Estoque() {
                 value={convidadosCalc}
                 onChange={(e) => setConvidadosCalc(e.target.value)}
                 placeholder="Número de convidados"
-                className="mb-3 w-full max-w-xs rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent"
+                className="mb-3 w-full max-w-xs rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops"
               />
               {convidadosCalc &&
                 (previsao.length === 0 ? (
@@ -253,41 +288,6 @@ export default function Estoque() {
           </>
         )}
 
-        {aba === 'compras' && (
-          <Panel>
-            <PanelHeader titulo="Compras" desc={`${compras.length} ordem(ns) de compra`} />
-            {compras.length === 0 ? (
-              <p className="text-sm text-text-dim">Nenhuma compra registrada ainda.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {compras.map((c) => (
-                  <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2.5 text-sm">
-                    <div>
-                      <strong className="text-text">{c.item?.nome ?? '—'}</strong>
-                      <span className="ml-2 text-text-dim">
-                        {c.quantidade} {c.item?.unidade} · {formatarMoeda(c.valor_total)} · {formatarData(c.criado_em)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge tom={c.status === 'recebido' ? 'sucesso' : c.status === 'cancelado' ? 'neutro' : 'pendente'} texto={c.status === 'recebido' ? 'Recebido' : c.status === 'cancelado' ? 'Cancelado' : 'Pendente'} />
-                      {c.status === 'pendente' && (
-                        <>
-                          <button type="button" onClick={() => receberCompra(c).then(carregar).catch(aoFalhar)} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
-                            Marcar recebido
-                          </button>
-                          <button type="button" onClick={() => cancelarCompra(c.id).then(carregar).catch(aoFalhar)} className="text-[11.5px] font-medium text-danger hover:underline">
-                            Cancelar
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Panel>
-        )}
-
         {aba === 'avarias' && (
           <Panel>
             <PanelHeader titulo="Histórico de avarias" desc="Quebras e perdas registradas." />
@@ -313,12 +313,12 @@ export default function Estoque() {
           <Panel>
             <PanelHeader
               titulo="Vincular checklist de carga ao estoque"
-              desc="Itens do checklist padrão (Logística) que ainda não apontam pra um item real do galpão — sem isso, embarcar um romaneio não desconta nada daqui."
+              desc="Itens do checklist padrão (contratado no orçamento) que ainda não apontam pra um item real do galpão."
             />
             {naoVinculados.length === 0 ? (
               <p className="text-sm text-text-dim">Tudo vinculado ✓ — nenhuma descrição do checklist padrão pendente.</p>
             ) : itens.length === 0 ? (
-              <p className="text-sm text-text-dim">Cadastre pelo menos um item do galpão na aba "Itens" antes de vincular.</p>
+              <p className="text-sm text-text-dim">Cadastre pelo menos um item do galpão na aba "Avançado" antes de vincular.</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {naoVinculados.map((descricao) => (
@@ -328,7 +328,7 @@ export default function Estoque() {
                       disabled={vinculando === descricao}
                       defaultValue=""
                       onChange={(e) => e.target.value && aoVincular(descricao, e.target.value)}
-                      className="rounded-sm border border-line bg-panel px-2 py-1 text-[12.5px] text-text outline-none focus:border-accent"
+                      className="rounded-sm border border-line bg-panel px-2 py-1 text-[12.5px] text-text outline-none focus:border-ops"
                     >
                       <option value="" disabled>
                         {vinculando === descricao ? 'Vinculando…' : 'Vincular a…'}

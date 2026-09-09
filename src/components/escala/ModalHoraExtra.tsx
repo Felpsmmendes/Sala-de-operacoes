@@ -32,12 +32,12 @@ export function ModalHoraExtra({ escala, horaFimPrevista, onFechar }: { escala: 
 
         <label className="mb-3 block">
           <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Encerrou de fato às</span>
-          <input type="time" value={horaFimReal} onChange={(e) => setHoraFimReal(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent" />
+          <input type="time" value={horaFimReal} onChange={(e) => setHoraFimReal(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-people" />
         </label>
 
         <label className="mb-4 block">
           <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Valor da hora (R$)</span>
-          <input type="number" min={0} step="0.01" value={valorHora} onChange={(e) => setValorHora(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent" />
+          <input type="number" min={0} step="0.01" value={valorHora} onChange={(e) => setValorHora(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-people" />
         </label>
 
         {resultado && (

@@ -44,12 +44,14 @@ export function gerarPdfProposta({
   convidados,
   itens,
   total,
+  frete,
 }: {
   lead: Lead;
   dataEvento: string | null;
   convidados: number | null;
   itens: ItemSelecionado[];
   total: number;
+  frete?: { regiaoNome: string; valor: number } | null;
 }): void {
   const sinal = Math.round(total * 0.2 * 100) / 100;
   const saldo = Math.round(total * 0.8 * 100) / 100;
@@ -157,6 +159,15 @@ export function gerarPdfProposta({
   doc.setLineWidth(0.4);
   doc.line(X_ESQ, y, X_DIR, y);
   y += 8;
+
+  if (frete && frete.valor > 0) {
+    doc.setFontSize(10.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...COR_TEXTO);
+    doc.text(`Frete (${frete.regiaoNome}):`, X_ESQ, y);
+    doc.text(formatarMoeda(frete.valor), X_DIR, y, { align: 'right' });
+    y += 7;
+  }
 
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');

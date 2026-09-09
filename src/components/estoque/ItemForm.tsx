@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { CategoriaEstoque, NovoItemEstoque } from '../../lib/api/estoque';
 
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent';
+const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops';
 const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 export function ItemForm({ onSalvar, salvando }: { onSalvar: (dados: NovoItemEstoque) => void; salvando: boolean }) {

@@ -126,15 +126,71 @@ export type Database = {
           valor_saldo: number;
           status: string;
           criado_em: string;
+          regiao_frete_id: string | null;
+          veiculo_id: string | null;
+          valor_frete_cobrado: number;
+          valor_frete_custo: number;
         };
-        Insert: { id?: string; lead_id: string; data_evento?: string | null; convidados?: number | null; valor_total?: number; status?: string; criado_em?: string };
-        Update: { id?: string; lead_id?: string; data_evento?: string | null; convidados?: number | null; valor_total?: number; status?: string; criado_em?: string };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          data_evento?: string | null;
+          convidados?: number | null;
+          valor_total?: number;
+          status?: string;
+          criado_em?: string;
+          regiao_frete_id?: string | null;
+          veiculo_id?: string | null;
+          valor_frete_cobrado?: number;
+          valor_frete_custo?: number;
+        };
+        Update: {
+          id?: string;
+          lead_id?: string;
+          data_evento?: string | null;
+          convidados?: number | null;
+          valor_total?: number;
+          status?: string;
+          criado_em?: string;
+          regiao_frete_id?: string | null;
+          veiculo_id?: string | null;
+          valor_frete_cobrado?: number;
+          valor_frete_custo?: number;
+        };
         Relationships: [];
       };
       orcamento_itens: {
-        Row: { id: string; orcamento_id: string; servico_id: string; quantidade: number; valor_unitario: number; valor_total: number };
-        Insert: { id?: string; orcamento_id: string; servico_id: string; quantidade?: number; valor_unitario: number };
-        Update: { id?: string; orcamento_id?: string; servico_id?: string; quantidade?: number; valor_unitario?: number };
+        Row: {
+          id: string;
+          orcamento_id: string;
+          servico_id: string;
+          quantidade: number;
+          valor_unitario: number;
+          valor_total: number;
+          horas_adicionais: number;
+          valor_hora_adicional: number;
+          horario_inicio_atracao: string | null;
+        };
+        Insert: {
+          id?: string;
+          orcamento_id: string;
+          servico_id: string;
+          quantidade?: number;
+          valor_unitario: number;
+          horas_adicionais?: number;
+          valor_hora_adicional?: number;
+          horario_inicio_atracao?: string | null;
+        };
+        Update: {
+          id?: string;
+          orcamento_id?: string;
+          servico_id?: string;
+          quantidade?: number;
+          valor_unitario?: number;
+          horas_adicionais?: number;
+          valor_hora_adicional?: number;
+          horario_inicio_atracao?: string | null;
+        };
         Relationships: [];
       };
       contratos: {
@@ -156,6 +212,13 @@ export type Database = {
           status: string;
           criado_em: string;
           atualizado_em: string;
+          forma_pagamento: string | null;
+          observacoes_brindes: string | null;
+          horario_chegada_convidados: string | null;
+          horario_chegada_equipe: string | null;
+          horario_fim_servico: string | null;
+          horario_saida_equipe: string | null;
+          horario_inicio_bar: string | null;
         };
         Insert: {
           id?: string;
@@ -173,6 +236,13 @@ export type Database = {
           status?: string;
           criado_em?: string;
           atualizado_em?: string;
+          forma_pagamento?: string | null;
+          observacoes_brindes?: string | null;
+          horario_chegada_convidados?: string | null;
+          horario_chegada_equipe?: string | null;
+          horario_fim_servico?: string | null;
+          horario_saida_equipe?: string | null;
+          horario_inicio_bar?: string | null;
         };
         Update: {
           id?: string;
@@ -190,6 +260,13 @@ export type Database = {
           status?: string;
           criado_em?: string;
           atualizado_em?: string;
+          forma_pagamento?: string | null;
+          observacoes_brindes?: string | null;
+          horario_chegada_convidados?: string | null;
+          horario_chegada_equipe?: string | null;
+          horario_fim_servico?: string | null;
+          horario_saida_equipe?: string | null;
+          horario_inicio_bar?: string | null;
         };
         Relationships: [];
       };
@@ -266,9 +343,9 @@ export type Database = {
         Relationships: [];
       };
       compras: {
-        Row: { id: string; item_id: string; quantidade: number; valor_total: number; status: string; criado_em: string };
-        Insert: { id?: string; item_id: string; quantidade: number; valor_total: number; status?: string; criado_em?: string };
-        Update: { id?: string; item_id?: string; quantidade?: number; valor_total?: number; status?: string; criado_em?: string };
+        Row: { id: string; item_id: string; quantidade: number; valor_total: number; status: string; criado_em: string; data_chegada_prevista: string | null };
+        Insert: { id?: string; item_id: string; quantidade: number; valor_total: number; status?: string; criado_em?: string; data_chegada_prevista?: string | null };
+        Update: { id?: string; item_id?: string; quantidade?: number; valor_total?: number; status?: string; criado_em?: string; data_chegada_prevista?: string | null };
         Relationships: [];
       };
       equipe: {
@@ -335,9 +412,29 @@ export type Database = {
         Relationships: [];
       };
       cue_sheet_itens: {
-        Row: { id: string; evento_id: string; numero: number; horario: string; titulo: string; descricao: string | null; concluido: boolean; concluido_em: string | null };
-        Insert: { id?: string; evento_id: string; numero: number; horario: string; titulo: string; descricao?: string | null; concluido?: boolean; concluido_em?: string | null };
-        Update: { id?: string; evento_id?: string; numero?: number; horario?: string; titulo?: string; descricao?: string | null; concluido?: boolean; concluido_em?: string | null };
+        Row: { id: string; evento_id: string; numero: number; horario: string; titulo: string; descricao: string | null; concluido: boolean; concluido_em: string | null; origem: string };
+        Insert: {
+          id?: string;
+          evento_id: string;
+          numero: number;
+          horario: string;
+          titulo: string;
+          descricao?: string | null;
+          concluido?: boolean;
+          concluido_em?: string | null;
+          origem?: string;
+        };
+        Update: {
+          id?: string;
+          evento_id?: string;
+          numero?: number;
+          horario?: string;
+          titulo?: string;
+          descricao?: string | null;
+          concluido?: boolean;
+          concluido_em?: string | null;
+          origem?: string;
+        };
         Relationships: [];
       };
       checklist_padrao_itens: {
@@ -376,64 +473,22 @@ export type Database = {
         };
         Relationships: [];
       };
-      romaneios: {
-        Row: {
-          id: string;
-          evento_id: string;
-          veiculo_id: string;
-          fase: string;
-          km_ida_volta: number | null;
-          pedagios: number;
-          combustivel_valor: number | null;
-          qtd_barmen_carro: number;
-          pedagios_barmen: number;
-          valor_lalamove: number;
-          motivo_lalamove: string | null;
-          margem_pct: number;
-          valor_frete: number;
-          estoque_baixado: boolean;
-          atualizado_em: string;
-        };
-        Insert: {
-          id?: string;
-          evento_id: string;
-          veiculo_id: string;
-          fase?: string;
-          km_ida_volta?: number | null;
-          pedagios?: number;
-          combustivel_valor?: number | null;
-          qtd_barmen_carro?: number;
-          pedagios_barmen?: number;
-          valor_lalamove?: number;
-          motivo_lalamove?: string | null;
-          margem_pct?: number;
-          valor_frete?: number;
-          estoque_baixado?: boolean;
-          atualizado_em?: string;
-        };
-        Update: {
-          id?: string;
-          evento_id?: string;
-          veiculo_id?: string;
-          fase?: string;
-          km_ida_volta?: number | null;
-          pedagios?: number;
-          combustivel_valor?: number | null;
-          qtd_barmen_carro?: number;
-          pedagios_barmen?: number;
-          valor_lalamove?: number;
-          motivo_lalamove?: string | null;
-          margem_pct?: number;
-          valor_frete?: number;
-          estoque_baixado?: boolean;
-          atualizado_em?: string;
-        };
+      contrato_checklist_extra: {
+        Row: { id: string; contrato_id: string; descricao: string; quantidade: number; criado_em: string };
+        Insert: { id?: string; contrato_id: string; descricao: string; quantidade?: number; criado_em?: string };
+        Update: { id?: string; contrato_id?: string; descricao?: string; quantidade?: number; criado_em?: string };
         Relationships: [];
       };
-      romaneio_itens: {
-        Row: { id: string; romaneio_id: string; descricao: string; quantidade: number; estoque_item_id: string | null; fase_conferida: string };
-        Insert: { id?: string; romaneio_id: string; descricao: string; quantidade: number; estoque_item_id?: string | null; fase_conferida?: string };
-        Update: { id?: string; romaneio_id?: string; descricao?: string; quantidade?: number; estoque_item_id?: string | null; fase_conferida?: string };
+      bloqueios_agenda: {
+        Row: { id: string; categoria: string; observacao: string | null; data_inicio: string; data_fim: string; criado_em: string };
+        Insert: { id?: string; categoria: string; observacao?: string | null; data_inicio: string; data_fim: string; criado_em?: string };
+        Update: { id?: string; categoria?: string; observacao?: string | null; data_inicio?: string; data_fim?: string; criado_em?: string };
+        Relationships: [];
+      };
+      regioes_frete: {
+        Row: { id: string; nome: string; km_aproximado: number; criado_em: string };
+        Insert: { id?: string; nome: string; km_aproximado: number; criado_em?: string };
+        Update: { id?: string; nome?: string; km_aproximado?: number; criado_em?: string };
         Relationships: [];
       };
       ponto_registros: {

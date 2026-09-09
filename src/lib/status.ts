@@ -1,4 +1,4 @@
-import type { FunilLead, StatusEscala, StatusEvento, TipoInteracao } from './types';
+import type { CategoriaBloqueio, FunilLead, StatusEscala, StatusEvento, TipoInteracao } from './types';
 import type { TomBadge } from '../components/Badge';
 
 /** Acha o funil de um lead na lista carregada — os funis agora são
@@ -13,6 +13,19 @@ export function funilDoLead(funis: FunilLead[], statusId: string): { rotulo: str
     "leads por funil" (CRM e Dashboard) pra herdar a mesma cor via
     `fill="currentColor"`. */
 export const COR_FUNIL_CLASSE: Record<FunilLead['cor'], string> = { sucesso: 'text-success', pendente: 'text-pending', perigo: 'text-danger', neutro: 'text-neutral' };
+
+/** Paleta azul/roxo pro gráfico "Leads por funil" (Dashboard/CRM,
+    2026-09-09, ver DESIGN.md > Charts) — essa visão é sobre pessoas/
+    pipeline, então usa a família de cor de CATEGORIA (pessoas=azul,
+    agenda=roxo), nunca a cor semântica do funil (`COR_FUNIL_CLASSE`,
+    que é pro Badge/coluna do Pipeline — ali a cor É o significado que o
+    gestor escolheu pra aquele funil; aqui seria arbitrária, sem relação
+    com a categoria do gráfico). Alterna as 2 por posição, nunca por
+    `f.cor` — evita inventar uma cor fora da paleta do sistema. */
+const PALETA_FUNIL_CATEGORIA = ['text-people', 'text-schedule'];
+export function corFunilPorIndice(indice: number): string {
+  return PALETA_FUNIL_CATEGORIA[indice % PALETA_FUNIL_CATEGORIA.length];
+}
 
 export const STATUS_EVENTO_INFO: Record<StatusEvento, { rotulo: string; tom: TomBadge }> = {
   agendado: { rotulo: 'Agendado', tom: 'neutro' },
@@ -37,6 +50,14 @@ export const TIPO_INTERACAO_ROTULO: Record<TipoInteracao, string> = {
   reuniao: 'Reunião',
   nota: 'Nota',
 };
+
+export const CATEGORIA_BLOQUEIO_ROTULO: Record<CategoriaBloqueio, string> = {
+  degustacao: 'Degustação',
+  reuniao_interna: 'Reunião interna',
+  reserva_evento: 'Reserva de evento',
+  outro: 'Outro',
+};
+export const CATEGORIA_BLOQUEIO_ORDEM: CategoriaBloqueio[] = ['degustacao', 'reuniao_interna', 'reserva_evento', 'outro'];
 
 export const FUNCAO_EQUIPE_ROTULO: Record<string, string> = {
   head_bartender: 'Head Bartender',

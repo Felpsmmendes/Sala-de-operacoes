@@ -1,24 +1,26 @@
-import { Activity, AlertTriangle, Banknote, Calendar, Filter, Package, TrendingUp, Truck, Users, Wallet } from 'lucide-react';
+import { Activity, AlertTriangle, Banknote, Calendar, Clock3, Filter, Lock, Package, PackageCheck, Star, TrendingUp, Truck, Users, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { diasAteEvento, listarContratos } from '../lib/api/contratos';
-import { listarItens, type ItemEstoque } from '../lib/api/estoque';
+import { listarAuditorias } from '../lib/api/auditoria';
+import { calcularFaturamentoPorMes, diasAteEvento, listarContratos } from '../lib/api/contratos';
+import { listarCompras, listarItens, type CompraComItem, type ItemEstoque } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
 import { listarDreMensal } from '../lib/api/financeiro';
 import { listarFunis } from '../lib/api/funis';
 import { listarLeads } from '../lib/api/leads';
-import { listarRomaneiosPorEventos } from '../lib/api/logistica';
+import { listarOrcamentoIdsComHoraAdicional } from '../lib/api/orcamentos';
 import { buscarPresencaResumo } from '../lib/api/ponto';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoBarraSplit } from '../components/charts/GraficoBarraSplit';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
 import { GraficoDRE } from '../components/charts/GraficoDRE';
+import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { mensagemDeErro } from '../lib/erroAmigavel';
-import { COR_FUNIL_CLASSE, STATUS_EVENTO_INFO, formatarData, formatarMoeda } from '../lib/status';
-import type { ContratoComLead, DreMes, EscalaPresenca, EventoComLead, FunilLead, Lead, RomaneioComVeiculo } from '../lib/types';
+import { STATUS_EVENTO_INFO, corFunilPorIndice, formatarData, formatarMoeda } from '../lib/status';
+import type { AuditoriaPosEvento, ContratoComLead, DreMes, EscalaPresenca, EventoComLead, FunilLead, Lead } from '../lib/types';
 
 function formatarMes(mes: string): string {
   const [ano, m] = mes.slice(0, 7).split('-');
@@ -26,24 +28,32 @@ function formatarMes(mes: string): string {
   return `${nomes[Number(m) - 1]}/${ano}`;
 }
 
-const FASE_ROTULO: Record<string, string> = { separado: 'No galpão', embarcado: 'Embarcado', descarregado: 'Na doca', devolvido: 'Devolvido' };
 const SALDO_INFO: Record<string, { rotulo: string; tom: 'sucesso' | 'pendente' | 'perigo' }> = {
   quitado: { rotulo: 'Saldo quitado', tom: 'sucesso' },
   parcial: { rotulo: 'Saldo parcial', tom: 'pendente' },
   pendente: { rotulo: 'Saldo pendente', tom: 'perigo' },
 };
 
-const linkPainel = 'flex items-center gap-1 text-[12px] font-medium text-text-dim transition-colors hover:text-accent';
+/* Link "ver mais" de cada painel — recolorido por categoria do DESTINO
+   (2026-09-09, auditoria do usuário: era um único hover:text-accent pra
+   links que apontam pra seções bem diferentes — dinheiro, pessoas,
+   operação). Base compartilhada + 1 variante por categoria usada aqui. */
+const linkPainelBase = 'flex items-center gap-1 text-[12px] font-medium text-text-dim transition-colors';
+const linkPainelDinheiro = `${linkPainelBase} hover:text-money`;
+const linkPainelPessoas = `${linkPainelBase} hover:text-people`;
+const linkPainelOperacao = `${linkPainelBase} hover:text-ops`;
 
 export default function Dashboard() {
   const [eventos, setEventos] = useState<EventoComLead[]>([]);
   const [contratos, setContratos] = useState<ContratoComLead[]>([]);
   const [presenca, setPresenca] = useState<EscalaPresenca[]>([]);
-  const [romaneios, setRomaneios] = useState<RomaneioComVeiculo[]>([]);
   const [dreMeses, setDreMeses] = useState<DreMes[]>([]);
   const [funis, setFunis] = useState<FunilLead[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
+  const [orcamentosComHoraExtra, setOrcamentosComHoraExtra] = useState<Set<string>>(new Set());
+  const [compras, setCompras] = useState<CompraComItem[]>([]);
+  const [auditorias, setAuditorias] = useState<AuditoriaPosEvento[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -63,22 +73,33 @@ export default function Dashboard() {
       setErro(null);
       try {
         // as 4 primeiras não dependem de nada — vão juntas na mesma
-        // leva. Presença/romaneios de hoje só dá pra buscar depois de
-        // saber quais eventos são de hoje (idsHoje), por isso ficam numa
-        // segunda leva.
-        const [ev, ct, dre, fs, ls, itens] = await Promise.all([listarEventos(), listarContratos(), listarDreMensal(), listarFunis(), listarLeads(), listarItens()]);
+        // leva. Presença de hoje só dá pra buscar depois de saber quais
+        // eventos são de hoje (idsHoje), por isso fica numa segunda leva.
+        const [ev, ct, dre, fs, ls, itens, comHoraExtra, cp, aud] = await Promise.all([
+          listarEventos(),
+          listarContratos(),
+          listarDreMensal(),
+          listarFunis(),
+          listarLeads(),
+          listarItens(),
+          listarOrcamentoIdsComHoraAdicional(),
+          listarCompras(),
+          listarAuditorias(),
+        ]);
         const hoje = new Date().toISOString().slice(0, 10);
         const idsHoje = ev.filter((e) => e.data_evento === hoje && e.status !== 'cancelado').map((e) => e.id);
-        const [pres, rom] = await Promise.all([buscarPresencaResumo(idsHoje), listarRomaneiosPorEventos(idsHoje)]);
+        const pres = await buscarPresencaResumo(idsHoje);
         if (cancelado) return;
         setEventos(ev);
         setContratos(ct);
         setPresenca(pres);
-        setRomaneios(rom);
         setDreMeses(dre);
         setFunis(fs);
         setLeads(ls);
         setItensEstoque(itens);
+        setOrcamentosComHoraExtra(comHoraExtra);
+        setCompras(cp);
+        setAuditorias(aud);
       } catch (e) {
         if (!cancelado) setErro(mensagemDeErro(e));
       } finally {
@@ -110,6 +131,20 @@ export default function Dashboard() {
   }, [hoje]);
 
   const eventosHoje = useMemo(() => eventos.filter((e) => e.data_evento === hoje && e.status !== 'cancelado').sort((a, b) => (a.hora_inicio ?? '').localeCompare(b.hora_inicio ?? '')), [eventos, hoje]);
+
+  // clientes insatisfeitos (pedido do usuário, 2026-09-09) — mesmo corte
+  // de "Após o Evento" (nota NPS 0-4), só os últimos 30 dias pra não
+  // ressuscitar reclamação antiga pra sempre no topo do Dashboard.
+  const eventoPorId = useMemo(() => new Map(eventos.map((e) => [e.id, e])), [eventos]);
+  const clientesInsatisfeitos = useMemo(() => {
+    const limite = new Date();
+    limite.setDate(limite.getDate() - 30);
+    const limiteStr = limite.toISOString().slice(0, 10);
+    return auditorias
+      .filter((a) => a.nps_nota != null && a.nps_nota <= 4 && a.criado_em.slice(0, 10) >= limiteStr)
+      .map((a) => ({ auditoria: a, evento: eventoPorId.get(a.evento_id) ?? null }))
+      .sort((a, b) => b.auditoria.criado_em.localeCompare(a.auditoria.criado_em));
+  }, [auditorias, eventoPorId]);
   const proximosEventos = useMemo(() => eventos.filter((e) => e.data_evento > hoje && e.status !== 'cancelado').slice(0, 6), [eventos, hoje]);
 
   const faturamentoMes = useMemo(() => contratos.filter((c) => c.data_evento.slice(0, 7) === mesAtual && c.status !== 'cancelado').reduce((s, c) => s + c.valor_total, 0), [contratos, mesAtual]);
@@ -127,10 +162,7 @@ export default function Dashboard() {
     for (const p of presenca) mapa.set(p.evento_id, [...(mapa.get(p.evento_id) ?? []), p]);
     return mapa;
   }, [presenca]);
-  const romaneioPorEvento = useMemo(() => new Map(romaneios.map((r) => [r.evento_id, r])), [romaneios]);
-
   const totalConfirmadosHoje = presenca.filter((p) => p.status_escala === 'confirmado').length;
-  const romaneiosLiberadosHoje = romaneios.filter((r) => r.fase !== 'separado').length;
 
   // achado da revisão de design (2026-09-06/08): a Sala de Operações só
   // mostrava o monitor do dia — nada de tendência financeira, funil
@@ -140,7 +172,7 @@ export default function Dashboard() {
   // painéis (funil/equipe/financeiro), tabela compacta de próximas datas.
   const tendenciaFaturamento = useMemo(() => [...dreMeses].sort((a, b) => a.mes.localeCompare(b.mes)).slice(-6), [dreMeses]);
   const leadsPorFunil = useMemo(
-    () => funis.map((f) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: COR_FUNIL_CLASSE[f.cor] })),
+    () => funis.map((f, i) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: corFunilPorIndice(i) })),
     [funis, leads]
   );
   const contratosEmRisco = useMemo(
@@ -161,43 +193,132 @@ export default function Dashboard() {
   );
   const financeiroMesPendente = Math.max(0, faturamentoMes - financeiroMesRecebido);
 
+  // gráfico 1 (pedido do usuário, 2026-09-09) — "faturamento contratado"
+  // por mês, função compartilhada (ver calcularFaturamentoPorMes em
+  // api/contratos.ts) pra reaproveitar depois em Fechamento sem duplicar
+  // a lógica. Métrica diferente do DRE: conta valor_total de contrato
+  // (fechado), não só o que já foi pago.
+  const faturamentoPorMes = useMemo(() => calcularFaturamentoPorMes(contratos, 6), [contratos]);
+
+  // gráfico 3 — novos leads por dia, semana atual x semana passada, os
+  // dois recortes deslizantes de 7 dias (janela de hoje-6 até hoje) —
+  // isso mantém o dia da semana alinhado entre as duas séries sem
+  // depender de domingo-a-sábado do calendário.
+  const leadsPorDiaSemanas = useMemo(() => {
+    const NOME_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const hojeZero = new Date();
+    hojeZero.setHours(0, 0, 0, 0);
+    const categorias: string[] = [];
+    const estaSemana: number[] = [];
+    const semanaPassada: number[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dia = new Date(hojeZero);
+      dia.setDate(dia.getDate() - i);
+      const diaAnterior = new Date(dia);
+      diaAnterior.setDate(diaAnterior.getDate() - 7);
+      const strDia = dia.toISOString().slice(0, 10);
+      const strAnterior = diaAnterior.toISOString().slice(0, 10);
+      categorias.push(NOME_DIA[dia.getDay()]);
+      estaSemana.push(leads.filter((l) => l.criado_em.slice(0, 10) === strDia).length);
+      semanaPassada.push(leads.filter((l) => l.criado_em.slice(0, 10) === strAnterior).length);
+    }
+    return { categorias, estaSemana, semanaPassada };
+  }, [leads]);
+
+  // "Compras chegando" (pedido do usuário) — pendentes com previsão pra
+  // hoje ou pros próximos 7 dias, puxando de compras.data_chegada_prevista.
+  const comprasChegando = useMemo(() => {
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    const limite = new Date();
+    limite.setDate(limite.getDate() + 7);
+    const limiteStr = limite.toISOString().slice(0, 10);
+    const pendentesComPrevisao = compras.filter((c) => c.status === 'pendente' && c.data_chegada_prevista);
+    const hojeCount = pendentesComPrevisao.filter((c) => c.data_chegada_prevista === hojeStr).length;
+    const semanaCount = pendentesComPrevisao.filter((c) => (c.data_chegada_prevista as string) >= hojeStr && (c.data_chegada_prevista as string) <= limiteStr).length;
+    return { hojeCount, semanaCount };
+  }, [compras]);
+
   return (
     <>
-      <Cabecalho titulo="Sala de Operações" subtitulo="Visão geral do negócio + monitor ao vivo dos eventos de hoje, cobertura de equipe e status de frota." />
+      <Cabecalho titulo="Sala de Operações" subtitulo="Visão geral do negócio + monitor ao vivo dos eventos de hoje e cobertura de equipe." />
       <Conteudo>
         <section className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
-          <MetricCard Icone={Calendar} rotulo="Eventos hoje" valor={String(eventosHoje.length)} legenda={formatarData(hoje)} />
+          <MetricCard Icone={Calendar} rotulo="Eventos hoje" valor={String(eventosHoje.length)} legenda={formatarData(hoje)} categoria="agenda" />
           <MetricCard
             Icone={Banknote}
             rotulo="Faturamento do mês"
             valor={formatarMoeda(faturamentoMes)}
             legenda="Soma de contratos ativos no mês"
             tendencia={tendenciaFaturamentoMes ?? undefined}
+            categoria="dinheiro"
           />
-          <MetricCard Icone={Users} rotulo="Equipe confirmada hoje" valor={String(totalConfirmadosHoje)} legenda={`de ${presenca.length} escalados`} />
-          <MetricCard Icone={Truck} rotulo="Romaneios liberados hoje" valor={String(romaneiosLiberadosHoje)} legenda={`de ${romaneios.length} com romaneio aberto`} />
+          <MetricCard Icone={Users} rotulo="Equipe confirmada hoje" valor={String(totalConfirmadosHoje)} legenda={`de ${presenca.length} escalados`} categoria="pessoas" />
           <Link to="/contratos" className="block rounded-lg transition-opacity hover:opacity-80">
-            <MetricCard Icone={AlertTriangle} rotulo="Contratos em risco D-20" valor={String(contratosEmRisco)} legenda="Saldo pendente, evento em ≤20 dias" />
+            <MetricCard Icone={AlertTriangle} rotulo="Contratos em risco D-20" valor={String(contratosEmRisco)} legenda="Saldo pendente, evento em ≤20 dias" categoria="dinheiro" />
           </Link>
           <Link to="/estoque" className="block rounded-lg transition-opacity hover:opacity-80">
-            <MetricCard Icone={Package} rotulo="Estoque em nível crítico" valor={String(itensCriticos)} legenda="Itens abaixo do mínimo" />
+            <MetricCard Icone={Package} rotulo="Estoque em nível crítico" valor={String(itensCriticos)} legenda="Itens abaixo do mínimo" categoria="operacao" />
           </Link>
         </section>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
+
+        {clientesInsatisfeitos.length > 0 && (
+          <div className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2.5 text-[12.5px] text-danger">
+            <p className="mb-1.5 flex items-center gap-1.5 font-semibold">
+              <Star className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2} /> {clientesInsatisfeitos.length} cliente(s) insatisfeito(s) nos últimos 30 dias
+            </p>
+            <ul className="flex flex-col gap-1 pl-5 list-disc">
+              {clientesInsatisfeitos.map(({ auditoria, evento }) => (
+                <li key={auditoria.evento_id}>
+                  <Link to={`/auditoria?evento=${auditoria.evento_id}`} className="hover:underline">
+                    {evento?.contrato?.lead?.nome ?? 'Evento'} — nota {auditoria.nps_nota}
+                    {auditoria.nps_comentario && <span className="text-danger/80"> · "{auditoria.nps_comentario}"</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <Panel className="mb-4">
           <PanelHeader
             titulo="Tendência de faturamento"
             desc="Receita, custos e lucro líquido pagos — últimos 6 meses."
             acao={
-              <Link to="/fechamento" className={linkPainel}>
-                Ver fechamento completo <TrendingUp className="h-3.5 w-3.5" />
+              <Link to="/financeiro" className={linkPainelDinheiro}>
+                Ver DRE completo <TrendingUp className="h-3.5 w-3.5" />
               </Link>
             }
           />
           <GraficoDRE meses={tendenciaFaturamento} formatarMes={formatarMes} formatarValor={formatarMoeda} />
         </Panel>
+
+        {/* 2 gráficos novos (pedido do usuário, 2026-09-08/09), estilo
+            discreto seguindo a referência "Efferd" — linha/área simples,
+            sem o combo barras+linha do painel acima. */}
+        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Panel>
+            <PanelHeader titulo="Faturamento mensal" desc="Valor total dos contratos fechados por mês (independe de já ter sido pago ou não)." />
+            <GraficoLinha
+              categorias={faturamentoPorMes.map((m) => formatarMes(m.mes))}
+              series={[{ rotulo: 'Faturamento', corClasse: 'text-money', pontos: faturamentoPorMes.map((m) => m.valor) }]}
+              formatarValor={formatarMoeda}
+            />
+          </Panel>
+
+          <Panel>
+            <PanelHeader titulo="Novos leads por dia" desc="Esta semana x semana passada, mesmo dia da semana lado a lado." />
+            <GraficoLinha
+              categorias={leadsPorDiaSemanas.categorias}
+              series={[
+                { rotulo: 'Esta semana', corClasse: 'text-people', pontos: leadsPorDiaSemanas.estaSemana },
+                { rotulo: 'Semana passada', corClasse: 'text-text-faint', pontos: leadsPorDiaSemanas.semanaPassada },
+              ]}
+              formatarValor={(v) => `${v} lead${v === 1 ? '' : 's'}`}
+            />
+          </Panel>
+        </div>
 
         {/* faixa de 3 painéis — mesma ideia da referência de design (funil
             com donut+legenda / número em destaque / estatística com barra
@@ -207,7 +328,7 @@ export default function Dashboard() {
             <PanelHeader
               titulo="Leads por funil"
               acao={
-                <Link to="/crm" className={linkPainel}>
+                <Link to="/crm" className={linkPainelPessoas}>
                   Ver no CRM <Filter className="h-3.5 w-3.5" />
                 </Link>
               }
@@ -219,7 +340,7 @@ export default function Dashboard() {
             <PanelHeader
               titulo="Cobertura de equipe hoje"
               acao={
-                <Link to="/escala" className={linkPainel}>
+                <Link to="/escala" className={linkPainelPessoas}>
                   Ver escala <Users className="h-3.5 w-3.5" />
                 </Link>
               }
@@ -246,7 +367,7 @@ export default function Dashboard() {
             <PanelHeader
               titulo="Financeiro do mês"
               acao={
-                <Link to="/financeiro" className={linkPainel}>
+                <Link to="/financeiro" className={linkPainelDinheiro}>
                   Ver detalhes <Wallet className="h-3.5 w-3.5" />
                 </Link>
               }
@@ -290,7 +411,7 @@ export default function Dashboard() {
                   const contrato = ev.contrato ? contratoPorId.get(ev.contrato.id) : null;
                   const escalados = presencaPorEvento.get(ev.id) ?? [];
                   const confirmados = escalados.filter((p) => p.status_escala === 'confirmado').length;
-                  const romaneio = romaneioPorEvento.get(ev.id);
+                  const temHoraExtra = !!ev.contrato?.orcamento_id && orcamentosComHoraExtra.has(ev.contrato.orcamento_id);
                   return (
                     <article key={ev.id} className="rounded-lg border border-line bg-input p-4">
                       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
@@ -301,7 +422,7 @@ export default function Dashboard() {
                         <Badge tom={STATUS_EVENTO_INFO[ev.status].tom} texto={STATUS_EVENTO_INFO[ev.status].rotulo} />
                       </div>
 
-                      <div className="mb-3 grid grid-cols-2 gap-3 rounded-sm bg-panel px-3 py-2.5 sm:grid-cols-4">
+                      <div className="mb-3 grid grid-cols-3 gap-3 rounded-sm bg-panel px-3 py-2.5">
                         <div>
                           <span className="block text-[10px] font-bold uppercase tracking-wide text-text-faint">Início</span>
                           <span className="font-mono text-[12.5px] text-text">{ev.hora_inicio?.slice(0, 5) || '—'}</span>
@@ -314,26 +435,26 @@ export default function Dashboard() {
                           <span className="block text-[10px] font-bold uppercase tracking-wide text-text-faint">Convidados</span>
                           <span className="font-mono text-[12.5px] text-text">{ev.convidados ?? '—'}</span>
                         </div>
-                        <div>
-                          <span className="block text-[10px] font-bold uppercase tracking-wide text-text-faint">Veículo</span>
-                          <span className="text-[12.5px] text-text">{romaneio?.veiculo?.nome ?? '—'}</span>
-                        </div>
                       </div>
 
                       <div className="mb-3 flex flex-wrap items-center gap-2">
                         {contrato && <Badge tom={SALDO_INFO[contrato.saldo_status].tom} texto={SALDO_INFO[contrato.saldo_status].rotulo} />}
                         <Badge tom={confirmados === escalados.length && escalados.length > 0 ? 'sucesso' : 'pendente'} texto={`Equipe ${confirmados}/${escalados.length}`} />
-                        <Badge tom={romaneio ? (romaneio.fase === 'devolvido' ? 'sucesso' : 'pendente') : 'neutro'} texto={romaneio ? FASE_ROTULO[romaneio.fase] : 'Sem romaneio'} />
+                        {temHoraExtra && (
+                          <span className="flex items-center gap-1 rounded-full border border-pending/25 bg-pending/15 px-2.5 py-1 text-[11px] font-semibold text-pending">
+                            <Clock3 className="h-2.5 w-2.5" strokeWidth={2.5} /> Tem horas adicionais
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap gap-2">
                         <Link to={`/roteiro?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
-                          Ficha / Cues
+                          Roteiro
                         </Link>
                         <Link to={`/escala?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
                           Escala
                         </Link>
-                        <Link to={`/logistica?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
+                        <Link to="/logistica" className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
                           Logística
                         </Link>
                         <Link to={`/ponto?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
@@ -355,12 +476,39 @@ export default function Dashboard() {
                   Novo orçamento 20/80 <span>→</span>
                 </Link>
                 <Link to="/logistica" className="flex items-center justify-between rounded-sm border border-line px-3 py-2.5 text-[13px] text-text hover:bg-raised">
-                  Emitir romaneio de carga <span className="text-text-faint">→</span>
+                  Ver frota e frete <span className="text-text-faint">→</span>
                 </Link>
                 <Link to="/agenda" className="flex items-center justify-between rounded-sm border border-line px-3 py-2.5 text-[13px] text-text hover:bg-raised">
                   Ver agenda mensal <span className="text-text-faint">→</span>
                 </Link>
+                <Link to="/agenda?novo=bloqueio" className="flex items-center justify-between rounded-sm border border-line px-3 py-2.5 text-[13px] text-text hover:bg-raised">
+                  <span className="flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 text-text-faint" strokeWidth={2} /> Bloquear data
+                  </span>
+                  <span className="text-text-faint">→</span>
+                </Link>
               </div>
+            </Panel>
+
+            <Panel>
+              <PanelHeader
+                titulo="Compras chegando"
+                acao={
+                  <Link to="/logistica" className={linkPainelOperacao}>
+                    Ver logística <Truck className="h-3.5 w-3.5" />
+                  </Link>
+                }
+              />
+              {comprasChegando.hojeCount === 0 && comprasChegando.semanaCount === 0 ? (
+                <p className="text-sm text-text-dim">Nenhuma entrega prevista pros próximos 7 dias.</p>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-text">
+                  <PackageCheck className="h-4 w-4 flex-shrink-0 text-ops" strokeWidth={2} />
+                  {comprasChegando.hojeCount > 0
+                    ? `${comprasChegando.hojeCount} entrega(s) prevista(s) hoje`
+                    : `${comprasChegando.semanaCount} entrega(s) prevista(s) essa semana`}
+                </p>
+              )}
             </Panel>
 
             <Panel>

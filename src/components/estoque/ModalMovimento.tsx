@@ -24,7 +24,7 @@ export function ModalMovimento({ item, onFechar, onConfirmar }: { item: ItemEsto
 
         <label className="mb-3 block">
           <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Tipo</span>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimento)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent">
+          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimento)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops">
             {(Object.keys(TIPO_ROTULO) as TipoMovimento[]).map((t) => (
               <option key={t} value={t}>
                 {TIPO_ROTULO[t]}
@@ -35,12 +35,12 @@ export function ModalMovimento({ item, onFechar, onConfirmar }: { item: ItemEsto
 
         <label className="mb-3 block">
           <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Quantidade ({item.unidade})</span>
-          <input type="number" min={0.01} step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent" />
+          <input type="number" min={0.01} step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops" />
         </label>
 
         <label className="mb-4 block">
           <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Observação (opcional)</span>
-          <input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder={tipo === 'avaria' ? 'Ex: taça quebrada no evento de sábado' : ''} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent" />
+          <input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder={tipo === 'avaria' ? 'Ex: taça quebrada no evento de sábado' : ''} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops" />
         </label>
 
         <button

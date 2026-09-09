@@ -12,7 +12,7 @@ import { LeadForm } from '../components/crm/LeadForm';
 import { PipelineLeads } from '../components/crm/PipelineLeads';
 import { TabelaLeads } from '../components/crm/TabelaLeads';
 import { mensagemDeErro } from '../lib/erroAmigavel';
-import { COR_FUNIL_CLASSE } from '../lib/status';
+import { corFunilPorIndice } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import type { FunilLead, Lead, StatusLead } from '../lib/types';
 
@@ -172,7 +172,7 @@ export default function Crm() {
               type="button"
               onClick={() => setAba(item.id)}
               className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-colors ${
-                aba === item.id ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text'
+                aba === item.id ? 'border-people text-people' : 'border-transparent text-text-dim hover:text-text'
               }`}
             >
               <item.Icone className="h-4 w-4" strokeWidth={2} />
@@ -184,17 +184,17 @@ export default function Crm() {
         {aba === 'leads' && (
           <>
             <MetricGrid>
-              <MetricCard Icone={Users} rotulo="Total de leads" valor={String(leads.length)} legenda="Nesta busca/filtro" />
-              <MetricCard Icone={Filter} rotulo="Em negociação" valor={String(emNegociacao)} legenda="Nos funis do meio" />
-              <MetricCard Icone={CheckCircle2} rotulo="Ganhos" valor={String(ganhos)} legenda="Virou contrato" />
-              <MetricCard Icone={Users} rotulo="Perdidos" valor={String(perdidos)} legenda="Fora do funil" />
+              <MetricCard Icone={Users} rotulo="Total de leads" valor={String(leads.length)} legenda="Nesta busca/filtro" categoria="pessoas" />
+              <MetricCard Icone={Filter} rotulo="Em negociação" valor={String(emNegociacao)} legenda="Nos funis do meio" categoria="pessoas" />
+              <MetricCard Icone={CheckCircle2} rotulo="Ganhos" valor={String(ganhos)} legenda="Virou contrato" categoria="pessoas" />
+              <MetricCard Icone={Users} rotulo="Perdidos" valor={String(perdidos)} legenda="Fora do funil" categoria="pessoas" />
             </MetricGrid>
 
             {funis.length > 0 && leads.length > 0 && (
               <Panel className="mb-4">
                 <PanelHeader titulo="Leads por funil" desc="Quantos leads estão em cada coluna do Pipeline, nesta busca/filtro." />
                 <GraficoBarras
-                  dados={funis.map((f) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: COR_FUNIL_CLASSE[f.cor] }))}
+                  dados={funis.map((f, i) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: corFunilPorIndice(i) }))}
                   formatarValor={(v) => `${v} lead${v === 1 ? '' : 's'}`}
                 />
               </Panel>
@@ -204,7 +204,7 @@ export default function Crm() {
               <PanelHeader
                 titulo="Leads"
                 desc="Busque, filtre e acompanhe o status de cada lead."
-                acao={<Segmented valor={modo} onMudar={setModo} opcoes={[{ valor: 'pipeline', rotulo: 'Pipeline' }, { valor: 'tabela', rotulo: 'Tabela' }]} />}
+                acao={<Segmented valor={modo} onMudar={setModo} opcoes={[{ valor: 'pipeline', rotulo: 'Pipeline' }, { valor: 'tabela', rotulo: 'Tabela' }]} corAtiva="text-people" />}
               />
 
               <div className="mb-4 flex flex-wrap gap-3 rounded-md border border-line bg-raised p-3">
@@ -212,12 +212,12 @@ export default function Crm() {
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   placeholder="Nome, telefone ou e-mail"
-                  className="min-w-[180px] flex-1 rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                  className="min-w-[180px] flex-1 rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-people"
                 />
                 <select
                   value={filtroStatus}
                   onChange={(e) => setFiltroStatus(e.target.value)}
-                  className="rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                  className="rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-people"
                 >
                   <option value="">Todos os status</option>
                   {funis.map((f) => (

@@ -20,7 +20,7 @@ export function mensagemDeErro(e: unknown): string {
     return 'Sem conexão com o servidor — verifique sua internet e tente de novo.';
   }
   if (m.includes('violates foreign key constraint')) {
-    return 'Não é possível concluir: existe outro registro vinculado a este (ex.: movimentação, escala ou romaneio já usando este item).';
+    return 'Não é possível concluir: existe outro registro vinculado a este (ex.: movimentação ou escala já usando este item).';
   }
   if (m.includes('duplicate key value violates unique constraint')) {
     return 'Já existe um registro com esse valor — verifique se não é duplicado.';

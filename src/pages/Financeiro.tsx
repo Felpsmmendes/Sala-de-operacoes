@@ -1,15 +1,22 @@
-import { ArrowDownCircle, ArrowUpCircle, Scale, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, BarChart3, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { atualizarStatusLancamento, criarLancamento, excluirLancamento, listarLancamentos } from '../lib/api/financeiro';
+import { atualizarStatusLancamento, criarLancamento, excluirLancamento, listarDreMensal, listarLancamentos } from '../lib/api/financeiro';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
+import { GraficoDRE } from '../components/charts/GraficoDRE';
 import { LancamentoForm } from '../components/financeiro/LancamentoForm';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData, formatarMoeda } from '../lib/status';
-import type { Lancamento, NovoLancamento } from '../lib/types';
+import type { DreMes, Lancamento, NovoLancamento } from '../lib/types';
+
+function formatarMes(mes: string): string {
+  const [ano, m] = mes.slice(0, 7).split('-');
+  const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  return `${nomes[Number(m) - 1]}/${ano}`;
+}
 
 function aoFalhar(e: unknown) {
   window.alert(mensagemDeErro(e));
@@ -17,6 +24,7 @@ function aoFalhar(e: unknown) {
 
 export default function Financeiro() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
+  const [dreMeses, setDreMeses] = useState<DreMes[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -26,7 +34,9 @@ export default function Financeiro() {
     setCarregando(true);
     setErro(null);
     try {
-      setLancamentos(await listarLancamentos());
+      const [ls, dre] = await Promise.all([listarLancamentos(), listarDreMensal()]);
+      setLancamentos(ls);
+      setDreMeses(dre);
     } catch (e) {
       setErro(mensagemDeErro(e));
     } finally {
@@ -68,15 +78,22 @@ export default function Financeiro() {
 
   const visiveis = lancamentos.filter((l) => filtro === 'todos' || (filtro === 'pendentes' ? l.status === 'pendente' : l.status === 'pago'));
 
+  // DRE completo (pedido do usuário, 2026-09-09) — mudou de tela (era o
+  // Fechamento Mensal, que virou só histórico de vendas), lógica intacta:
+  // lê a view `dre_mensal`, nunca uma tabela própria — receita/custo/
+  // lucro sempre calculados a partir dos lançamentos já pagos.
+  const dreMesAtual = dreMeses.find((m) => m.mes.slice(0, 7) === mesAtual);
+  const margemAtual = dreMesAtual && dreMesAtual.receita_bruta > 0 ? (dreMesAtual.lucro_liquido / dreMesAtual.receita_bruta) * 100 : null;
+
   return (
     <>
       <Cabecalho titulo="Finanças" subtitulo="Despesas de campo, entradas de sinal e conciliação rápida." />
       <Conteudo>
         <MetricGrid>
-          <MetricCard Icone={ArrowUpCircle} rotulo="A receber" valor={formatarMoeda(aReceber)} legenda="Receitas pendentes" />
-          <MetricCard Icone={ArrowDownCircle} rotulo="A pagar" valor={formatarMoeda(aPagar)} legenda="Despesas pendentes" />
-          <MetricCard Icone={Wallet} rotulo="Receita paga no mês" valor={formatarMoeda(receitaMes)} legenda="Inclui sinal/saldo de contratos" />
-          <MetricCard Icone={Scale} rotulo="Saldo do mês" valor={formatarMoeda(receitaMes - despesaMes)} legenda="Receita paga − despesa paga" />
+          <MetricCard Icone={ArrowUpCircle} rotulo="A receber" valor={formatarMoeda(aReceber)} legenda="Receitas pendentes" categoria="dinheiro" />
+          <MetricCard Icone={ArrowDownCircle} rotulo="A pagar" valor={formatarMoeda(aPagar)} legenda="Despesas pendentes" categoria="dinheiro" />
+          <MetricCard Icone={Wallet} rotulo="Receita paga no mês" valor={formatarMoeda(receitaMes)} legenda="Inclui sinal/saldo de contratos" categoria="dinheiro" />
+          <MetricCard Icone={Scale} rotulo="Saldo do mês" valor={formatarMoeda(receitaMes - despesaMes)} legenda="Receita paga − despesa paga" categoria="dinheiro" />
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -106,7 +123,7 @@ export default function Financeiro() {
             acao={
               <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
                 {(['pendentes', 'pagos', 'todos'] as const).map((f) => (
-                  <button key={f} type="button" onClick={() => setFiltro(f)} className={`rounded-[5px] px-3 py-1.5 text-[12.5px] font-medium transition-colors ${filtro === f ? 'bg-raised text-accent' : 'text-text-dim hover:text-text'}`}>
+                  <button key={f} type="button" onClick={() => setFiltro(f)} className={`rounded-[5px] px-3 py-1.5 text-[12.5px] font-medium transition-colors ${filtro === f ? 'bg-raised text-money' : 'text-text-dim hover:text-text'}`}>
                     {f === 'pendentes' ? 'Pendentes' : f === 'pagos' ? 'Pagos' : 'Todos'}
                   </button>
                 ))}
@@ -146,6 +163,57 @@ export default function Financeiro() {
                 </div>
               ))}
             </div>
+          )}
+        </Panel>
+
+        {/* DRE completo — mudou do Fechamento Mensal pra cá (2026-09-09),
+            mesma lógica de sempre (view dre_mensal, só lançamentos pagos). */}
+        <Panel className="mt-4">
+          <PanelHeader titulo="DRE — receita, custo e lucro líquido" desc="Sempre calculado a partir dos lançamentos pagos, nunca digitado à parte." />
+          <MetricGrid>
+            <MetricCard Icone={TrendingUp} rotulo="Receita bruta do mês" valor={formatarMoeda(dreMesAtual?.receita_bruta ?? 0)} legenda="Lançamentos de receita pagos" categoria="dinheiro" />
+            <MetricCard Icone={PiggyBank} rotulo="Custos do mês" valor={formatarMoeda(dreMesAtual?.custos_totais ?? 0)} legenda="Lançamentos de despesa pagos" categoria="dinheiro" />
+            <MetricCard Icone={BarChart3} rotulo="Lucro líquido do mês" valor={formatarMoeda(dreMesAtual?.lucro_liquido ?? 0)} legenda="Receita − custos" categoria="dinheiro" />
+            <MetricCard Icone={BarChart3} rotulo="Margem do mês" valor={margemAtual != null ? `${margemAtual.toFixed(1)}%` : '—'} legenda="Lucro líquido / receita bruta" categoria="dinheiro" />
+          </MetricGrid>
+
+          {carregando ? (
+            <p className="text-sm text-text-dim">Carregando…</p>
+          ) : dreMeses.length === 0 ? (
+            <p className="text-sm text-text-dim">Nenhum lançamento pago ainda.</p>
+          ) : (
+            <>
+              <div className="mb-4">
+                <GraficoDRE meses={dreMeses} formatarMes={formatarMes} formatarValor={formatarMoeda} />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left text-[12.5px]">
+                  <thead>
+                    <tr className="border-b border-line text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                      <th className="pb-2 pr-3">Mês</th>
+                      <th className="pb-2 pr-3">Receita bruta</th>
+                      <th className="pb-2 pr-3">Custos</th>
+                      <th className="pb-2 pr-3">Lucro líquido</th>
+                      <th className="pb-2">Margem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dreMeses.map((m) => {
+                      const margem = m.receita_bruta > 0 ? (m.lucro_liquido / m.receita_bruta) * 100 : null;
+                      return (
+                        <tr key={m.mes} className="border-b border-line/50">
+                          <td className="py-2 pr-3 text-text">{formatarMes(m.mes)}</td>
+                          <td className="py-2 pr-3 font-mono text-success">{formatarMoeda(m.receita_bruta)}</td>
+                          <td className="py-2 pr-3 font-mono text-danger">{formatarMoeda(m.custos_totais)}</td>
+                          <td className="py-2 pr-3 font-mono text-text">{formatarMoeda(m.lucro_liquido)}</td>
+                          <td className="py-2 font-mono text-text-dim">{margem != null ? `${margem.toFixed(1)}%` : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Panel>
       </Conteudo>

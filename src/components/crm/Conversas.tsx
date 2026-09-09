@@ -17,7 +17,7 @@ function iniciais(nome: string): string {
 
 function Avatar({ nome, tamanho = 'sm' }: { nome: string; tamanho?: 'sm' | 'lg' }) {
   const classe = tamanho === 'lg' ? 'h-16 w-16 text-xl' : 'h-10 w-10 text-[13px]';
-  return <span className={`flex flex-shrink-0 items-center justify-center rounded-full bg-accent/20 font-semibold text-accent ${classe}`}>{iniciais(nome)}</span>;
+  return <span className={`flex flex-shrink-0 items-center justify-center rounded-full bg-people/20 font-semibold text-people ${classe}`}>{iniciais(nome)}</span>;
 }
 
 /**
@@ -131,7 +131,7 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
               ) : (
                 <div className="flex flex-col gap-2.5">
                   {[...interacoes].reverse().map((i) => (
-                    <div key={i.id} className="max-w-[80%] self-end rounded-lg rounded-tr-sm bg-accent px-3 py-2 text-accent-ink shadow-sm">
+                    <div key={i.id} className="max-w-[80%] self-end rounded-lg rounded-tr-sm bg-people px-3 py-2 text-accent-ink shadow-sm">
                       <p className="mb-1 text-[9.5px] font-bold uppercase tracking-wide opacity-70">{TIPO_INTERACAO_ROTULO[i.tipo]}</p>
                       <p className="whitespace-pre-wrap text-[13px] leading-snug">{i.conteudo}</p>
                       <p className="mt-1 text-right text-[10px] opacity-70">{formatarData(i.criado_em)}</p>
@@ -142,7 +142,7 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
             </div>
 
             <div className="flex items-end gap-2 border-t border-line bg-panel p-3">
-              <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoInteracao)} className="rounded-sm border border-line bg-input px-2 py-2.5 text-[12px] text-text outline-none focus:border-accent">
+              <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoInteracao)} className="rounded-sm border border-line bg-input px-2 py-2.5 text-[12px] text-text outline-none focus:border-people">
                 {(Object.keys(TIPO_INTERACAO_ROTULO) as TipoInteracao[])
                   .filter((t) => t !== 'mensagem_whatsapp')
                   .map((t) => (
@@ -161,7 +161,7 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
                   }
                 }}
                 placeholder="Registrar ligação, reunião, nota…"
-                className="flex-1 rounded-full border border-line bg-input px-4 py-2.5 text-sm text-text outline-none focus:border-accent"
+                className="flex-1 rounded-full border border-line bg-input px-4 py-2.5 text-sm text-text outline-none focus:border-people"
               />
               <button
                 type="button"

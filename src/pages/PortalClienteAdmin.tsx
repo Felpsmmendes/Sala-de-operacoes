@@ -10,7 +10,7 @@ import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData } from '../lib/status';
 import type { ContratoComLead, PortalCliente } from '../lib/types';
 
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent';
+const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral';
 const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 function aoFalhar(e: unknown) {
@@ -106,15 +106,16 @@ export default function PortalClienteAdmin() {
       <Cabecalho titulo="Portal do Cliente" subtitulo="Acompanhe a homologação de cardápio, moldura e assinatura de cada contrato." />
       <Conteudo>
         <MetricGrid>
-          <MetricCard Icone={FileSignature} rotulo="Contratos com portal" valor={String(totalComPortal)} legenda="Todo contrato ganha um automaticamente" />
-          <MetricCard Icone={CheckCircle2} rotulo="Assinado" valor={portal?.assinatura_em ? 'Sim' : 'Não'} legenda={contratoAtual ? contratoAtual.lead?.nome ?? '—' : '—'} />
+          <MetricCard Icone={FileSignature} rotulo="Contratos com portal" valor={String(totalComPortal)} legenda="Todo contrato ganha um automaticamente" categoria="neutro" />
+          <MetricCard Icone={CheckCircle2} rotulo="Assinado" valor={portal?.assinatura_em ? 'Sim' : 'Não'} legenda={contratoAtual ? contratoAtual.lead?.nome ?? '—' : '—'} categoria="pessoas" />
           <MetricCard
             Icone={AlertTriangle}
             rotulo="Trava D-15"
             valor={diasRestantes != null ? (travado ? 'Travado' : `D-${diasRestantes}`) : '—'}
             legenda={travado ? 'Cliente não edita mais' : 'Cliente ainda pode editar'}
+            categoria="pessoas"
           />
-          <MetricCard Icone={CheckCircle2} rotulo="Moldura + vídeo" valor={portal ? `${portal.moldura_aprovada ? '✓' : '—'} / ${portal.video_aprovado ? '✓' : '—'}` : '—'} legenda="Aprovados pelo cliente" />
+          <MetricCard Icone={CheckCircle2} rotulo="Moldura + vídeo" valor={portal ? `${portal.moldura_aprovada ? '✓' : '—'} / ${portal.video_aprovado ? '✓' : '—'}` : '—'} legenda="Aprovados pelo cliente" categoria="pessoas" />
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -133,7 +134,7 @@ export default function PortalClienteAdmin() {
                     key={c.id}
                     type="button"
                     onClick={() => setContratoId(c.id)}
-                    className={`rounded-sm border px-2.5 py-2 text-left text-[12.5px] transition-colors ${c.id === contratoId ? 'border-accent bg-raised text-text' : 'border-line bg-input text-text-dim hover:bg-raised'}`}
+                    className={`rounded-sm border px-2.5 py-2 text-left text-[12.5px] transition-colors ${c.id === contratoId ? 'border-neutral bg-raised text-text' : 'border-line bg-input text-text-dim hover:bg-raised'}`}
                   >
                     <span className="block truncate">
                       {formatarData(c.data_evento)} — {c.lead?.nome ?? '—'}

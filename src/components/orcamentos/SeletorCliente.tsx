@@ -91,7 +91,7 @@ export function SeletorCliente({ leads, leadId, onSelecionar, onCriado }: { lead
       <button
         type="button"
         onClick={abrir}
-        className="flex w-full items-center justify-between gap-2 rounded-sm border border-line bg-input px-3 py-2.5 text-left text-sm text-text outline-none hover:border-line-strong focus:border-accent"
+        className="flex w-full items-center justify-between gap-2 rounded-sm border border-line bg-input px-3 py-2.5 text-left text-sm text-text outline-none hover:border-line-strong focus:border-money"
       >
         {selecionado ? (
           <span className="min-w-0 truncate">
@@ -119,7 +119,7 @@ export function SeletorCliente({ leads, leadId, onSelecionar, onCriado }: { lead
             if (e.key === 'Enter' && resultados.length === 1) selecionar(resultados[0].id);
           }}
           placeholder="Nome ou telefone…"
-          className="w-full rounded-sm border border-accent bg-input py-2.5 pl-9 pr-3 text-sm text-text outline-none"
+          className="w-full rounded-sm border border-money bg-input py-2.5 pl-9 pr-3 text-sm text-text outline-none"
         />
       </div>
 
@@ -158,13 +158,13 @@ export function SeletorCliente({ leads, leadId, onSelecionar, onCriado }: { lead
                 value={novoNome}
                 onChange={(e) => setNovoNome(e.target.value)}
                 placeholder="Nome"
-                className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-accent"
+                className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-money"
               />
               <input
                 value={novoTelefone}
                 onChange={(e) => setNovoTelefone(e.target.value)}
                 placeholder="Telefone (opcional)"
-                className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-accent"
+                className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-money"
               />
               {erroCriar && <p className="text-[11.5px] text-danger">{erroCriar}</p>}
               <div className="flex gap-2">

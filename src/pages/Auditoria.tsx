@@ -2,6 +2,7 @@ import { AlertTriangle, ClipboardCheck, PackageCheck, Star } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { buscarAuditoriaDoEvento, listarAuditorias, salvarAuditoria } from '../lib/api/auditoria';
+import { buscarChecklistPadrao, listarChecklistExtra } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
@@ -11,7 +12,7 @@ import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData, formatarMoeda } from '../lib/status';
 import type { AuditoriaPosEvento, DadosAuditoria, EventoComLead } from '../lib/types';
 
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent';
+const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral';
 const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 function aoFalhar(e: unknown) {
@@ -30,6 +31,8 @@ export default function Auditoria() {
 
   const [sobrasReintegradas, setSobrasReintegradas] = useState(false);
   const [avariasDescricao, setAvariasDescricao] = useState('');
+  const [avariaOutro, setAvariaOutro] = useState(false);
+  const [itensChecklistEvento, setItensChecklistEvento] = useState<string[]>([]);
   const [avariasValor, setAvariasValor] = useState('');
   const [fotoDocaUrl, setFotoDocaUrl] = useState('');
   const [npsNota, setNpsNota] = useState('');
@@ -68,6 +71,7 @@ export default function Auditoria() {
         setAtual(a);
         setSobrasReintegradas(a?.sobras_reintegradas ?? false);
         setAvariasDescricao(a?.avarias_descricao ?? '');
+        setAvariaOutro(false);
         setAvariasValor(a?.avarias_valor != null ? String(a.avarias_valor) : '');
         setFotoDocaUrl(a?.foto_doca_url ?? '');
         setNpsNota(a?.nps_nota != null ? String(a.nps_nota) : '');
@@ -75,6 +79,28 @@ export default function Auditoria() {
       })
       .catch(aoFalhar);
   }, [eventoId]);
+
+  // checklist do evento (pedido do usuário, 2026-09-09) — mesma lógica de
+  // Estoque ("Etapa 6"/"Etapa 7"): pacote padrão do orçamento + itens
+  // extras vindos de observações/brindes do contrato. Alimenta o seletor
+  // de avaria abaixo, no lugar de digitar o nome do item na mão.
+  useEffect(() => {
+    const evento = eventos.find((e) => e.id === eventoId);
+    if (!evento) {
+      setItensChecklistEvento([]);
+      return;
+    }
+    let cancelado = false;
+    Promise.all([buscarChecklistPadrao(evento.contrato?.orcamento_id ?? null, evento.convidados), listarChecklistExtra(evento.contrato_id)])
+      .then(([padrao, extra]) => {
+        if (cancelado) return;
+        setItensChecklistEvento([...new Set([...padrao.map((i) => i.descricao), ...extra.map((i) => i.descricao)])]);
+      })
+      .catch(() => !cancelado && setItensChecklistEvento([]));
+    return () => {
+      cancelado = true;
+    };
+  }, [eventoId, eventos]);
 
   async function aoSalvar() {
     if (!eventoId) return;
@@ -112,10 +138,10 @@ export default function Auditoria() {
       <Cabecalho titulo="Após o Evento" subtitulo="Reintegração de sobras, avarias, doca limpa e satisfação do cliente." />
       <Conteudo>
         <MetricGrid>
-          <MetricCard Icone={ClipboardCheck} rotulo="Eventos auditados" valor={String(auditorias.length)} legenda={`de ${eventos.length} eventos`} />
-          <MetricCard Icone={AlertTriangle} rotulo="Auditoria pendente" valor={String(pendentes)} legenda="Eventos sem registro ainda" />
-          <MetricCard Icone={Star} rotulo="NPS médio" valor={mediaNps} legenda="Escala de 0 a 10" />
-          <MetricCard Icone={PackageCheck} rotulo="Avarias acumuladas" valor={formatarMoeda(totalAvarias)} legenda="Soma de todos os eventos" />
+          <MetricCard Icone={ClipboardCheck} rotulo="Eventos auditados" valor={String(auditorias.length)} legenda={`de ${eventos.length} eventos`} categoria="neutro" />
+          <MetricCard Icone={AlertTriangle} rotulo="Auditoria pendente" valor={String(pendentes)} legenda="Eventos sem registro ainda" categoria="neutro" />
+          <MetricCard Icone={Star} rotulo="NPS médio" valor={mediaNps} legenda="Escala de 0 a 10" categoria="pessoas" />
+          <MetricCard Icone={PackageCheck} rotulo="Avarias acumuladas" valor={formatarMoeda(totalAvarias)} legenda="Soma de todos os eventos" categoria="operacao" />
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -129,21 +155,28 @@ export default function Auditoria() {
               <p className="text-sm text-text-dim">Nenhum evento ainda.</p>
             ) : (
               <div className="flex max-h-[560px] flex-col gap-1.5 overflow-y-auto">
-                {eventos.map((ev) => (
-                  <button
-                    key={ev.id}
-                    type="button"
-                    onClick={() => setEventoId(ev.id)}
-                    className={`flex items-center justify-between gap-2 rounded-sm border px-2.5 py-2 text-left text-[12.5px] transition-colors ${
-                      ev.id === eventoId ? 'border-accent bg-raised text-text' : 'border-line bg-input text-text-dim hover:bg-raised'
-                    }`}
-                  >
-                    <span className="min-w-0 truncate">
-                      {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? '—'}
-                    </span>
-                    {auditoriaPorEvento.has(ev.id) ? <Badge tom="sucesso" texto="Auditado" /> : <Badge tom="pendente" texto="Pendente" />}
-                  </button>
-                ))}
+                {eventos.map((ev) => {
+                  const auditoriaEvento = auditoriaPorEvento.get(ev.id);
+                  const insatisfeito = auditoriaEvento?.nps_nota != null && auditoriaEvento.nps_nota <= 4;
+                  return (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => setEventoId(ev.id)}
+                      className={`flex items-center justify-between gap-2 rounded-sm border px-2.5 py-2 text-left text-[12.5px] transition-colors ${
+                        ev.id === eventoId ? 'border-neutral bg-raised text-text' : 'border-line bg-input text-text-dim hover:bg-raised'
+                      }`}
+                    >
+                      <span className="min-w-0 truncate">
+                        {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? '—'}
+                      </span>
+                      <span className="flex flex-shrink-0 items-center gap-1">
+                        {insatisfeito && <Badge tom="perigo" texto="Insatisfeito" />}
+                        {auditoriaEvento ? <Badge tom="sucesso" texto="Auditado" /> : <Badge tom="pendente" texto="Pendente" />}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </Panel>
@@ -155,7 +188,7 @@ export default function Auditoria() {
             ) : (
               <div className="flex flex-col gap-4">
                 <label className="flex items-center gap-2 text-sm text-text">
-                  <input type="checkbox" checked={sobrasReintegradas} onChange={(e) => setSobrasReintegradas(e.target.checked)} className="h-4 w-4 accent-accent" />
+                  <input type="checkbox" checked={sobrasReintegradas} onChange={(e) => setSobrasReintegradas(e.target.checked)} className="h-4 w-4 accent-neutral" />
                   Sobras reintegradas ao estoque (registre a movimentação em Estoque &amp; Compras)
                 </label>
 
@@ -170,9 +203,48 @@ export default function Auditoria() {
                   </label>
                 </div>
 
+                {npsNota !== '' && Number(npsNota) <= 4 && (
+                  <p className="flex items-center gap-2 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-[13px] font-semibold text-danger">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" strokeWidth={2} /> Atenção: cliente insatisfeito (nota {npsNota})
+                  </p>
+                )}
+
                 <label>
-                  <span className={rotulo}>Descrição das avarias (opcional)</span>
-                  <input className={campo} value={avariasDescricao} onChange={(e) => setAvariasDescricao(e.target.value)} placeholder="Ex: 2 taças quebradas, 1 balde amassado" />
+                  <span className={rotulo}>Item avariado (opcional)</span>
+                  {itensChecklistEvento.length === 0 ? (
+                    <input className={campo} value={avariasDescricao} onChange={(e) => setAvariasDescricao(e.target.value)} placeholder="Ex: 2 taças quebradas, 1 balde amassado" />
+                  ) : (
+                    <>
+                      <select
+                        className={campo}
+                        value={avariaOutro ? '__outro__' : itensChecklistEvento.includes(avariasDescricao) ? avariasDescricao : ''}
+                        onChange={(e) => {
+                          if (e.target.value === '__outro__') {
+                            setAvariaOutro(true);
+                          } else {
+                            setAvariaOutro(false);
+                            setAvariasDescricao(e.target.value);
+                          }
+                        }}
+                      >
+                        <option value="">Selecione um item do checklist deste evento…</option>
+                        {itensChecklistEvento.map((nome) => (
+                          <option key={nome} value={nome}>
+                            {nome}
+                          </option>
+                        ))}
+                        <option value="__outro__">Outro (não está no checklist)</option>
+                      </select>
+                      {(avariaOutro || (avariasDescricao !== '' && !itensChecklistEvento.includes(avariasDescricao))) && (
+                        <input
+                          className={`${campo} mt-2`}
+                          value={avariasDescricao}
+                          onChange={(e) => setAvariasDescricao(e.target.value)}
+                          placeholder="Descreva o que quebrou/estragou"
+                        />
+                      )}
+                    </>
+                  )}
                 </label>
 
                 <label>

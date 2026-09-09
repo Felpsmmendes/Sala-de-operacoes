@@ -75,6 +75,17 @@ export type Orcamento = {
   valor_saldo: number;
   status: StatusOrcamento;
   criado_em: string;
+  /** Frete cobrado do cliente (2026-09-09, ver migration_019) — região e
+      veículo só ficam salvos pra reabrir a edição mostrando a escolha
+      certa; o custo/valor cobrado NÃO recalcula sozinho se o preço da
+      região mudar depois (mesmo raciocínio de `valor_unitario` nos itens).
+      `valor_frete_cobrado` (com margem) já está somado em `valor_total`.
+      `valor_frete_custo` (sem margem) vira despesa em Finanças só quando
+      este orçamento virar contrato — ver criarContrato em api/contratos.ts. */
+  regiao_frete_id: string | null;
+  veiculo_id: string | null;
+  valor_frete_cobrado: number;
+  valor_frete_custo: number;
 };
 
 export type OrcamentoItem = {
@@ -84,6 +95,17 @@ export type OrcamentoItem = {
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
+  /** Hora adicional (ver migration_014): quantas horas além da duração
+      padrão do serviço (5h bar / 4h atração) e quanto vale cada uma —
+      já somadas em `valor_unitario` no momento em que o orçamento foi
+      montado. `valor_hora_adicional` fica 0 pra serviços sem esse
+      conceito (ex.: categoria "adicional"). */
+  horas_adicionais: number;
+  valor_hora_adicional: number;
+  /** Horário de início desta atração no dia do evento (2026-09-09, ver
+      migration_021) — só faz sentido pra itens de categoria 'atracao';
+      preenchido na tela de Contratos, não no Gerador de Orçamentos. */
+  horario_inicio_atracao: string | null;
 };
 
 export type OrcamentoComLead = Orcamento & { lead: Pick<Lead, 'id' | 'nome' | 'telefone'> | null };
@@ -91,6 +113,7 @@ export type OrcamentoCompleto = OrcamentoComLead & { itens: (OrcamentoItem & { s
 
 export type StatusSaldo = 'pendente' | 'parcial' | 'quitado';
 export type StatusContrato = 'ativo' | 'cancelado' | 'concluido';
+export type FormaPagamento = 'pix' | 'boleto' | 'cartao';
 
 export type Contrato = {
   id: string;
@@ -110,6 +133,28 @@ export type Contrato = {
   status: StatusContrato;
   criado_em: string;
   atualizado_em: string;
+  /** Registro manual de qual forma foi usada (2026-09-09, ver
+      migration_020) — não gera boleto/link de pagamento real, isso fica
+      pra uma integração futura com o Asaas. */
+  forma_pagamento: FormaPagamento | null;
+  /** Texto livre — cada quebra de linha deve virar um item extra no
+      checklist de carga do evento. Conexão com o checklist AINDA NÃO
+      EXISTE (depende de uma etapa de Estoque que o usuário chamou de
+      "Etapa 7", que não existe no código nem no ROADMAP.md hoje) — só
+      o campo está pronto por enquanto. */
+  observacoes_brindes: string | null;
+  /** Horários do evento (2026-09-09, ver migration_021) — pensados pro
+      Roteiro do Evento ("Etapa 8", ainda não construída) consumir
+      depois. Os 4 primeiros valem pra qualquer contrato; `horario_inicio_bar`
+      só faz sentido quando o contrato tem algum item de categoria 'bar'
+      no orçamento de origem (contrato criado do zero, sem orçamento,
+      nunca mostra esse campo). Horário de cada atração fica em
+      `OrcamentoItem.horario_inicio_atracao` (um por item, não aqui). */
+  horario_chegada_convidados: string | null;
+  horario_chegada_equipe: string | null;
+  horario_fim_servico: string | null;
+  horario_saida_equipe: string | null;
+  horario_inicio_bar: string | null;
 };
 
 export type ContratoComLead = Contrato & { lead: Pick<Lead, 'id' | 'nome' | 'telefone'> | null };
@@ -176,33 +221,28 @@ export type Veiculo = {
 
 export type NovoVeiculo = Omit<Veiculo, 'id'>;
 
-export type FaseRomaneio = 'separado' | 'embarcado' | 'descarregado' | 'devolvido';
-
-export type Romaneio = {
+/** Região de frete (2026-09-09) — cadastro livre do gestor pra alimentar
+    a calculadora de frete sem digitar o km na mão toda vez (ver
+    supabase/migration_017_regioes_frete.sql). `km_aproximado` é a
+    distância de IDA — a calculadora dobra pra ida+volta. */
+export type RegiaoFrete = {
   id: string;
-  evento_id: string;
-  veiculo_id: string;
-  fase: FaseRomaneio;
-  km_ida_volta: number | null;
-  pedagios: number;
-  combustivel_valor: number | null;
-  qtd_barmen_carro: number;
-  pedagios_barmen: number;
-  valor_lalamove: number;
-  motivo_lalamove: string | null;
-  margem_pct: number;
-  valor_frete: number;
-  atualizado_em: string;
+  nome: string;
+  km_aproximado: number;
+  criado_em: string;
 };
 
-export type RomaneioComVeiculo = Romaneio & { veiculo: Veiculo | null };
+export type NovaRegiaoFrete = Omit<RegiaoFrete, 'id' | 'criado_em'>;
 
-export type RomaneioItem = {
+/** Item extra no checklist de carga, vindo de uma linha de
+    `Contrato.observacoes_brindes` (2026-09-09, ver migration_022) —
+    quantidade começa em 1 e é editável na tela de Estoque. */
+export type ChecklistExtraItem = {
   id: string;
-  romaneio_id: string;
+  contrato_id: string;
   descricao: string;
   quantidade: number;
-  fase_conferida: FaseRomaneio;
+  criado_em: string;
 };
 
 export type ChecklistPadraoItem = {
@@ -217,6 +257,8 @@ export type ChecklistPadraoItem = {
 
 /* -------------------- Núcleo 3: Execução em Tempo Real -------------------- */
 
+export type OrigemCue = 'manual' | 'automatico';
+
 export type CueSheetItem = {
   id: string;
   evento_id: string;
@@ -226,6 +268,10 @@ export type CueSheetItem = {
   descricao: string | null;
   concluido: boolean;
   concluido_em: string | null;
+  /** 'automatico' = gerado a partir dos horários do contrato (2026-09-09,
+      "Etapa 8", ver migration_023) — nunca apagado sozinho, só criado/
+      atualizado. 'manual' = criado pelo gestor pela tela, como sempre. */
+  origem: OrigemCue;
 };
 
 /** Linha da view `vw_escala_presenca` — usada tanto pela tela pública de
@@ -371,3 +417,21 @@ export type TarefaAgenda = {
 export type TarefaComLead = TarefaAgenda & { lead: Pick<Lead, 'id' | 'nome'> | null };
 
 export type NovaTarefaAgenda = { titulo: string; data: string; horario: string | null; observacoes: string | null; leadId: string | null };
+
+/* -------------------- Bloqueio de data (2026-09-09) --------------------
+   Diferente de tarefa (lembrete livre): marca que uma data — ou
+   intervalo — está reservada por outro motivo, sem estar ligado a lead
+   nenhum. Ver migration_024_bloqueios_agenda.sql. */
+
+export type CategoriaBloqueio = 'degustacao' | 'reuniao_interna' | 'reserva_evento' | 'outro';
+
+export type BloqueioAgenda = {
+  id: string;
+  categoria: CategoriaBloqueio;
+  observacao: string | null;
+  data_inicio: string;
+  data_fim: string;
+  criado_em: string;
+};
+
+export type NovoBloqueioAgenda = { categoria: CategoriaBloqueio; observacao: string | null; dataInicio: string; dataFim: string };

@@ -5,12 +5,14 @@ export type BarraDado = { rotulo: string; valor: number; corClasse?: string };
 /** Barra vertical única com "crescimento" animado ao montar — sem
     biblioteca de gráfico, SVG puro (mesma filosofia de interação feita à
     mão do resto do projeto). `corClasse` é uma classe Tailwind de texto
-    (ex. "text-accent") — o SVG usa `fill="currentColor"` pra herdar. */
+    (ex. "text-money") — o SVG usa `fill="currentColor"` pra herdar.
+    `corPadrao` neutro (2026-09-09, auditoria do usuário) — sem uma
+    categoria explícita por barra, cai em cinza em vez de âmbar fixo. */
 export function GraficoBarras({
   dados,
   altura = 160,
   formatarValor = (v: number) => String(v),
-  corPadrao = 'text-accent',
+  corPadrao = 'text-neutral',
 }: {
   dados: BarraDado[];
   altura?: number;
