@@ -9,6 +9,8 @@ import { Cabecalho, Conteudo } from '../components/Layout';
 import { Panel, PanelHeader } from '../components/Panel';
 import { ServicoCard } from '../components/orcamentos/ServicoCard';
 import { SeletorCliente } from '../components/orcamentos/SeletorCliente';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { montarMensagemOrcamento, type ItemSelecionado } from '../lib/mensagemOrcamento';
 import { calcularFrete } from '../lib/freteConfig';
 import { gerarPdfProposta } from '../lib/pdfProposta';
@@ -262,44 +264,31 @@ export default function Orcamentos() {
                       }}
                     />
                   </label>
-                  <label>
-                    <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Data prevista</span>
-                    <input type="date" value={dataEvento} onChange={(e) => setDataEvento(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-money" />
-                  </label>
-                  <label className="sm:col-span-2">
-                    <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Convidados</span>
-                    <input type="number" min={1} value={convidados} onChange={(e) => setConvidados(e.target.value)} placeholder="Ex: 120" className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-money" />
-                  </label>
+                  <Input rotulo="Data prevista" categoria="dinheiro" type="date" value={dataEvento} onChange={(e) => setDataEvento(e.target.value)} />
+                  <div className="sm:col-span-2">
+                    <Input rotulo="Convidados" categoria="dinheiro" type="number" min={1} value={convidados} onChange={(e) => setConvidados(e.target.value)} placeholder="Ex: 120" />
+                  </div>
 
                   {/* frete cobrado do cliente (2026-09-09) — opcional: sem região
                       escolhida, o orçamento não cobra frete separado nenhum. */}
-                  <label>
-                    <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Região (frete)</span>
-                    <select value={regiaoFreteId} onChange={(e) => setRegiaoFreteId(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-money">
-                      <option value="">Sem frete cobrado</option>
-                      {regioes.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.nome} ({r.km_aproximado}km ida)
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="sm:col-span-2">
-                    <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Veículo (frete)</span>
-                    <select
-                      value={veiculoFreteId}
-                      onChange={(e) => setVeiculoFreteId(e.target.value)}
-                      disabled={!regiaoFreteId}
-                      className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-money disabled:opacity-50"
-                    >
+                  <Select rotulo="Região (frete)" categoria="dinheiro" value={regiaoFreteId} onChange={(e) => setRegiaoFreteId(e.target.value)}>
+                    <option value="">Sem frete cobrado</option>
+                    {regioes.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.nome} ({r.km_aproximado}km ida)
+                      </option>
+                    ))}
+                  </Select>
+                  <div className="sm:col-span-2">
+                    <Select rotulo="Veículo (frete)" categoria="dinheiro" value={veiculoFreteId} onChange={(e) => setVeiculoFreteId(e.target.value)} disabled={!regiaoFreteId}>
                       <option value="">Selecione o veículo…</option>
                       {veiculos.map((v) => (
                         <option key={v.id} value={v.id}>
                           {v.nome}
                         </option>
                       ))}
-                    </select>
-                  </label>
+                    </Select>
+                  </div>
                   {resultadoFrete && (
                     <p className="sm:col-span-3 text-[11.5px] text-text-dim">
                       Frete estimado: <span className="font-mono text-text">{formatarMoeda(resultadoFrete.valorFrete)}</span> cobrado do cliente (custo real da empresa:{' '}

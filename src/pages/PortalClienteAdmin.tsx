@@ -6,12 +6,11 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Input } from '../components/ui/Input';
+import { RotuloCampo } from '../components/ui/RotuloCampo';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData } from '../lib/status';
 import type { ContratoComLead, PortalCliente } from '../lib/types';
-
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral';
-const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 function aoFalhar(e: unknown) {
   window.alert(mensagemDeErro(e));
@@ -166,10 +165,7 @@ export default function PortalClienteAdmin() {
               <div className="flex flex-col gap-5">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label>
-                      <span className={rotulo}>Link da moldura proposta (foto/design)</span>
-                      <input className={campo} value={molduraUrl} onChange={(e) => setMolduraUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp" />
-                    </label>
+                    <Input rotulo="Link da moldura proposta (foto/design)" value={molduraUrl} onChange={(e) => setMolduraUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp" />
                     <div className="mt-2 flex items-center justify-between">
                       <Badge tom={portal.moldura_aprovada ? 'sucesso' : 'pendente'} texto={portal.moldura_aprovada ? 'Aprovada pelo cliente' : 'Aguardando aprovação'} />
                       <button type="button" onClick={aoSalvarMoldura} disabled={salvando} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text disabled:opacity-50">
@@ -179,10 +175,7 @@ export default function PortalClienteAdmin() {
                   </div>
 
                   <div>
-                    <label>
-                      <span className={rotulo}>Link do vídeo proposto</span>
-                      <input className={campo} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp" />
-                    </label>
+                    <Input rotulo="Link do vídeo proposto" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp" />
                     <div className="mt-2 flex items-center justify-between">
                       <Badge tom={portal.video_aprovado ? 'sucesso' : 'pendente'} texto={portal.video_aprovado ? 'Aprovado pelo cliente' : 'Aguardando aprovação'} />
                       <button type="button" onClick={aoSalvarVideo} disabled={salvando} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text disabled:opacity-50">
@@ -193,7 +186,7 @@ export default function PortalClienteAdmin() {
                 </div>
 
                 <div className="rounded-sm border border-line bg-input p-3 text-sm">
-                  <span className={rotulo}>Assinatura de homologação</span>
+                  <RotuloCampo>Assinatura de homologação</RotuloCampo>
                   {portal.assinatura_em ? (
                     <div className="text-text-dim">
                       <p>

@@ -11,6 +11,8 @@ import { DetalheLead } from '../components/crm/DetalheLead';
 import { LeadForm } from '../components/crm/LeadForm';
 import { PipelineLeads } from '../components/crm/PipelineLeads';
 import { TabelaLeads } from '../components/crm/TabelaLeads';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { corFunilPorIndice } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
@@ -209,24 +211,19 @@ export default function Crm() {
               />
 
               <div className="mb-4 flex flex-wrap gap-3 rounded-md border border-line bg-raised p-3">
-                <input
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Nome, telefone ou e-mail"
-                  className="min-w-[180px] flex-1 rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-people"
-                />
-                <select
-                  value={filtroStatus}
-                  onChange={(e) => setFiltroStatus(e.target.value)}
-                  className="rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-people"
-                >
-                  <option value="">Todos os status</option>
-                  {funis.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.nome}
-                    </option>
-                  ))}
-                </select>
+                <div className="min-w-[180px] flex-1">
+                  <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome, telefone ou e-mail" categoria="pessoas" />
+                </div>
+                <div className="w-full sm:w-48">
+                  <Select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} categoria="pessoas">
+                    <option value="">Todos os status</option>
+                    {funis.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </div>
 
               {carregando && <p className="text-sm text-text-dim">Carregando leads…</p>}

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import type { EscalaComMembro } from '../../lib/types';
 import { calcularHoraExtra } from '../../lib/api/escalas';
 import { formatarMoeda } from '../../lib/status';
+import { Input } from '../ui/Input';
 
 export function ModalHoraExtra({ escala, horaFimPrevista, onFechar }: { escala: EscalaComMembro; horaFimPrevista: string | null; onFechar: () => void }) {
   const [horaFimReal, setHoraFimReal] = useState('');
@@ -25,20 +26,17 @@ export function ModalHoraExtra({ escala, horaFimPrevista, onFechar }: { escala: 
 
         {!horaFimPrevista && <p className="mb-3 text-[12.5px] text-danger">Este evento não tem hora de encerramento prevista cadastrada — informe na Agenda antes de calcular.</p>}
 
-        <label className="mb-3 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Previsto pra encerrar</span>
-          <input disabled value={horaFimPrevista ?? '—'} className="w-full rounded-sm border border-line bg-raised px-3 py-2.5 text-sm text-text-dim outline-none" />
-        </label>
+        <div className="mb-3">
+          <Input rotulo="Previsto pra encerrar" disabled value={horaFimPrevista ?? '—'} />
+        </div>
 
-        <label className="mb-3 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Encerrou de fato às</span>
-          <input type="time" value={horaFimReal} onChange={(e) => setHoraFimReal(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-people" />
-        </label>
+        <div className="mb-3">
+          <Input rotulo="Encerrou de fato às" categoria="pessoas" type="time" value={horaFimReal} onChange={(e) => setHoraFimReal(e.target.value)} />
+        </div>
 
-        <label className="mb-4 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Valor da hora (R$)</span>
-          <input type="number" min={0} step="0.01" value={valorHora} onChange={(e) => setValorHora(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-people" />
-        </label>
+        <div className="mb-4">
+          <Input rotulo="Valor da hora (R$)" categoria="pessoas" type="number" min={0} step="0.01" value={valorHora} onChange={(e) => setValorHora(e.target.value)} />
+        </div>
 
         {resultado && (
           <div className="rounded-sm border border-line bg-input p-3 text-sm">

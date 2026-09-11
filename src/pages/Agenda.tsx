@@ -12,6 +12,7 @@ import { Panel, PanelHeader } from '../components/Panel';
 import { CalendarioMensal } from '../components/agenda/CalendarioMensal';
 import { ModalBloqueioNovo } from '../components/agenda/ModalBloqueioNovo';
 import { ModalTarefaNova } from '../components/agenda/ModalTarefaNova';
+import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { CATEGORIA_BLOQUEIO_ROTULO, STATUS_EVENTO_INFO, STATUS_EVENTO_ORDEM, formatarData } from '../lib/status';
 import type { BloqueioAgenda, EventoComLead, Lead, NovaTarefaAgenda, NovoBloqueioAgenda, StatusEvento, TarefaComLead } from '../lib/types';
@@ -217,17 +218,13 @@ export default function Agenda() {
                           {formatarData(ev.data_evento)} · {ev.local || 'local não informado'}
                           {ev.convidados ? ` · ${ev.convidados} convidados` : ''}
                         </p>
-                        <select
-                          value={ev.status}
-                          onChange={(e) => aoMudarStatus(ev.id, e.target.value as StatusEvento)}
-                          className="w-full rounded-sm border border-line bg-panel px-2 py-1.5 text-[12.5px] text-text outline-none focus:border-schedule"
-                        >
+                        <Select categoria="agenda" value={ev.status} onChange={(e) => aoMudarStatus(ev.id, e.target.value as StatusEvento)}>
                           {STATUS_EVENTO_ORDEM.map((s) => (
                             <option key={s} value={s}>
                               {STATUS_EVENTO_INFO[s].rotulo}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     ))}
                   </div>

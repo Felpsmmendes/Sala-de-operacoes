@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FunilLead, Lead, NovoLead } from '../../lib/types';
 import { Badge } from '../Badge';
 import { funilDoLead, formatarMoeda, formatarData } from '../../lib/status';
+import { Select } from '../ui/Select';
 import { LeadForm } from './LeadForm';
 
 function LinhaDetalhe({ rotulo, valor }: { rotulo: string; valor: string | null | undefined }) {
@@ -65,20 +66,15 @@ export function DetalheLead({
       {/* via alternativa a arrastar o card no Kanban — achado da auditoria
           de UX: sem isso, mudar o funil de um lead exigia mouse (drag and
           drop nativo), sem nenhum caminho por teclado/toque preciso. */}
-      <label className="mb-3 block">
-        <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Mover para</span>
-        <select
-          value={lead.status}
-          onChange={(e) => onMudarFunil(e.target.value)}
-          className="w-full rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-people"
-        >
+      <div className="mb-3">
+        <Select rotulo="Mover para" categoria="pessoas" value={lead.status} onChange={(e) => onMudarFunil(e.target.value)}>
           {funis.map((f) => (
             <option key={f.id} value={f.id}>
               {f.nome}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </div>
 
       <LinhaDetalhe rotulo="Telefone" valor={lead.telefone} />
       <LinhaDetalhe rotulo="E-mail" valor={lead.email} />

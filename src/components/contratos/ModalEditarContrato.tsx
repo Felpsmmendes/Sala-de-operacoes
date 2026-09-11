@@ -2,11 +2,11 @@ import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { atualizarHorarioAtracao, listarItensParaHorario, type ItemParaHorario } from '../../lib/api/orcamentos';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
+import { Input } from '../ui/Input';
+import { RotuloCampo } from '../ui/RotuloCampo';
+import { Select } from '../ui/Select';
+import { Textarea } from '../ui/Textarea';
 import type { ContratoComLead, FormaPagamento } from '../../lib/types';
-
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-money';
-const campoP = 'rounded-sm border border-line bg-input px-2.5 py-1.5 text-[12.5px] text-text outline-none focus:border-money';
-const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 const FORMA_ROTULO: Record<FormaPagamento, string> = { pix: 'PIX', boleto: 'Boleto', cartao: 'Cartão de crédito' };
 
@@ -85,79 +85,60 @@ export function ModalEditarContrato({ contrato, onFechar, onSalvar, salvando }: 
         <div className="mb-5 flex flex-col gap-3 border-b border-line pb-5">
           <p className="text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Dados gerais</p>
           <div className="grid grid-cols-2 gap-3">
-            <label className="col-span-2">
-              <span className={rotulo}>Local (obrigatório)</span>
-              <input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Espaço Villa Bisutti" className={campo} />
-            </label>
-            <label>
-              <span className={rotulo}>Convidados</span>
-              <input type="number" min={1} value={convidados} onChange={(e) => setConvidados(e.target.value)} className={campo} />
-            </label>
-            <label>
-              <span className={rotulo}>Valor total</span>
-              <input type="number" min={0} step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} className={campo} />
-              <span className="mt-1 block text-[10.5px] text-text-faint">Recalcula sinal/saldo sozinho — confira se já tinha marcado pago com o valor antigo.</span>
-            </label>
-            <label>
-              <span className={rotulo}>Forma de pagamento</span>
-              <select value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)} className={campo}>
-                <option value="">Não definida</option>
-                {(Object.keys(FORMA_ROTULO) as FormaPagamento[]).map((f) => (
-                  <option key={f} value={f}>
-                    {FORMA_ROTULO[f]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label>
-            <span className={rotulo}>Observações / brindes</span>
-            <textarea
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-              rows={3}
-              placeholder={'Uma linha por item — ex:\nGarrafa de espumante personalizada\nLembrancinha pros noivos'}
-              className={`${campo} resize-y`}
+            <div className="col-span-2">
+              <Input rotulo="Local (obrigatório)" categoria="dinheiro" value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Espaço Villa Bisutti" />
+            </div>
+            <Input rotulo="Convidados" categoria="dinheiro" type="number" min={1} value={convidados} onChange={(e) => setConvidados(e.target.value)} />
+            <Input
+              rotulo="Valor total"
+              categoria="dinheiro"
+              type="number"
+              min={0}
+              step="0.01"
+              value={valorTotal}
+              onChange={(e) => setValorTotal(e.target.value)}
+              dica="Recalcula sinal/saldo sozinho — confira se já tinha marcado pago com o valor antigo."
             />
-            <span className="mt-1 block text-[10.5px] text-text-faint">Cada linha vira um item extra no checklist de carga — ainda não conectado (depende do checklist de Estoque).</span>
-          </label>
+            <Select rotulo="Forma de pagamento" categoria="dinheiro" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}>
+              <option value="">Não definida</option>
+              {(Object.keys(FORMA_ROTULO) as FormaPagamento[]).map((f) => (
+                <option key={f} value={f}>
+                  {FORMA_ROTULO[f]}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Textarea
+            rotulo="Observações / brindes"
+            categoria="dinheiro"
+            value={observacoes}
+            onChange={(e) => setObservacoes(e.target.value)}
+            rows={3}
+            placeholder={'Uma linha por item — ex:\nGarrafa de espumante personalizada\nLembrancinha pros noivos'}
+            dica="Cada linha vira um item extra no checklist de carga — ainda não conectado (depende do checklist de Estoque)."
+          />
         </div>
 
         <div className="mb-5 flex flex-col gap-3 border-b border-line pb-5">
           <p className="text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Horários do evento (pro Roteiro do Evento)</p>
           <div className="grid grid-cols-2 gap-3">
-            <label>
-              <span className={rotulo}>Chegada dos convidados</span>
-              <input type="time" value={horChegadaConvidados} onChange={(e) => setHorChegadaConvidados(e.target.value)} className={campo} />
-            </label>
-            <label>
-              <span className={rotulo}>Chegada da equipe</span>
-              <input type="time" value={horChegadaEquipe} onChange={(e) => setHorChegadaEquipe(e.target.value)} className={campo} />
-            </label>
-            <label>
-              <span className={rotulo}>Fim do serviço</span>
-              <input type="time" value={horFimServico} onChange={(e) => setHorFimServico(e.target.value)} className={campo} />
-            </label>
-            <label>
-              <span className={rotulo}>Saída da equipe</span>
-              <input type="time" value={horSaidaEquipe} onChange={(e) => setHorSaidaEquipe(e.target.value)} className={campo} />
-            </label>
-            {temBar && (
-              <label>
-                <span className={rotulo}>Início do bar</span>
-                <input type="time" value={horInicioBar} onChange={(e) => setHorInicioBar(e.target.value)} className={campo} />
-              </label>
-            )}
+            <Input rotulo="Chegada dos convidados" categoria="dinheiro" type="time" value={horChegadaConvidados} onChange={(e) => setHorChegadaConvidados(e.target.value)} />
+            <Input rotulo="Chegada da equipe" categoria="dinheiro" type="time" value={horChegadaEquipe} onChange={(e) => setHorChegadaEquipe(e.target.value)} />
+            <Input rotulo="Fim do serviço" categoria="dinheiro" type="time" value={horFimServico} onChange={(e) => setHorFimServico(e.target.value)} />
+            <Input rotulo="Saída da equipe" categoria="dinheiro" type="time" value={horSaidaEquipe} onChange={(e) => setHorSaidaEquipe(e.target.value)} />
+            {temBar && <Input rotulo="Início do bar" categoria="dinheiro" type="time" value={horInicioBar} onChange={(e) => setHorInicioBar(e.target.value)} />}
           </div>
 
           {atracoes.length > 0 && (
             <div>
-              <span className={rotulo}>Início de cada atração</span>
-              <div className="flex flex-col gap-2">
+              <RotuloCampo>Início de cada atração</RotuloCampo>
+              <div className="mt-1.5 flex flex-col gap-2">
                 {atracoes.map((item) => (
                   <div key={item.id} className="flex items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2 text-sm">
                     <span className="text-text">{item.nome}</span>
-                    <input type="time" value={horariosAtracao.get(item.id) ?? ''} onChange={(e) => aoMudarHorarioAtracao(item.id, e.target.value)} className={campoP} />
+                    <div className="w-28">
+                      <Input type="time" categoria="dinheiro" value={horariosAtracao.get(item.id) ?? ''} onChange={(e) => aoMudarHorarioAtracao(item.id, e.target.value)} />
+                    </div>
                   </div>
                 ))}
               </div>

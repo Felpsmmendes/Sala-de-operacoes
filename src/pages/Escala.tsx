@@ -12,6 +12,8 @@ import { ModalConvocar } from '../components/escala/ModalConvocar';
 import { ModalHoraExtra } from '../components/escala/ModalHoraExtra';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Checkbox } from '../components/ui/Checkbox';
+import { Select } from '../components/ui/Select';
 import { montarMensagemConvocacao } from '../lib/mensagemConvocacao';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
 import { mensagemDeErro } from '../lib/erroAmigavel';
@@ -267,23 +269,19 @@ export default function Escala() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge tom={STATUS_ESCALA_INFO[esc.status].tom} texto={STATUS_ESCALA_INFO[esc.status].rotulo} />
-                              <select value={esc.status} onChange={(e) => aoMudarStatus(esc.id, e.target.value as StatusEscala)} className="rounded-sm border border-line bg-panel px-2 py-1 text-[11.5px] text-text outline-none focus:border-people">
-                                <option value="convocado">Convocado</option>
-                                <option value="confirmado">Confirmado</option>
-                                <option value="recusado">Recusado</option>
-                              </select>
+                              <div className="w-36">
+                                <Select categoria="pessoas" value={esc.status} onChange={(e) => aoMudarStatus(esc.id, e.target.value as StatusEscala)}>
+                                  <option value="convocado">Convocado</option>
+                                  <option value="confirmado">Confirmado</option>
+                                  <option value="recusado">Recusado</option>
+                                </Select>
+                              </div>
                             </div>
                           </div>
 
                           <div className="mb-2 flex flex-wrap items-center gap-4">
-                            <label className="flex items-center gap-1.5 text-[12.5px] text-text-dim">
-                              <input type="checkbox" checked={esc.traje_ok} onChange={(e) => aoMudarChecklist(esc.id, 'traje_ok', e.target.checked)} className="h-3.5 w-3.5 accent-people" />
-                              Traje OK
-                            </label>
-                            <label className="flex items-center gap-1.5 text-[12.5px] text-text-dim">
-                              <input type="checkbox" checked={esc.epi_ok} onChange={(e) => aoMudarChecklist(esc.id, 'epi_ok', e.target.checked)} className="h-3.5 w-3.5 accent-people" />
-                              EPI OK
-                            </label>
+                            <Checkbox rotulo="Traje OK" categoria="pessoas" marcado={esc.traje_ok} onMudar={(v) => aoMudarChecklist(esc.id, 'traje_ok', v)} />
+                            <Checkbox rotulo="EPI OK" categoria="pessoas" marcado={esc.epi_ok} onMudar={(v) => aoMudarChecklist(esc.id, 'epi_ok', v)} />
                             <span className="ml-auto font-mono text-[12.5px] text-text-dim">diária {esc.diaria.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                           </div>
 

@@ -2,10 +2,8 @@ import { LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Input } from '../components/ui/Input';
 import { useAuth } from '../lib/AuthContext';
-
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral';
-const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 export default function Configuracoes() {
   const { session, sair, atualizarNome, atualizarSenha } = useAuth();
@@ -59,14 +57,8 @@ export default function Configuracoes() {
           <Panel>
             <PanelHeader titulo="Perfil" desc="Sistema de usuário único — sem cadastro de equipe aqui (freelancers ficam em Escala & Equipe)." />
             <div className="flex flex-col gap-4">
-              <label>
-                <span className={rotulo}>E-mail (login)</span>
-                <input className={campo} value={email} disabled />
-              </label>
-              <label>
-                <span className={rotulo}>Nome de exibição</span>
-                <input className={campo} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Felipe" />
-              </label>
+              <Input rotulo="E-mail (login)" value={email} disabled />
+              <Input rotulo="Nome de exibição" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Felipe" />
               {msgNome && <p className={`text-[12.5px] ${msgNome.tipo === 'erro' ? 'text-danger' : 'text-success'}`}>{msgNome.texto}</p>}
               <button
                 type="button"
@@ -82,14 +74,8 @@ export default function Configuracoes() {
           <Panel>
             <PanelHeader titulo="Segurança" desc="Trocar a senha de acesso ao sistema." />
             <div className="flex flex-col gap-4">
-              <label>
-                <span className={rotulo}>Nova senha</span>
-                <input className={campo} type="password" value={senhaNova} onChange={(e) => setSenhaNova(e.target.value)} placeholder="Mínimo 6 caracteres" />
-              </label>
-              <label>
-                <span className={rotulo}>Confirmar nova senha</span>
-                <input className={campo} type="password" value={senhaConfirma} onChange={(e) => setSenhaConfirma(e.target.value)} />
-              </label>
+              <Input rotulo="Nova senha" type="password" value={senhaNova} onChange={(e) => setSenhaNova(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <Input rotulo="Confirmar nova senha" type="password" value={senhaConfirma} onChange={(e) => setSenhaConfirma(e.target.value)} />
               {msgSenha && <p className={`text-[12.5px] ${msgSenha.tipo === 'erro' ? 'text-danger' : 'text-success'}`}>{msgSenha.texto}</p>}
               <button
                 type="button"

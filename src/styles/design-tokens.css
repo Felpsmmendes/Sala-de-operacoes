@@ -1,0 +1,125 @@
+/* =========================================================================
+   Sala de Operações — Em Cena Eventos
+   -------------------------------------------------------------------------
+   Design system v2 (2026-09-10, "prompt master" do usuário) — substitui
+   por completo o "Mission Control Operations"/5-cores anterior. Paleta
+   escura sóbria (bg quase preto, cards sólidos, sem vidro/blur exceto na
+   TopBar), 6 cores fixas de NÚCLEO (uma a mais que antes: "execucao"
+   verde-claro, separada de "money" verde-escuro) reservadas a um punhado
+   de elementos bem específicos — ver ".nucleus-*" e a doc de uso de cor
+   em ../../DESIGN.md. Tudo aqui vira utilitário Tailwind v4 automático
+   (bg-panel, text-money, rounded-lg, font-mono etc.) — nenhum componente
+   precisa de CSS próprio só pra herdar cor/raio/fonte.
+   ========================================================================= */
+@theme {
+  /* -- cor: base da aplicação (quase preto, não puro) -- */
+  --color-bg: #050507; /* fundo geral */
+  --color-sidebar: #08090d; /* sidebar + top bar */
+  --color-panel: #0b0d11; /* card principal */
+  --color-raised: #111419; /* sub-box dentro de card */
+  --color-input: #13171f; /* variação mais clara (sub-box alt, input) */
+
+  /* -- cor: borda -- */
+  --color-line: rgba(255, 255, 255, 0.07); /* borda padrão de card */
+  --color-line-strong: rgba(255, 255, 255, 0.13); /* borda no hover */
+  --color-line-focus: rgba(255, 255, 255, 0.18); /* borda em foco/destaque */
+
+  /* -- cor: texto -- */
+  --color-text: #ffffff; /* títulos e números */
+  --color-text-dim: rgba(226, 232, 240, 0.8); /* conteúdo principal */
+  --color-text-faint: rgba(148, 163, 184, 0.55); /* labels e descrições */
+  --color-text-ultra: rgba(148, 163, 184, 0.3); /* metadados e rodapés */
+
+  /* -- cor: destaque único, reservado pra ação primária / marca / item
+     ativo do menu (nunca um núcleo — ver DESIGN.md > "Regra do Núcleo"). -- */
+  --color-accent: #f59e0b;
+  --color-accent-strong: #fbbf24;
+  --color-accent-ink: #1c1206;
+
+  /* -- cor: estado semântico (Badge de status — não é núcleo) -- */
+  --color-success: #22c55e;
+  --color-pending: #f59e0b;
+  --color-danger: #ef4444;
+  --color-neutral: #94a3b8;
+
+  /* -- cor: NÚCLEO (DESIGN.md > "Mapa de Núcleo → Cor") — 6 cores fixas
+     por módulo/contexto, usadas só em IconBox, Sparkline, DotLive,
+     ProgressBar preenchida, badge de status operacional ativo e valor
+     "herói" do núcleo. Nunca em borda de card, fundo de card, número KPI
+     grande, label/título ou badge de contagem. Nomes de token mantidos
+     do sistema anterior (money/people/schedule/ops — só o HEX mudou de
+     valor) pra não forçar um rename mecânico em ~40 arquivos que já usam
+     `text-money`/`focus:border-people`/etc.; só "execucao" é token novo
+     de verdade (a 6ª cor que o prompt master introduziu, antes não
+     existia — "Execução/Eventos ativos", separada de "money"). */
+  --color-money: #16a34a; /* Finanças / Dinheiro */
+  --color-people: #3b82f6; /* Equipe / Pessoas */
+  --color-schedule: #a855f7; /* Planejamento / Agenda */
+  --color-ops: #14b8a6; /* Logística / Frota / Operações */
+  --color-execucao: #22c55e; /* Execução / Eventos ativos (nova, 2026-09-10) */
+
+  /* -- cor: tom "label" de cada núcleo — no escuro a própria cor de
+     núcleo já é clara o bastante pro texto; no claro precisa de um tom
+     bem mais escuro/saturado pra continuar legível (ver override abaixo). */
+  --color-accent-label: var(--color-accent-strong);
+  --color-money-label: var(--color-money);
+  --color-people-label: var(--color-people);
+  --color-schedule-label: var(--color-schedule);
+  --color-ops-label: var(--color-ops);
+  --color-execucao-label: var(--color-execucao);
+
+  /* -- tipografia -- */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+  /* -- raio -- */
+  --radius-sm: 6px;
+  --radius-md: 12px; /* sub-box */
+  --radius-lg: 18px; /* card principal */
+  --radius-icon: 9px; /* IconBox */
+
+  /* -- sombra de card -- */
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px -8px rgba(0, 0, 0, 0.7);
+  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 32px -8px rgba(0, 0, 0, 0.8);
+  --shadow-borda: 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+/* Modo claro — preferência salva em localStorage (ver src/lib/useTema.ts),
+   aplicada via atributo `data-theme` na tag <html>. O prompt master do
+   usuário não cobre modo claro (assume um único painel escuro); aqui
+   deriva-se um equivalente claro seguindo a MESMA lógica que o sistema
+   anterior já usava (tom mais escuro/saturado da mesma cor pra manter
+   contraste ≥4.5:1 contra fundo branco) — preserva a funcionalidade de
+   troca de tema já existente, sem inventar paleta nova. */
+:root[data-theme='light'] {
+  --color-bg: #f7f7f9;
+  --color-sidebar: #ffffff;
+  --color-panel: #ffffff;
+  --color-raised: #f1f2f5;
+  --color-input: #ffffff;
+
+  --color-line: rgba(15, 23, 42, 0.08);
+  --color-line-strong: rgba(15, 23, 42, 0.14);
+  --color-line-focus: rgba(15, 23, 42, 0.22);
+
+  --color-text: #0f172a;
+  --color-text-dim: rgba(30, 41, 59, 0.78);
+  --color-text-faint: rgba(51, 65, 85, 0.58);
+  --color-text-ultra: rgba(51, 65, 85, 0.38);
+
+  --color-success: #15803d;
+  --color-pending: #92400e;
+  --color-danger: #b91c1c;
+  --color-neutral: #64748b;
+
+  --color-accent-label: #92400e;
+  --color-money-label: #15803d;
+  --color-people-label: #1d4ed8;
+  --color-schedule-label: #7e22ce;
+  --color-ops-label: #0f766e;
+  --color-execucao-label: #166534;
+
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 0 1px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04), 0 16px 32px -16px rgba(15, 23, 42, 0.18);
+  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(15, 23, 42, 0.09), 0 4px 8px rgba(15, 23, 42, 0.05), 0 20px 40px -16px rgba(15, 23, 42, 0.22);
+  --shadow-borda: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}

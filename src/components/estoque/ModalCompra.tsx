@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import type { ItemEstoque } from '../../lib/api/estoque';
+import { Input } from '../ui/Input';
 
 export function ModalCompra({ item, onFechar, onConfirmar }: { item: ItemEstoque; onFechar: () => void; onConfirmar: (quantidade: number, valorTotal: number, dataChegadaPrevista: string | null) => void }) {
   const sugestao = Math.max(1, Math.round((item.estoque_minimo * 2 - item.estoque_atual) * 100) / 100);
@@ -21,21 +22,26 @@ export function ModalCompra({ item, onFechar, onConfirmar }: { item: ItemEstoque
           {item.nome} — abaixo do mínimo ({item.estoque_atual} / {item.estoque_minimo} {item.unidade})
         </p>
 
-        <label className="mb-3 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Quantidade a comprar ({item.unidade})</span>
-          <input type="number" min={0.01} step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops" />
-          <span className="mt-1 block text-[11px] text-text-faint">Sugestão: repor até 2x o mínimo</span>
-        </label>
+        <div className="mb-3">
+          <Input
+            rotulo={`Quantidade a comprar (${item.unidade})`}
+            categoria="operacao"
+            type="number"
+            min={0.01}
+            step="0.01"
+            value={quantidade}
+            onChange={(e) => setQuantidade(e.target.value)}
+            dica="Sugestão: repor até 2x o mínimo"
+          />
+        </div>
 
-        <label className="mb-3 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Valor total estimado (R$)</span>
-          <input type="number" min={0} step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="Ex: 450" className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops" />
-        </label>
+        <div className="mb-3">
+          <Input rotulo="Valor total estimado (R$)" categoria="operacao" type="number" min={0} step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="Ex: 450" />
+        </div>
 
-        <label className="mb-4 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Chegada prevista (opcional)</span>
-          <input type="date" value={dataChegada} onChange={(e) => setDataChegada(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops" />
-        </label>
+        <div className="mb-4">
+          <Input rotulo="Chegada prevista (opcional)" categoria="operacao" type="date" value={dataChegada} onChange={(e) => setDataChegada(e.target.value)} />
+        </div>
 
         <button
           type="button"

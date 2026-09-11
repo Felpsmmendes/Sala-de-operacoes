@@ -1,5 +1,6 @@
 import { AlertTriangle, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { Input } from './ui/Input';
 
 /**
  * Confirmação estilizada — substitui `window.confirm` nas ações mais
@@ -56,17 +57,18 @@ export function ConfirmDialog({ titulo, mensagem, textoConfirmar = 'Confirmar', 
         <div className="mb-4 text-[13px] leading-relaxed text-text-dim">{mensagem}</div>
 
         {digitarParaConfirmar != null && (
-          <label className="mb-4 block">
-            <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
-              Digite <span className="text-text">"{digitarParaConfirmar}"</span> para confirmar
-            </span>
-            <input
+          <div className="mb-4">
+            <Input
+              rotulo={
+                <>
+                  Digite <span className="text-text">"{digitarParaConfirmar}"</span> para confirmar
+                </>
+              }
               autoFocus
               value={digitado}
               onChange={(e) => setDigitado(e.target.value)}
-              className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral"
             />
-          </label>
+          </div>
         )}
 
         <div className="flex justify-end gap-2">

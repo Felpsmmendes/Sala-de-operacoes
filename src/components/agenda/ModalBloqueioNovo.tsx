@@ -1,10 +1,10 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import { CATEGORIA_BLOQUEIO_ORDEM, CATEGORIA_BLOQUEIO_ROTULO } from '../../lib/status';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
+import { Textarea } from '../ui/Textarea';
 import type { CategoriaBloqueio, NovoBloqueioAgenda } from '../../lib/types';
-
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-schedule';
-const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 /** "+ Bloqueio" no topo da Agenda (pedido do usuário, 2026-09-09) — marca
     que uma data (ou intervalo) está reservada por outro motivo, pra
@@ -29,38 +29,27 @@ export function ModalBloqueioNovo({ dataInicial, onFechar, onCriar, criando }: {
         </div>
 
         <div className="mb-4 flex flex-col gap-3">
-          <label>
-            <span className={rotulo}>Categoria</span>
-            <select value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaBloqueio)} className={campo}>
-              {CATEGORIA_BLOQUEIO_ORDEM.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORIA_BLOQUEIO_ROTULO[c]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select rotulo="Categoria" categoria="agenda" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaBloqueio)}>
+            {CATEGORIA_BLOQUEIO_ORDEM.map((c) => (
+              <option key={c} value={c}>
+                {CATEGORIA_BLOQUEIO_ROTULO[c]}
+              </option>
+            ))}
+          </Select>
           <div className="grid grid-cols-2 gap-3">
-            <label>
-              <span className={rotulo}>De</span>
-              <input
-                type="date"
-                value={dataInicio}
-                onChange={(e) => {
-                  setDataInicio(e.target.value);
-                  if (dataFim < e.target.value) setDataFim(e.target.value);
-                }}
-                className={campo}
-              />
-            </label>
-            <label>
-              <span className={rotulo}>Até</span>
-              <input type="date" min={dataInicio} value={dataFim} onChange={(e) => setDataFim(e.target.value)} className={campo} />
-            </label>
+            <Input
+              rotulo="De"
+              categoria="agenda"
+              type="date"
+              value={dataInicio}
+              onChange={(e) => {
+                setDataInicio(e.target.value);
+                if (dataFim < e.target.value) setDataFim(e.target.value);
+              }}
+            />
+            <Input rotulo="Até" categoria="agenda" type="date" min={dataInicio} value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </div>
-          <label>
-            <span className={rotulo}>Observação (opcional)</span>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} placeholder="Ex: Degustação com Fulano às 15h" className={`${campo} resize-y`} />
-          </label>
+          <Textarea rotulo="Observação (opcional)" categoria="agenda" value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} placeholder="Ex: Degustação com Fulano às 15h" />
         </div>
 
         <button

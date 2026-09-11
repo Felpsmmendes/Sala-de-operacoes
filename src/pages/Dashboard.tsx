@@ -19,6 +19,7 @@ import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Skeleton } from '../components/Skeleton';
+import { Reveal } from '../components/ui/Reveal';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { STATUS_EVENTO_INFO, corFunilPorIndice, formatarData, formatarMoeda } from '../lib/status';
 import type { AuditoriaPosEvento, ContratoComLead, DreMes, EscalaPresenca, EventoComLead, FunilLead, Lead } from '../lib/types';
@@ -280,23 +281,24 @@ export default function Dashboard() {
           </div>
         )}
 
-        <Panel className="mb-4">
-          <PanelHeader
-            titulo="Tendência de faturamento"
-            desc="Receita, custos e lucro líquido pagos — últimos 6 meses."
-            acao={
-              <Link to="/financeiro" className={linkPainelDinheiro}>
-                Ver DRE completo <TrendingUp className="h-3.5 w-3.5" />
-              </Link>
-            }
-          />
-          <GraficoDRE meses={tendenciaFaturamento} formatarMes={formatarMes} formatarValor={formatarMoeda} />
-        </Panel>
+        <Reveal>
+          <Panel className="mb-4">
+            <PanelHeader
+              titulo="Tendência de faturamento"
+              desc="Receita, custos e lucro líquido pagos — últimos 6 meses."
+              acao={
+                <Link to="/financeiro" className={linkPainelDinheiro}>
+                  Ver DRE completo <TrendingUp className="h-3.5 w-3.5" />
+                </Link>
+              }
+            />
+            <GraficoDRE meses={tendenciaFaturamento} formatarMes={formatarMes} formatarValor={formatarMoeda} />
+          </Panel>
+        </Reveal>
 
-        {/* 2 gráficos novos (pedido do usuário, 2026-09-08/09), estilo
-            discreto seguindo a referência "Efferd" — linha/área simples,
-            sem o combo barras+linha do painel acima. */}
-        <div className="metric-grid mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* 2 gráficos — linha/área simples, sem o combo barras+linha do
+            painel acima. */}
+        <Reveal delay={50} className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Panel>
             <PanelHeader titulo="Faturamento mensal" desc="Valor total dos contratos fechados por mês (independe de já ter sido pago ou não)." />
             <GraficoLinha
@@ -317,12 +319,12 @@ export default function Dashboard() {
               formatarValor={(v) => `${v} lead${v === 1 ? '' : 's'}`}
             />
           </Panel>
-        </div>
+        </Reveal>
 
-        {/* faixa de 3 painéis — mesma ideia da referência de design (funil
-            com donut+legenda / número em destaque / estatística com barra
-            de proporção), só que com dado real do negócio em cada um. */}
-        <div className="metric-grid mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* faixa de 3 painéis — funil com donut+legenda / número em
+            destaque / estatística com barra de proporção, com dado real
+            do negócio em cada um. */}
+        <Reveal delay={80} className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Panel>
             <PanelHeader
               titulo="Leads por funil"
@@ -390,14 +392,14 @@ export default function Dashboard() {
               ]}
             />
           </Panel>
-        </div>
+        </Reveal>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
+        <Reveal delay={100} className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
           <Panel>
             <PanelHeader
               titulo="Monitor ao vivo"
               desc={carregando ? undefined : eventosHoje.length === 0 ? 'Nenhum evento hoje' : `${eventosHoje.length} evento(s) hoje`}
-              acao={<Activity className="h-4 w-4 text-tertiary" />}
+              acao={<Activity className="h-4 w-4 text-text-faint" />}
             />
 
             {carregando ? (
@@ -549,7 +551,7 @@ export default function Dashboard() {
               )}
             </Panel>
           </div>
-        </div>
+        </Reveal>
       </Conteudo>
     </>
   );

@@ -2,6 +2,7 @@ import { Check, ChevronDown, Plus, Search } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { criarLead } from '../../lib/api/leads';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
+import { Input } from '../ui/Input';
 import type { Lead } from '../../lib/types';
 
 function normalizarTexto(s: string): string {
@@ -153,19 +154,8 @@ export function SeletorCliente({ leads, leadId, onSelecionar, onCriado }: { lead
           <div className="border-t border-line px-3 py-2.5">
             <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Novo cliente</p>
             <div className="flex flex-col gap-2">
-              <input
-                autoFocus
-                value={novoNome}
-                onChange={(e) => setNovoNome(e.target.value)}
-                placeholder="Nome"
-                className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-money"
-              />
-              <input
-                value={novoTelefone}
-                onChange={(e) => setNovoTelefone(e.target.value)}
-                placeholder="Telefone (opcional)"
-                className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-money"
-              />
+              <Input autoFocus categoria="dinheiro" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Nome" />
+              <Input categoria="dinheiro" value={novoTelefone} onChange={(e) => setNovoTelefone(e.target.value)} placeholder="Telefone (opcional)" />
               {erroCriar && <p className="text-[11.5px] text-danger">{erroCriar}</p>}
               <div className="flex gap-2">
                 <button type="button" disabled={criando} onClick={aoCriarCliente} className="flex-1 rounded-sm bg-accent px-2.5 py-1.5 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">

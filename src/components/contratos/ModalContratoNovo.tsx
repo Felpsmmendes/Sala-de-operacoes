@@ -1,10 +1,10 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import { SeletorCliente } from '../orcamentos/SeletorCliente';
+import { Input } from '../ui/Input';
+import { RotuloCampo } from '../ui/RotuloCampo';
+import { Select } from '../ui/Select';
 import type { FormaPagamento, Lead } from '../../lib/types';
-
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-money';
-const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 const FORMA_ROTULO: Record<FormaPagamento, string> = { pix: 'PIX', boleto: 'Boleto', cartao: 'Cartão de crédito' };
 
@@ -36,40 +36,25 @@ export function ModalContratoNovo({ leads, onFechar, onCriado, salvando }: { lea
         </div>
 
         <div className="mb-4 flex flex-col gap-3">
-          <label>
-            <span className={rotulo}>Cliente</span>
+          <div className="flex flex-col gap-1.5">
+            <RotuloCampo>Cliente</RotuloCampo>
             <SeletorCliente leads={leads} leadId={leadId} onSelecionar={setLeadId} onCriado={(lead) => setLeadId(lead.id)} />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label>
-              <span className={rotulo}>Data do evento</span>
-              <input type="date" value={dataEvento} onChange={(e) => setDataEvento(e.target.value)} className={campo} />
-            </label>
-            <label>
-              <span className={rotulo}>Convidados</span>
-              <input type="number" min={1} value={convidados} onChange={(e) => setConvidados(e.target.value)} className={campo} />
-            </label>
           </div>
-          <label>
-            <span className={rotulo}>Local (obrigatório)</span>
-            <input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Espaço Villa Bisutti" className={campo} />
-          </label>
           <div className="grid grid-cols-2 gap-3">
-            <label>
-              <span className={rotulo}>Valor total</span>
-              <input type="number" min={0} step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} className={campo} />
-            </label>
-            <label>
-              <span className={rotulo}>Forma de pagamento</span>
-              <select value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)} className={campo}>
-                <option value="">Não definida</option>
-                {(Object.keys(FORMA_ROTULO) as FormaPagamento[]).map((f) => (
-                  <option key={f} value={f}>
-                    {FORMA_ROTULO[f]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Input rotulo="Data do evento" categoria="dinheiro" type="date" value={dataEvento} onChange={(e) => setDataEvento(e.target.value)} />
+            <Input rotulo="Convidados" categoria="dinheiro" type="number" min={1} value={convidados} onChange={(e) => setConvidados(e.target.value)} />
+          </div>
+          <Input rotulo="Local (obrigatório)" categoria="dinheiro" value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Espaço Villa Bisutti" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input rotulo="Valor total" categoria="dinheiro" type="number" min={0} step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} />
+            <Select rotulo="Forma de pagamento" categoria="dinheiro" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}>
+              <option value="">Não definida</option>
+              {(Object.keys(FORMA_ROTULO) as FormaPagamento[]).map((f) => (
+                <option key={f} value={f}>
+                  {FORMA_ROTULO[f]}
+                </option>
+              ))}
+            </Select>
           </div>
         </div>
 

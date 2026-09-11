@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { formatarMoeda } from '../../lib/status';
 import type { ContratoComLead } from '../../lib/types';
 import { Panel, PanelHeader } from '../Panel';
+import { Select } from '../ui/Select';
 
 function formatarMes(mes: string): string {
   const [ano, m] = mes.split('-');
@@ -68,13 +69,15 @@ export function AnaliseVendas({ contratos }: { contratos: ContratoComLead[] }) {
         desc="Contratos fechados, agrupados por mês do evento, local e faixa de valor."
         acao={
           meses.length > 0 && (
-            <select value={mesAtivo} onChange={(e) => setMesEscolhido(e.target.value)} className="rounded-sm border border-line bg-input px-3 py-2 text-[12.5px] text-text outline-none focus:border-money">
-              {meses.map((m) => (
-                <option key={m} value={m}>
-                  {formatarMes(m)}
-                </option>
-              ))}
-            </select>
+            <div className="w-40">
+              <Select categoria="dinheiro" value={mesAtivo} onChange={(e) => setMesEscolhido(e.target.value)}>
+                {meses.map((m) => (
+                  <option key={m} value={m}>
+                    {formatarMes(m)}
+                  </option>
+                ))}
+              </Select>
+            </div>
           )
         }
       />

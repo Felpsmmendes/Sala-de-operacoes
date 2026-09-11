@@ -8,12 +8,13 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Checkbox } from '../components/ui/Checkbox';
+import { Input } from '../components/ui/Input';
+import { RotuloCampo } from '../components/ui/RotuloCampo';
+import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData, formatarMoeda } from '../lib/status';
 import type { AuditoriaPosEvento, DadosAuditoria, EventoComLead } from '../lib/types';
-
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral';
-const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
 
 function aoFalhar(e: unknown) {
   window.alert(mensagemDeErro(e));
@@ -187,20 +188,15 @@ export default function Auditoria() {
               <p className="text-sm text-text-dim">Escolha um evento na lista ao lado.</p>
             ) : (
               <div className="flex flex-col gap-4">
-                <label className="flex items-center gap-2 text-sm text-text">
-                  <input type="checkbox" checked={sobrasReintegradas} onChange={(e) => setSobrasReintegradas(e.target.checked)} className="h-4 w-4 accent-neutral" />
-                  Sobras reintegradas ao estoque (registre a movimentação em Estoque &amp; Compras)
-                </label>
+                <Checkbox
+                  rotulo="Sobras reintegradas ao estoque (registre a movimentação em Estoque & Compras)"
+                  marcado={sobrasReintegradas}
+                  onMudar={setSobrasReintegradas}
+                />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <label>
-                    <span className={rotulo}>Valor de avarias/quebras (R$)</span>
-                    <input className={campo} type="number" min={0} step="0.01" value={avariasValor} onChange={(e) => setAvariasValor(e.target.value)} />
-                  </label>
-                  <label>
-                    <span className={rotulo}>Nota NPS do cliente (0 a 10)</span>
-                    <input className={campo} type="number" min={0} max={10} value={npsNota} onChange={(e) => setNpsNota(e.target.value)} />
-                  </label>
+                  <Input rotulo="Valor de avarias/quebras (R$)" type="number" min={0} step="0.01" value={avariasValor} onChange={(e) => setAvariasValor(e.target.value)} />
+                  <Input rotulo="Nota NPS do cliente (0 a 10)" type="number" min={0} max={10} value={npsNota} onChange={(e) => setNpsNota(e.target.value)} />
                 </div>
 
                 {npsNota !== '' && Number(npsNota) <= 4 && (
@@ -209,53 +205,45 @@ export default function Auditoria() {
                   </p>
                 )}
 
-                <label>
-                  <span className={rotulo}>Item avariado (opcional)</span>
-                  {itensChecklistEvento.length === 0 ? (
-                    <input className={campo} value={avariasDescricao} onChange={(e) => setAvariasDescricao(e.target.value)} placeholder="Ex: 2 taças quebradas, 1 balde amassado" />
-                  ) : (
-                    <>
-                      <select
-                        className={campo}
-                        value={avariaOutro ? '__outro__' : itensChecklistEvento.includes(avariasDescricao) ? avariasDescricao : ''}
-                        onChange={(e) => {
-                          if (e.target.value === '__outro__') {
-                            setAvariaOutro(true);
-                          } else {
-                            setAvariaOutro(false);
-                            setAvariasDescricao(e.target.value);
-                          }
-                        }}
-                      >
-                        <option value="">Selecione um item do checklist deste evento…</option>
-                        {itensChecklistEvento.map((nome) => (
-                          <option key={nome} value={nome}>
-                            {nome}
-                          </option>
-                        ))}
-                        <option value="__outro__">Outro (não está no checklist)</option>
-                      </select>
-                      {(avariaOutro || (avariasDescricao !== '' && !itensChecklistEvento.includes(avariasDescricao))) && (
-                        <input
-                          className={`${campo} mt-2`}
-                          value={avariasDescricao}
-                          onChange={(e) => setAvariasDescricao(e.target.value)}
-                          placeholder="Descreva o que quebrou/estragou"
-                        />
-                      )}
-                    </>
-                  )}
-                </label>
+                <div>
+                  <RotuloCampo>Item avariado (opcional)</RotuloCampo>
+                  <div className="mt-1.5">
+                    {itensChecklistEvento.length === 0 ? (
+                      <Input value={avariasDescricao} onChange={(e) => setAvariasDescricao(e.target.value)} placeholder="Ex: 2 taças quebradas, 1 balde amassado" />
+                    ) : (
+                      <>
+                        <Select
+                          value={avariaOutro ? '__outro__' : itensChecklistEvento.includes(avariasDescricao) ? avariasDescricao : ''}
+                          onChange={(e) => {
+                            if (e.target.value === '__outro__') {
+                              setAvariaOutro(true);
+                            } else {
+                              setAvariaOutro(false);
+                              setAvariasDescricao(e.target.value);
+                            }
+                          }}
+                        >
+                          <option value="">Selecione um item do checklist deste evento…</option>
+                          {itensChecklistEvento.map((nome) => (
+                            <option key={nome} value={nome}>
+                              {nome}
+                            </option>
+                          ))}
+                          <option value="__outro__">Outro (não está no checklist)</option>
+                        </Select>
+                        {(avariaOutro || (avariasDescricao !== '' && !itensChecklistEvento.includes(avariasDescricao))) && (
+                          <div className="mt-2">
+                            <Input value={avariasDescricao} onChange={(e) => setAvariasDescricao(e.target.value)} placeholder="Descreva o que quebrou/estragou" />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
 
-                <label>
-                  <span className={rotulo}>Link da foto da doca limpa (opcional)</span>
-                  <input className={campo} value={fotoDocaUrl} onChange={(e) => setFotoDocaUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp da foto" />
-                </label>
+                <Input rotulo="Link da foto da doca limpa (opcional)" value={fotoDocaUrl} onChange={(e) => setFotoDocaUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp da foto" />
 
-                <label>
-                  <span className={rotulo}>Comentário do cliente (opcional)</span>
-                  <input className={campo} value={npsComentario} onChange={(e) => setNpsComentario(e.target.value)} placeholder="Ex: Adorei o atendimento!" />
-                </label>
+                <Input rotulo="Comentário do cliente (opcional)" value={npsComentario} onChange={(e) => setNpsComentario(e.target.value)} placeholder="Ex: Adorei o atendimento!" />
 
                 <div>
                   <button type="button" onClick={aoSalvar} disabled={salvando} className="rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">

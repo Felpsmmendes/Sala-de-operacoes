@@ -1,6 +1,8 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import type { ItemEstoque, TipoMovimento } from '../../lib/api/estoque';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 
 const TIPO_ROTULO: Record<TipoMovimento, string> = { entrada: 'Entrada', saida: 'Saída', avaria: 'Avaria/quebra', reintegracao: 'Reintegração (sobra devolvida)' };
 
@@ -22,26 +24,29 @@ export function ModalMovimento({ item, onFechar, onConfirmar }: { item: ItemEsto
           Estoque atual: <span className="font-mono text-text">{item.estoque_atual}</span> {item.unidade}
         </p>
 
-        <label className="mb-3 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Tipo</span>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimento)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops">
+        <div className="mb-3">
+          <Select rotulo="Tipo" categoria="operacao" value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimento)}>
             {(Object.keys(TIPO_ROTULO) as TipoMovimento[]).map((t) => (
               <option key={t} value={t}>
                 {TIPO_ROTULO[t]}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </div>
 
-        <label className="mb-3 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Quantidade ({item.unidade})</span>
-          <input type="number" min={0.01} step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops" />
-        </label>
+        <div className="mb-3">
+          <Input rotulo={`Quantidade (${item.unidade})`} categoria="operacao" type="number" min={0.01} step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
+        </div>
 
-        <label className="mb-4 block">
-          <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Observação (opcional)</span>
-          <input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder={tipo === 'avaria' ? 'Ex: taça quebrada no evento de sábado' : ''} className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-ops" />
-        </label>
+        <div className="mb-4">
+          <Input
+            rotulo="Observação (opcional)"
+            categoria="operacao"
+            value={observacao}
+            onChange={(e) => setObservacao(e.target.value)}
+            placeholder={tipo === 'avaria' ? 'Ex: taça quebrada no evento de sábado' : ''}
+          />
+        </div>
 
         <button
           type="button"

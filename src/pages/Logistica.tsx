@@ -11,6 +11,8 @@ import { VeiculoForm } from '../components/logistica/VeiculoForm';
 import { calcularFrete } from '../lib/freteConfig';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData, formatarMoeda } from '../lib/status';
 import type { EventoComLead, NovaRegiaoFrete, NovoVeiculo, RegiaoFrete, Veiculo } from '../lib/types';
@@ -203,42 +205,24 @@ export default function Logistica() {
           ) : (
             <>
               <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <label>
-                  <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Veículo</span>
-                  <select value={veiculoId} onChange={(e) => setVeiculoId(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-ops">
-                    {veiculos.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.nome}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Região</span>
-                  <select value={regiaoId} onChange={(e) => setRegiaoId(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-ops">
-                    {regioes.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.nome} ({r.km_aproximado}km ida)
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Qtd. barmen no carro</span>
-                  <input type="number" min={0} value={qtdBarmenCarro} onChange={(e) => setQtdBarmenCarro(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-ops" />
-                </label>
-                <label>
-                  <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Lalamove/transporte avulso</span>
-                  <input type="number" min={0} step="0.01" value={valorLalamove} onChange={(e) => setValorLalamove(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-ops" />
-                </label>
-                <label>
-                  <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Pedágios (veículo)</span>
-                  <input type="number" min={0} step="0.01" value={pedagios} onChange={(e) => setPedagios(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-ops" />
-                </label>
-                <label>
-                  <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Pedágios (barmen)</span>
-                  <input type="number" min={0} step="0.01" value={pedagiosBarmen} onChange={(e) => setPedagiosBarmen(e.target.value)} className="w-full rounded-sm border border-line bg-input px-3 py-2 text-sm text-text outline-none focus:border-ops" />
-                </label>
+                <Select rotulo="Veículo" categoria="operacao" value={veiculoId} onChange={(e) => setVeiculoId(e.target.value)}>
+                  {veiculos.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.nome}
+                    </option>
+                  ))}
+                </Select>
+                <Select rotulo="Região" categoria="operacao" value={regiaoId} onChange={(e) => setRegiaoId(e.target.value)}>
+                  {regioes.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.nome} ({r.km_aproximado}km ida)
+                    </option>
+                  ))}
+                </Select>
+                <Input rotulo="Qtd. barmen no carro" categoria="operacao" type="number" min={0} value={qtdBarmenCarro} onChange={(e) => setQtdBarmenCarro(e.target.value)} />
+                <Input rotulo="Lalamove/transporte avulso" categoria="operacao" type="number" min={0} step="0.01" value={valorLalamove} onChange={(e) => setValorLalamove(e.target.value)} />
+                <Input rotulo="Pedágios (veículo)" categoria="operacao" type="number" min={0} step="0.01" value={pedagios} onChange={(e) => setPedagios(e.target.value)} />
+                <Input rotulo="Pedágios (barmen)" categoria="operacao" type="number" min={0} step="0.01" value={pedagiosBarmen} onChange={(e) => setPedagiosBarmen(e.target.value)} />
               </div>
 
               {resultadoFrete && (
@@ -283,13 +267,9 @@ export default function Logistica() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {c.data_chegada_prevista ? <Badge tom="pendente" texto={formatarData(c.data_chegada_prevista)} /> : <Badge tom="neutro" texto="Sem previsão" />}
-                    <input
-                      type="date"
-                      value={c.data_chegada_prevista ?? ''}
-                      onChange={(e) => aoMudarDataChegada(c.id, e.target.value)}
-                      title="Definir/editar chegada prevista"
-                      className="rounded-sm border border-line bg-panel px-2 py-1 text-[11.5px] text-text outline-none focus:border-ops"
-                    />
+                    <div className="w-36">
+                      <Input type="date" categoria="operacao" value={c.data_chegada_prevista ?? ''} onChange={(e) => aoMudarDataChegada(c.id, e.target.value)} title="Definir/editar chegada prevista" />
+                    </div>
                     <button type="button" onClick={() => receberCompra(c).then(carregar).catch(aoFalhar)} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
                       Marcar recebido
                     </button>

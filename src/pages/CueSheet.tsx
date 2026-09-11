@@ -7,6 +7,8 @@ import { Cabecalho, Conteudo } from '../components/Layout';
 import { CueForm } from '../components/cueSheet/CueForm';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Checkbox } from '../components/ui/Checkbox';
+import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData } from '../lib/status';
 import type { CueSheetItem, EventoComLead } from '../lib/types';
@@ -109,14 +111,16 @@ export default function CueSheet() {
             titulo="Ficha do evento"
             desc="Selecione o evento — o roteiro base vem sozinho dos horários do contrato, adicione cues extras aqui."
             acao={
-              <select value={eventoId} onChange={(e) => setEventoId(e.target.value)} className="rounded-sm border border-line bg-input px-3 py-2 text-[12.5px] text-text outline-none focus:border-schedule">
-                {eventos.length === 0 && <option value="">Nenhum evento</option>}
-                {eventos.map((ev) => (
-                  <option key={ev.id} value={ev.id}>
-                    {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? 'sem nome'}
-                  </option>
-                ))}
-              </select>
+              <div className="w-64">
+                <Select categoria="agenda" value={eventoId} onChange={(e) => setEventoId(e.target.value)}>
+                  {eventos.length === 0 && <option value="">Nenhum evento</option>}
+                  {eventos.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? 'sem nome'}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             }
           />
 
@@ -138,7 +142,9 @@ export default function CueSheet() {
               <ol className="flex flex-col gap-2">
                 {cues.map((c) => (
                   <li key={c.id} className={`flex items-start gap-3 rounded-sm border px-3 py-2.5 text-sm ${c.concluido ? 'border-success/30 bg-success/10' : 'border-line bg-input'}`}>
-                    <input type="checkbox" checked={c.concluido} onChange={(e) => aoMarcarConcluido(c.id, e.target.checked)} className="mt-0.5 h-4 w-4 accent-schedule" />
+                    <div className="mt-0.5">
+                      <Checkbox categoria="agenda" marcado={c.concluido} onMudar={(v) => aoMarcarConcluido(c.id, v)} />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="text-text">

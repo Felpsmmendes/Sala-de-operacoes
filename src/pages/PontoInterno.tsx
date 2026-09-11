@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { Check, Clock, LogIn, LogOut, ShieldOff, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { baterPonto, cadastrarMeuNome, definirAtivoFuncionario, listarFuncionariosInternos, listarMeusRegistrosHoje, listarRegistrosDeHoje, obterMeuFuncionario } from '../lib/api/pontoInterno';
+import { Input } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { supabasePontoInterno } from '../lib/supabasePontoInterno';
 import type { FuncionarioInterno, PontoInternoRegistro, TipoPontoInterno } from '../lib/types';
@@ -202,8 +203,6 @@ export default function PontoInterno() {
     }
   }
 
-  const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral';
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
       <div className="flex w-full max-w-md flex-col gap-4">
@@ -225,14 +224,8 @@ export default function PontoInterno() {
             <p className="text-sm text-text-dim">Carregando…</p>
           ) : !session ? (
             <form onSubmit={aoEntrar} className="flex flex-col gap-3">
-              <label>
-                <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">E-mail</span>
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={campo} />
-              </label>
-              <label>
-                <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Senha</span>
-                <input type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} className={campo} />
-              </label>
+              <Input rotulo="E-mail" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input rotulo="Senha" type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} />
               {erroLogin && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erroLogin}</p>}
               <button type="submit" disabled={entrando} className="rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
                 {entrando ? 'Entrando…' : 'Entrar'}
@@ -251,7 +244,7 @@ export default function PontoInterno() {
           ) : meuFuncionario === null ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-text-dim">Primeiro acesso — qual é o seu nome?</p>
-              <input value={nomeCadastro} onChange={(e) => setNomeCadastro(e.target.value)} placeholder="Nome completo" className={campo} />
+              <Input value={nomeCadastro} onChange={(e) => setNomeCadastro(e.target.value)} placeholder="Nome completo" />
               {erroCadastro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erroCadastro}</p>}
               <button type="button" disabled={cadastrando || !nomeCadastro.trim()} onClick={aoCadastrarNome} className="rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
                 {cadastrando ? 'Salvando…' : 'Continuar'}

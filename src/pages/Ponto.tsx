@@ -7,6 +7,7 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { FUNCAO_EQUIPE_ROTULO, formatarData } from '../lib/status';
 import type { EscalaPresenca, EventoComLead } from '../lib/types';
@@ -113,14 +114,16 @@ export default function Ponto() {
             desc="Selecione o evento e copie o link de confirmação de chegada pra mandar pra equipe."
             acao={
               <div className="flex items-center gap-2">
-                <select value={eventoId} onChange={(e) => setEventoId(e.target.value)} className="rounded-sm border border-line bg-input px-3 py-2 text-[12.5px] text-text outline-none focus:border-people">
-                  {eventos.length === 0 && <option value="">Nenhum evento</option>}
-                  {eventos.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? 'sem nome'}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-64">
+                  <Select categoria="pessoas" value={eventoId} onChange={(e) => setEventoId(e.target.value)}>
+                    {eventos.length === 0 && <option value="">Nenhum evento</option>}
+                    {eventos.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? 'sem nome'}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
                 <button type="button" onClick={copiarLink} disabled={!eventoId} className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
                   <Copy className="h-3.5 w-3.5" /> Copiar link
                 </button>

@@ -5,6 +5,7 @@ import { mensagemDeErro } from '../../lib/erroAmigavel';
 import { formatarMoeda } from '../../lib/status';
 import { useArrastarRolagem } from '../../lib/useArrastarRolagem';
 import { useConfirmDialog } from '../../lib/useConfirmDialog';
+import { Input } from '../ui/Input';
 
 const CORES: { valor: FunilLead['cor']; rotulo: string; classe: string; variavel: string }[] = [
   { valor: 'neutro', rotulo: 'Neutro', classe: 'bg-neutral', variavel: '--color-neutral' },
@@ -244,13 +245,13 @@ export function PipelineLeads({
           <div className="flex w-[220px] flex-shrink-0 flex-col gap-2">
             {mostrarNovoFunil ? (
               <div className="flex flex-col gap-2 rounded-md border border-line bg-raised p-2.5">
-                <input
+                <Input
                   autoFocus
+                  categoria="pessoas"
                   value={novoNome}
                   onChange={(e) => setNovoNome(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && aoCriarFunil()}
                   placeholder="Nome do funil"
-                  className="rounded-sm border border-line bg-input px-2 py-1.5 text-[12.5px] text-text outline-none focus:border-people"
                 />
                 <div className="flex gap-1.5">
                   {CORES.map((c) => (

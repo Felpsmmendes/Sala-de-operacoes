@@ -13,6 +13,8 @@ import { ConfigPix, carregarConfigPix, type ConfigPixDados } from '../components
 import { ModalContratoNovo, type DadosContratoNovo } from '../components/contratos/ModalContratoNovo';
 import { ModalEditarContrato } from '../components/contratos/ModalEditarContrato';
 import { ModalPix } from '../components/contratos/ModalPix';
+import { Checkbox } from '../components/ui/Checkbox';
+import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { CATEGORIA_BLOQUEIO_ROTULO, formatarData, formatarMoeda } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
@@ -287,10 +289,7 @@ export default function Contratos() {
                       <span className="font-mono text-sm text-text">{formatarMoeda(c.valor_sinal)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-1.5 text-[12.5px] text-text-dim">
-                        <input type="checkbox" checked={c.sinal_pago} onChange={(e) => aoMudarSinalPago(c.id, e.target.checked)} className="h-3.5 w-3.5 accent-money" />
-                        Pago
-                      </label>
+                      <Checkbox rotulo="Pago" categoria="dinheiro" marcado={c.sinal_pago} onMudar={(pago) => aoMudarSinalPago(c.id, pago)} />
                       {!c.sinal_pago && (
                         <button type="button" onClick={() => setPixAberto({ contrato: c, tipo: 'sinal' })} className="ml-auto rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-panel hover:text-text">
                           Cobrar PIX
@@ -305,15 +304,13 @@ export default function Contratos() {
                       <span className="font-mono text-sm text-text">{formatarMoeda(c.valor_saldo)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <select
-                        value={c.saldo_status}
-                        onChange={(e) => aoMudarStatusSaldo(c.id, e.target.value as StatusSaldo)}
-                        className="rounded-sm border border-line bg-input px-2 py-1 text-[12.5px] text-text outline-none focus:border-money"
-                      >
-                        <option value="pendente">Pendente</option>
-                        <option value="parcial">Parcial</option>
-                        <option value="quitado">Quitado</option>
-                      </select>
+                      <div className="w-36">
+                        <Select categoria="dinheiro" value={c.saldo_status} onChange={(e) => aoMudarStatusSaldo(c.id, e.target.value as StatusSaldo)}>
+                          <option value="pendente">Pendente</option>
+                          <option value="parcial">Parcial</option>
+                          <option value="quitado">Quitado</option>
+                        </Select>
+                      </div>
                       {c.saldo_status !== 'quitado' && (
                         <button type="button" onClick={() => setPixAberto({ contrato: c, tipo: 'saldo' })} className="ml-auto rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-panel hover:text-text">
                           Cobrar PIX

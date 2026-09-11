@@ -1,212 +1,21 @@
 @import 'tailwindcss';
+@import './styles/design-tokens.css';
 /* fontes carregadas via <link> em index.html (evita o aviso de ordem de
    @import — o do Tailwind expande antes deste, mesmo declarado depois) */
 
 /* =========================================================================
    Sala de Operações — Em Cena Eventos
    -------------------------------------------------------------------------
-   Design system "Mission Control Operations", herdado do painel anterior
-   (ver ../Texto/DESIGN.md) e refinado pelos modelos do Google Stitch em
-   ../Texto/docs/referencias/stitch_em_cena_design_system/. Tokens
-   registrados aqui como variáveis Tailwind v4 (@theme) — usar como
-   bg-bg, text-accent, font-mono etc. em qualquer componente.
+   Design system v2 (2026-09-10) — tokens em ./styles/design-tokens.css;
+   aqui só ficam as classes utilitárias que dependem deles (superfícies,
+   sidebar, badges de núcleo, scrollbar, motion) e as poucas regras
+   globais (seleção, foco, print). Referência: ../DESIGN.md.
    ========================================================================= */
-@theme {
-  /* -- cor: base do painel (grafite quente, sem preto puro) -- */
-  --color-bg: #141311;
-  --color-panel: #1d1b19;
-  --color-raised: #242220;
-  --color-input: #0f0e0c;
-  --color-line: #2d2b27;
-  --color-line-strong: #413d37;
-
-  /* -- cor: texto -- */
-  --color-text: #f3eee2;
-  --color-text-dim: #b6ac9a;
-  /* 5.0:1 contra --color-panel (era #7d7562, 3.76:1 — abaixo do mínimo
-     WCAG AA de 4.5:1 pra texto normal; usado em rótulo pequeno/uppercase
-     em quase toda tela, ver auditoria de contraste 2026-09-07). */
-  --color-text-faint: #948a76;
-
-  /* -- cor: destaque único, reservado pra ação primária / "ativo agora" -- */
-  --color-accent: #e8a13d;
-  --color-accent-strong: #f4b658;
-  --color-accent-ink: #1c1206;
-
-  /* -- cor: estado semântico -- */
-  --color-success: #10b981;
-  --color-pending: #e8a13d;
-  --color-danger: #ef4444;
-  --color-neutral: #8a8272;
-
-  /* -- cor: categoria (DESIGN.md 2026-09-09, "The Meaning-Color Rule") --
-     5 cores fixas por SIGNIFICADO de informação (dinheiro/pessoas/agenda/
-     operação/ação), usadas nos elementos de destaque (MetricCard, botão
-     primário, sidebar) — nunca trocadas por preferência estética de uma
-     tela. Tom estável entre os dois temas (só a opacidade muda, ver
-     --glass-* abaixo); âmbar reaproveita --color-accent, já existente. */
-  --color-money: #4ade80;
-  --color-people: #5b9bff;
-  --color-schedule: #a855f7;
-  --color-ops: #2dd4bf;
-
-  /* -- cor: rótulo de categoria dentro do MetricCard glass — precisa de
-     TOM DIFERENTE por tema pra manter contraste de leitura (tom claro
-     sobre fundo escuro, tom escuro/saturado sobre fundo claro); no
-     escuro, a própria cor de categoria já é clara o bastante. Âmbar usa
-     --color-accent-strong (já existente) como tom claro. */
-  --color-accent-label: var(--color-accent-strong);
-  --color-money-label: var(--color-money);
-  --color-people-label: var(--color-people);
-  --color-schedule-label: var(--color-schedule);
-  --color-ops-label: var(--color-ops);
-
-  /* -- glassmorphism (The Glass-For-Emphasis Rule + The Theme-Intensity
-     Rule): opacidades do gradiente/borda/sombra dos elementos de
-     destaque — valores do tema ESCURO aqui; o claro precisa de bem mais
-     opacidade pro mesmo efeito PERCEBIDO (fundo claro dilui cor), ver
-     override abaixo. Nunca usado em tabela/formulário/lista/input. */
-  --glass-grad-1: 22%;
-  --glass-grad-2: 5%;
-  --glass-border-op: 35%;
-  --glass-shadow-op: 12%;
-  --glass-inset: rgba(255, 255, 255, 0.08);
-
-  /* botão de ação primária (DESIGN.md > Components > Buttons) — sombra
-     colorida com opacidade PRÓPRIA (mais forte que a do MetricCard),
-     também theme-tunada: sombra colorida pesa mais visualmente sobre
-     fundo claro, por isso o claro usa MENOS opacidade aqui (é o inverso
-     da regra do card — o botão já é cor sólida forte, não um wash). */
-  --btn-shadow-op: 35%;
-
-  /* sidebar — item de menu por categoria (DESIGN.md > Navigation) */
-  --nav-hover-1: 16%;
-  --nav-hover-2: 4%;
-  --nav-hover-border: 25%;
-  --nav-active-1: 22%;
-  --nav-active-2: 6%;
-  --nav-active-border: 35%;
-  --nav-active-shadow: 15%;
-
-  /* vidro leve (DESIGN.md > Panel + Tables & Lists, "The Glass-Everywhere
-     Rule", 2026-09-09) — linha de lista tintada por status/categoria
-     quando fizer sentido (ex.: contrato pago = leve tom verde); a versão
-     neutra do Panel/linha usa os literais rgba(255,255,255,*)/rgba(0,0,0,*)
-     direto nas regras abaixo, sem token, porque não varia por cor. */
-  --row-grad-1: 10%;
-  --row-grad-2: 2%;
-  --row-border-op: 18%;
-
-  /* -- tipografia -- */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
-
-  /* -- raio -- */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-
-  /* -- realce de borda (ver regra `.border-line` embaixo) — no escuro,
-     um fiapo claro que faz a borda "brilhar" contra o fundo escuro; no
-     claro é o oposto (ver override abaixo), uma sombra escura suave. */
-  --shadow-borda: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 2px 6px rgba(0, 0, 0, 0.35);
-
-  /* -- profundidade de card (2026-09-08, achado do usuário: o sistema
-     estava "simples demais" — só o fiapo de borda acima, sem
-     profundidade de verdade). `--shadow-card` é pra CONTAINER de nível
-     de página (Panel, MetricCard) — nunca pra elemento pequeno/inline
-     (linha de lista, input), que continuam só com `--shadow-borda`.
-     3 camadas: um brilho de 1px no topo interno (bevel, luz "vindo de
-     cima"), um contorno fino (equivalente ao fiapo de borda) e uma
-     sombra ambiente larga e suave (a profundidade de verdade). Aplicado
-     via `.shadow-card`, que other-rides o box-shadow de `.border-line`
-     nesses componentes (ver nota na regra `.shadow-card` embaixo). */
-  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.06), 0 2px 4px rgba(0, 0, 0, 0.3), 0 20px 44px -20px rgba(0, 0, 0, 0.65);
-}
 
 html,
 body,
 #root {
   height: 100%;
-}
-
-/* Modo claro — botão no topo de cada tela (ver Layout.tsx/Cabecalho),
-   preferência salva em localStorage (ver src/lib/useTema.ts) e aplicada
-   via atributo `data-theme` na tag <html>. Mesma estrutura de tokens do
-   escuro, só invertendo os tons de base. */
-:root[data-theme='light'] {
-  --color-bg: #f6f4ef;
-  --color-panel: #ffffff;
-  --color-raised: #efebe2;
-  --color-input: #ffffff;
-  --color-line: #e1dbcd;
-  --color-line-strong: #c9c0ac;
-
-  --color-text: #292418;
-  --color-text-dim: #6b6252;
-  /* 5.5:1 contra --color-panel (era #948a76, 3.41:1 — mesmo achado do
-     texto claro/escuro, ver nota em --color-text-faint acima). */
-  --color-text-faint: #6f6857;
-
-  /* Achado de auditoria de contraste (2026-09-07): os tons de
-     sucesso/pendente/perigo/neutro do @theme foram calibrados pra
-     ficarem vívidos contra fundo ESCURO — a mesma cor, sem ajuste,
-     perde contraste demais contra fundo branco (verde e âmbar caem
-     pra ~2.2:1, bem abaixo do mínimo WCAG AA de 4.5:1 pra texto —
-     confere no Badge, em valores de receita/despesa, em qualquer
-     `text-success`/`text-pending`/`text-danger`/`text-neutral` solto).
-     Aqui embaixo são tons mais escuros da MESMA cor, só pro tema
-     claro — todos testados contra branco (texto solto) e contra o
-     próprio Badge (fundo tintado em 15% da cor), ambos ≥4.5:1.
-     `--color-accent` (o dourado dos botões) fica de fora de propósito:
-     mudar esse token também mudaria botão/foco/destaque de navegação
-     em cascata — risco maior que vale a pena evitar aqui. */
-  --color-success: #046b3d; /* era #10b981 (herdado) — 2.54:1 → 6.6:1 texto / 5.3:1 badge */
-  --color-pending: #8a5000; /* era #e8a13d (herdado) — 2.19:1 → 6.5:1 texto / 5.2:1 badge */
-  --color-danger: #b91c1c; /* era #ef4444 (herdado) — 3.76:1 → 6.5:1 texto / 5.0:1 badge */
-  --color-neutral: #6b6357; /* era #8a8272 (herdado) — 3.81:1 → 5.9:1 texto / 4.8:1 badge */
-
-  /* rótulo de categoria no claro precisa de um tom bem mais escuro/
-     saturado que o wash de fundo pra continuar legível (mesma lógica da
-     tabela acima) — tons "700" da mesma família de cor, testados contra
-     branco (≥4.5:1 WCAG AA). Âmbar usa o valor do próprio DESIGN.md. */
-  --color-accent-label: #7a4d0c;
-  --color-money-label: #15803d;
-  --color-people-label: #1d4ed8;
-  --color-schedule-label: #7e22ce;
-  --color-ops-label: #0f766e;
-
-  /* Theme-Intensity Rule: mesmo efeito percebido do vidro exige bem mais
-     opacidade no claro (fundo claro dilui cor, se aproxima do branco). */
-  --glass-grad-1: 45%;
-  --glass-grad-2: 12%;
-  --glass-border-op: 50%;
-  --glass-shadow-op: 18%;
-  --glass-inset: rgba(255, 255, 255, 0.5);
-
-  --btn-shadow-op: 25%;
-
-  --nav-hover-1: 32%;
-  --nav-hover-2: 8%;
-  --nav-hover-border: 40%;
-  --nav-active-1: 45%;
-  --nav-active-2: 12%;
-  --nav-active-border: 55%;
-  --nav-active-shadow: 22%;
-
-  --row-grad-1: 22%;
-  --row-grad-2: 5%;
-  --row-border-op: 30%;
-
-  /* invertido: no claro a borda ganha uma sombra escura suave em vez do
-     fiapo claro do escuro (pedido do usuário). */
-  --shadow-borda: 0 0 0 1px rgba(41, 36, 24, 0.09), 0 2px 6px rgba(41, 36, 24, 0.07);
-
-  /* mesma ideia do escuro, invertida: brilho branco de verdade no topo
-     (o card é "de papel", luz vindo de cima), contorno suave e sombra
-     ambiente mais rasa (luz do dia não projeta sombra tão profunda
-     quanto um monitor no escuro). */
-  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.8), 0 0 0 1px rgba(41, 36, 24, 0.08), 0 2px 4px rgba(41, 36, 24, 0.04), 0 20px 36px -20px rgba(41, 36, 24, 0.18);
 }
 
 /* Tema padrão é escuro (não segue o SO) — sem `color-scheme` certo, o
@@ -223,12 +32,7 @@ html[data-theme='light'] {
 
 body {
   margin: 0;
-  /* vinheta bem sutil (2026-09-08) — um degradê radial quase imperceptível
-     por trás do conteúdo, em vez de uma cor de fundo 100% chapada. É a
-     diferença entre "flat" e "tem profundidade" num fundo que não tem
-     nenhum outro elemento decorativo. */
-  background: radial-gradient(ellipse 1200px 800px at 50% -10%, color-mix(in srgb, var(--color-raised) 45%, transparent), transparent), var(--color-bg);
-  background-attachment: fixed;
+  background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -241,157 +45,195 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Realce em toda borda do sistema — pedido do usuário: no escuro, um
-   fiapo branco/claro em volta de cada borda existente; no claro, o
-   oposto, uma sombra escura suave. Pega de carona na classe utilitária
-   `border-line` que TODO elemento com borda já usa (Panel, cards,
-   inputs, linhas de lista) — não precisa editar componente por
-   componente. `shadow-sm` foi tirado de Panel/Login pra não duplicar
-   sombra (ver Panel.tsx e Login.tsx). */
-.border-line {
-  box-shadow: var(--shadow-borda);
+/* Scrollbar customizada (prompt master, seção 8) — fina e discreta,
+   combinando com o fundo quase-preto do tema escuro; no claro usa tons
+   equivalentes derivados dos mesmos tokens de superfície. */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-raised);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-line-strong);
 }
 
-/* Profundidade de card de nível de página (Panel, MetricCard) — pega de
-   carona no MESMO mecanismo do `.border-line` acima (troca o box-shadow
-   inteiro, não soma; por isso vem DEPOIS na cascata: um elemento com as
-   duas classes junto — ex. `className="border border-line shadow-card"`
-   — fica só com a sombra mais rica daqui, que já inclui um contorno
-   equivalente ao fiapo de borda, então nada se perde). Nunca aplicar em
-   elemento pequeno/inline (linha de lista, input) — é pesada de
-   propósito, pensada pra um container do tamanho de um Panel. */
-.shadow-card {
+/* Realce em toda borda do sistema — desde a v2 os tokens `--color-line*`
+   já SÃO a cor da borda (rgba translúcido), então basta a classe
+   `border-line`/`border` do Tailwind; nenhum box-shadow extra por cima
+   (o sistema anterior simulava esse "fiapo" via sombra porque a base era
+   opaca — não é mais o caso). Mantida como classe vazia só como ponto de
+   extensão documentado, caso surja necessidade futura. */
+
+/* Card principal (`Panel`, `MetricCard`) — fundo sólido, SEM vidro/blur
+   (prompt master, seção 2.2: só a TopBar usa blur). Nome da classe
+   (`panel-glass`) preservado por compatibilidade com os ~8 arquivos que
+   já a referenciam — o que mudou foi a receita CSS por trás dela. */
+.panel-glass {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+  transition: border-color 0.2s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.panel-glass:hover {
+  border-color: var(--color-line-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card-hover);
 }
 
-/* Sidebar em vidro (DESIGN.md > Navigation, 2026-09-09) — único painel
-   "estrutural" (não-métrica) que ganha glassmorphism, porque fica
-   visível o tempo todo e ancora visualmente o sistema. */
+/* Sidebar — fundo sólido (prompt master, seção 2.1: só `#08090d` + borda,
+   sem blur). Nome `sidebar-glass` preservado (só usado em Layout.tsx). */
 .sidebar-glass {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 60%, transparent), color-mix(in srgb, var(--color-bg) 70%, transparent));
-  /* Ordem importa (2026-09-09, bug reportado pelo usuário): o Lightning
-     CSS do pipeline de build (@tailwindcss/vite) deduplica esse par e
-     descarta uma das duas — com a padrão por ÚLTIMO ele mantém ela (é a
-     que os navegadores modernos realmente precisam; -webkit- sozinho é
-     ignorado no Chrome/Edge/Firefox atuais). Nunca inverter essa ordem. */
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-:root[data-theme='light'] .sidebar-glass {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), color-mix(in srgb, var(--color-bg) 85%, transparent));
-  border-right-color: rgba(0, 0, 0, 0.06);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  background: var(--color-sidebar);
+  border-right: 1px solid var(--color-line);
 }
 
-/* Item de menu da sidebar por categoria (DESIGN.md > Navigation) — cada
-   NavLink define `--item-color`/`--item-label` inline (ver Layout.tsx);
-   estas regras só reagem a essas variáveis, então funcionam pra
-   qualquer uma das 5 categorias sem precisar de uma classe por cor.
-   Ícone sempre na cor da categoria (mesmo em repouso); o texto só sobe
-   pra essa cor no hover/ativo (fica `text-dim` em repouso). */
+/* Item de menu da sidebar — TODOS neutros em repouso; só o item ATIVO
+   ganha a cor de marca (âmbar), nunca a cor de núcleo do módulo (prompt
+   master, seção 2.1 e 3: "cor do núcleo NÃO aparece em ícones da
+   sidebar"). Substitui o esquema anterior (uma cor por categoria em cada
+   item), que o próprio usuário está descartando nesta rodada. */
 .nav-item {
-  color: var(--color-text-dim);
+  color: var(--color-text-faint);
   border: 1px solid transparent;
-  transition: background 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
-}
-.nav-item .nav-icon {
-  color: var(--item-label, currentColor);
-}
-.nav-item:hover,
-.nav-item.is-active {
-  color: var(--item-label);
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 .nav-item:hover {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--item-color) var(--nav-hover-1), transparent), color-mix(in srgb, var(--item-color) var(--nav-hover-2), transparent));
-  border-color: color-mix(in srgb, var(--item-color) var(--nav-hover-border), transparent);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-dim);
 }
 .nav-item.is-active {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--item-color) var(--nav-active-1), transparent), color-mix(in srgb, var(--item-color) var(--nav-active-2), transparent));
-  border-color: color-mix(in srgb, var(--item-color) var(--nav-active-border), transparent);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--item-color) var(--nav-active-shadow), transparent);
+  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+}
+.nav-item .nav-icon {
+  color: currentColor;
 }
 
-/* Foco/seleção de texto são chrome de INTERAÇÃO, não carregam nenhum
-   significado de categoria — auditoria do usuário (2026-09-09) encontrou
-   isso usando o âmbar antigo como se fosse a única cor do sistema, fora
-   das exceções do DESIGN.md (botão primário, item ativo do menu, selo
-   "pendente", marca). Vira neutro, igual a qualquer métrica/elemento sem
-   categoria clara (mesma regra do MetricCard). */
-/* Panel/container em vidro leve (DESIGN.md > Panel, "The Glass-Everywhere
-   Rule", substitui a "Glass-For-Emphasis Rule", 2026-09-09) — todo
-   container do sistema agora usa vidro, só que numa intensidade bem mais
-   sutil que o vidro forte do MetricCard/sidebar: gradiente quase neutro
-   (sem cor de categoria), blur mais alto (o gradiente é tão sutil que o
-   blur é o que garante a sensação de vidro real). Substitui o antigo
-   fundo sólido `bg-panel` chapado. */
-.panel-glass {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)), var(--color-bg);
-  /* ordem importa — ver nota em .sidebar-glass acima (2026-09-09). */
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.45);
-}
-:root[data-theme='light'] .panel-glass {
-  background: linear-gradient(160deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.01)), var(--color-bg);
-  border-color: rgba(0, 0, 0, 0.08);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.12);
+/* TopBar — único elemento do sistema que ainda usa vidro (prompt master,
+   seção 2.1/6.3): fixa no topo, um pouco translúcida, com blur médio. */
+.topbar-glass {
+  background: color-mix(in srgb, var(--color-sidebar) 97%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-line);
 }
 
-/* Mini-card de linha de lista (DESIGN.md > Tables & Lists, 2026-09-09) —
-   substitui <tr>/linha crua por um container com vidro leve. `.list-row`
-   é a variante neutra (gradiente igual ao Panel); `.list-row-tint` é a
-   variante tintada por status/categoria — cada instância define
-   `--row-color` inline (mesmo mecanismo do `--item-color` da sidebar).
-   `.list-row-blur` é opt-in: listas curtas ligam o blur, listas longas
-   (30-40+ linhas visíveis) omitem por performance/legibilidade, mantendo
-   só gradiente + borda (ver nota do DESIGN.md). */
+/* Sub-box (`SubBox`, linha de lista) — mesma ideia do Card, um nível
+   "dentro" dele: fundo `--color-raised`, borda mais sutil, sem sombra
+   própria (o Card ao redor já projeta a sua). Preserva os nomes
+   `list-row`/`list-row-tint` (usados em ~7 telas) — só o CSS mudou. */
 .list-row {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)), var(--color-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-line);
+  background: var(--color-raised);
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
-:root[data-theme='light'] .list-row {
-  border-color: rgba(0, 0, 0, 0.05);
-  background: linear-gradient(160deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.01)), var(--color-bg);
+.list-row:hover {
+  border-color: var(--color-line-strong);
+  transform: translateY(-1px);
 }
 .list-row-tint {
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--row-color) var(--row-border-op), transparent);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--row-color) var(--row-grad-1), transparent), color-mix(in srgb, var(--row-color) var(--row-grad-2), transparent)), var(--color-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--row-color) 25%, transparent);
+  background: color-mix(in srgb, var(--row-color) 7%, var(--color-raised));
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
+.list-row-tint:hover {
+  border-color: color-mix(in srgb, var(--row-color) 40%, transparent);
+  transform: translateY(-1px);
+}
+/* `.list-row-blur` era opt-in pro vidro forte em listas curtas — não se
+   aplica mais (superfícies sólidas na v2); mantida como no-op documentado
+   pra não quebrar o JSX que ainda passa a classe. */
 .list-row-blur {
-  /* ordem importa — ver nota em .sidebar-glass acima (2026-09-09). */
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+}
+
+/* Linha de `<table>` (`Tabela`/`LinhaTabela`, `ui/Table.tsx`) — mesma
+   ideia do `.list-row-tint` acima (mesma variável `--row-color`), sem
+   raio de canto (não se aplica bem a `<tr>`). */
+.linha-tabela {
+  border-bottom: 1px solid var(--color-line);
+  transition: background-color 0.15s ease;
+}
+.linha-tabela:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.linha-tabela-tinta:hover {
+  background: color-mix(in srgb, var(--row-color) 5%, transparent);
+}
+
+/* Campo de formulário (`Input`/`Select`/`Textarea`, `ui/`) — foco na cor
+   do NÚCLEO do campo (`--campo-cor`, definida inline por instância, ver
+   Input.tsx etc.), não numa cor fixa: auditoria de 2026-09-10 achou que
+   as 35 telas com input cru já seguem essa convenção há tempo
+   (`focus:border-money` em Contratos/Orçamentos, `-people` em CRM/Escala,
+   `-schedule` em Agenda, `-ops` em Estoque/Logística) — decisão do
+   usuário foi preservar isso, não trocar por teal fixo (que era o que o
+   prompt master original pedia). Sem `categoria` explícita, cai em
+   `--color-neutral` (mesmo default das telas sem núcleo forte, ex.
+   Configurações/Auditoria). `:focus-within` cobre o caso do
+   `InputMoeda`, onde o `.campo` fica na div-wrapper, não no `<input>`. */
+.campo {
+  width: 100%;
+  background: var(--color-input);
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.campo:hover {
+  border-color: var(--color-line-strong);
+}
+.campo:focus,
+.campo:focus-within {
+  outline: none;
+  border-color: var(--campo-cor, var(--color-neutral));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--campo-cor, var(--color-neutral)) 8%, transparent);
+}
+.campo.campo-erro {
+  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+}
+.campo.campo-erro:focus,
+.campo.campo-erro:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+/* Lista nativa do `<select>` (`ui/Select.tsx`) — o navegador ignora
+   `background`/`color` do próprio `<select>` na lista de opções aberta em
+   boa parte dos browsers; isso pelo menos cobre os que respeitam. */
+select option {
+  background: var(--color-raised);
+  color: var(--color-text-dim);
 }
 
 ::selection {
-  background: var(--color-neutral);
-  color: var(--color-bg);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
 }
 :focus-visible {
-  outline: 2px solid var(--color-neutral);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 /* =========================================================================
-   Motion (DESIGN.md > Motion, 2026-09-09) — 6 padrões, um único idioma de
-   movimento (The One-Motion-Language Rule): sempre este easing
-   (cubic-bezier(.22,1,.36,1)), sempre transform/opacity, nunca layout.
-   "Número contando" fica fora daqui — é JS (ver src/lib/useContagem.ts),
-   não dá pra fazer só com CSS. Tudo aqui respeita prefers-reduced-motion
-   (bloco @media no fim desta seção, The Reduced-Motion Rule).
+   Motion — mesmo idioma de sempre (The One-Motion-Language Rule): sempre
+   este easing (cubic-bezier(.22,1,.36,1)), sempre transform/opacity,
+   nunca layout. Ajustado na v2 só onde o prompt master pede um valor
+   diferente (hover de card agora é -1px, não -3px). Tudo respeita
+   prefers-reduced-motion (bloco @media no fim desta seção).
    ========================================================================= */
 
 /* -- 1. Entrada em cascata diagonal — grade pequena de destaque
    (MetricCards, painéis complementares). `.metric-grid` no container pai;
-   cada filho direto entra com esse delay, na ordem em que aparece. Só
-   entrada real de tela — nunca reaplicado em re-render/troca de filtro,
-   porque é puro CSS rodando uma vez na montagem do elemento. -- */
+   cada filho direto entra com esse delay, na ordem em que aparece. -- */
 @keyframes cascata-entrada {
   from {
     opacity: 0;
@@ -431,43 +273,16 @@ body {
   animation-delay: 1260ms;
 }
 
-/* -- 2. Hover elevado — só em card/linha que É clicável (nunca em algo
-   estático). `.list-row`/`.list-row-tint` já são sempre clicáveis (toda
-   linha de lista tem controle interativo dentro), então o hover vai
-   embutido na própria classe. `.hover-elevado` é a versão opt-in pra
-   quem mais precisar (ex.: MetricCard quando embrulhado num Link). -- */
-.list-row,
-.list-row-tint,
+/* -- 2. Hover elevado — só em card/linha que É clicável. `.list-row`/
+   `.list-row-tint` já embutem o próprio hover (ver acima); `.hover-
+   elevado` é a versão opt-in genérica (ex.: MetricCard quando embrulhado
+   num Link). -1px (não -3px) pra bater com o Card/SubBox do prompt
+   master, 2026-09-10. -- */
 .hover-elevado {
   transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms, border-color 200ms;
 }
-.list-row:hover,
-.list-row-tint:hover,
 .hover-elevado:hover {
-  transform: translateY(-3px);
-}
-.list-row:hover,
-.list-row-tint:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-}
-:root[data-theme='light'] .list-row:hover,
-:root[data-theme='light'] .list-row-tint:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-}
-.list-row-tint:hover {
-  --row-border-op: 26%;
-}
-:root[data-theme='light'] .list-row-tint:hover {
-  --row-border-op: 42%;
-}
-/* sombra colorida do MetricCard intensifica no hover — sobe a opacidade
-   do MESMO token que o glass do card já usa (--glass-shadow-op), sem
-   duplicar a receita de sombra. */
-.hover-elevado:hover {
-  --glass-shadow-op: 20%;
-}
-:root[data-theme='light'] .hover-elevado:hover {
-  --glass-shadow-op: 28%;
+  transform: translateY(-1px);
 }
 
 /* -- 3. Skeleton loading — brilho horizontal em loop, no lugar de
@@ -487,9 +302,9 @@ body {
   border-radius: 6px;
 }
 
-/* -- 4. Indicador "ao vivo" pulsante — só em métrica que representa algo
-   em tempo real/hoje, nunca em métrica histórica. `--pulso-cor` definido
-   inline por instância (mesmo mecanismo do `--item-color` da sidebar). -- */
+/* -- 4. Indicador "ao vivo" pulsante (`DotLive`) — só em métrica/status
+   que representa algo em tempo real/hoje, nunca histórico. `--pulso-cor`
+   definido inline por instância (ver DotLive.tsx). -- */
 @keyframes pulso-vivo {
   0%,
   100% {
@@ -501,8 +316,8 @@ body {
 }
 .pulso-vivo {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   flex-shrink: 0;
   border-radius: 9999px;
   background: var(--pulso-cor, var(--color-accent));
@@ -510,13 +325,10 @@ body {
 }
 
 /* -- 5. Feedback de clique — todo botão encolhe ligeiramente no clique.
-   Regra global (elemento <button>), não precisa de classe por botão.
    CUIDADO: usa `transition-property` (lista), nunca o shorthand
    `transition` — o shorthand SUBSTITUI qualquer transition-colors/
-   transition-opacity que o botão já tenha via Tailwind (`hover:bg-*`,
-   `hover:text-*` etc.), quebrando esses hovers em toda a base de código.
-   A lista abaixo é a mesma do utilitário `transition` padrão do Tailwind
-   (cor/fundo/borda/opacidade/sombra) + `transform` — soma, não troca. */
+   transition-opacity que o botão já tenha via Tailwind, quebrando esses
+   hovers em toda a base de código. -- */
 button:not(:disabled) {
   transition-property: color, background-color, border-color, opacity, box-shadow, transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -525,6 +337,21 @@ button:not(:disabled) {
 button:not(:disabled):active {
   transform: scale(0.96);
   transition-duration: 100ms;
+}
+
+/* -- 6. Scroll-reveal (`Reveal`/`RevealGroup`, prompt master seção 6.2) —
+   IntersectionObserver puro (sem Framer Motion, não instalado no
+   projeto): estado inicial aplicado inline por componente (opacity 0 +
+   translateY), a classe abaixo só documenta a transição padrão pra quem
+   quiser aplicar via CSS puro fora do par de componentes React. -- */
+.reveal-init {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* -- The Reduced-Motion Rule — remove/reduz toda animação automática ou
@@ -538,6 +365,7 @@ button:not(:disabled):active {
   }
   .list-row:hover,
   .list-row-tint:hover,
+  .panel-glass:hover,
   .hover-elevado:hover {
     transform: none;
   }
@@ -550,15 +378,17 @@ button:not(:disabled):active {
   button:not(:disabled):active {
     transform: none;
   }
+  .reveal-init {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* Botão "Imprimir" do checklist de carga (Estoque, 2026-09-09) — truque
-   clássico de "imprimir só esta parte": esconde tudo por visibilidade
-   (não display, que um `display:none` num ancestral não deixaria o
-   `.print-area` filho voltar a aparecer) e só a área marcada volta a
-   ficar visível, ocupando a folha inteira. Só um checklist fica expandido
-   por vez na tela, então marcar a área expandida já basta — sem precisar
-   de classe no <body> nem JS extra pra isso. */
+/* Botão "Imprimir" do checklist de carga (Estoque) — truque clássico de
+   "imprimir só esta parte": esconde tudo por visibilidade (não display,
+   que um `display:none` num ancestral não deixaria o `.print-area` filho
+   voltar a aparecer) e só a área marcada volta a ficar visível, ocupando
+   a folha inteira. */
 @media print {
   body * {
     visibility: hidden;

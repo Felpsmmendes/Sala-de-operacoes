@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Lock, Plus, Trash2, User } from 'lucide-react';
 import { useState } from 'react';
 import { CATEGORIA_BLOQUEIO_ROTULO, STATUS_EVENTO_INFO, formatarData } from '../../lib/status';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import type { BloqueioAgenda, EventoComLead, Lead, NovaTarefaAgenda, TarefaComLead } from '../../lib/types';
 
 const NOME_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -127,28 +129,24 @@ export function CalendarioMensal({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <select
-            value={mes}
-            onChange={(e) => onIrParaMes(ano, Number(e.target.value))}
-            className="rounded-sm border border-line bg-input px-2 py-1.5 text-[12.5px] font-medium text-text outline-none focus:border-schedule"
-          >
-            {NOME_MES.map((nome, i) => (
-              <option key={nome} value={i}>
-                {nome}
-              </option>
-            ))}
-          </select>
-          <select
-            value={ano}
-            onChange={(e) => onIrParaMes(Number(e.target.value), mes)}
-            className="rounded-sm border border-line bg-input px-2 py-1.5 text-[12.5px] font-medium text-text outline-none focus:border-schedule"
-          >
-            {anos.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
+          <div className="w-32">
+            <Select categoria="agenda" value={mes} onChange={(e) => onIrParaMes(ano, Number(e.target.value))}>
+              {NOME_MES.map((nome, i) => (
+                <option key={nome} value={i}>
+                  {nome}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-20">
+            <Select categoria="agenda" value={ano} onChange={(e) => onIrParaMes(Number(e.target.value), mes)}>
+              {anos.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </Select>
+          </div>
           <button type="button" onClick={onIrParaHoje} className="ml-1 text-[10.5px] font-medium text-schedule hover:underline">
             Hoje
           </button>
@@ -257,22 +255,16 @@ function FormNovaTarefa({ data, leads, onCriar, criando }: { data: string; leads
 
   return (
     <div className="flex flex-col gap-2 rounded-sm border border-line bg-raised p-3">
-      <input
-        autoFocus
-        value={titulo}
-        onChange={(e) => setTitulo(e.target.value)}
-        placeholder="Ex: Degustação, chefe tem compromisso, ligar fornecedor…"
-        className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-schedule"
-      />
-      <input type="time" value={horario} onChange={(e) => setHorario(e.target.value)} className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-schedule" />
-      <select value={leadId} onChange={(e) => setLeadId(e.target.value)} className="w-full rounded-sm border border-line bg-input px-2.5 py-1.5 text-[13px] text-text outline-none focus:border-schedule">
+      <Input autoFocus categoria="agenda" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex: Degustação, chefe tem compromisso, ligar fornecedor…" />
+      <Input type="time" categoria="agenda" value={horario} onChange={(e) => setHorario(e.target.value)} />
+      <Select categoria="agenda" value={leadId} onChange={(e) => setLeadId(e.target.value)}>
         <option value="">Lead relacionado (opcional)</option>
         {leads.map((l) => (
           <option key={l.id} value={l.id}>
             {l.nome}
           </option>
         ))}
-      </select>
+      </Select>
       <div className="flex gap-2">
         <button
           type="button"

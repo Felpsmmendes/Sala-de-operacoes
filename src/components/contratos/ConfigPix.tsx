@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Input } from '../ui/Input';
 
 const CHAVE_LOCALSTORAGE = 'emCenaConfigPix';
 
@@ -27,15 +28,15 @@ export function ConfigPix({ onSalvar }: { onSalvar: (dados: ConfigPixDados) => v
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <label className="sm:col-span-2">
-        <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Sua chave PIX (recebe os pagamentos)</span>
-        <input
+      <div className="sm:col-span-2">
+        <Input
+          rotulo="Sua chave PIX (recebe os pagamentos)"
+          categoria="dinheiro"
           value={dados.chave}
           onChange={(e) => setDados({ ...dados, chave: e.target.value })}
           placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
-          className="w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-money"
         />
-      </label>
+      </div>
       <div className="flex items-end">
         <button
           type="button"

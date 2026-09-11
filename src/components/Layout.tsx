@@ -17,99 +17,75 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTema } from '../lib/useTema';
-import type { CategoriaMetrica } from './MetricCard';
+import { DotLive } from './ui/DotLive';
 
-type ItemNav = { to: string; rotulo: string; Icone: typeof LayoutDashboard; categoria: CategoriaMetrica };
-
-/* cor de cada categoria (DESIGN.md > Colors > "The Meaning-Color Rule")
-   — mesmas 5 cores fixas do MetricCard, agora também na sidebar. Item
-   sem categoria clara na tabela do DESIGN.md (Portal do Cliente, Após o
-   Evento) cai em "neutro", nunca inventa uma cor nova. */
-const CATEGORIA_VAR: Record<CategoriaMetrica, { cor: string; label: string }> = {
-  dinheiro: { cor: 'var(--color-money)', label: 'var(--color-money-label)' },
-  pessoas: { cor: 'var(--color-people)', label: 'var(--color-people-label)' },
-  agenda: { cor: 'var(--color-schedule)', label: 'var(--color-schedule-label)' },
-  operacao: { cor: 'var(--color-ops)', label: 'var(--color-ops-label)' },
-  acao: { cor: 'var(--color-accent)', label: 'var(--color-accent-label)' },
-  neutro: { cor: 'var(--color-neutral)', label: 'var(--color-neutral)' },
-};
-
-function estiloCategoria(categoria: CategoriaMetrica): CSSProperties {
-  const { cor, label } = CATEGORIA_VAR[categoria];
-  return { '--item-color': cor, '--item-label': label } as CSSProperties;
-}
+type ItemNav = { to: string; rotulo: string; Icone: typeof LayoutDashboard };
 
 const CHAVE_SIDEBAR_COLAPSADA = 'emcena_sidebar_colapsada';
 
 /* -- Painel fica sozinho no topo, fora dos núcleos — é a tela-lar ("/"),
    não faz sentido enterrada dentro de um núcleo lá embaixo. */
-const PAINEL: ItemNav = { to: '/', rotulo: 'Sala de Operações', Icone: LayoutDashboard, categoria: 'acao' };
+const PAINEL: ItemNav = { to: '/', rotulo: 'Sala de Operações', Icone: LayoutDashboard };
 
-/* -- núcleos operacionais (ver PRD, seção 3), reordenados pra seguir o
-   fluxo real do negócio de cima a baixo (reviu 2026-09-06 a pedido do
-   usuário: ordem original enterrava o Painel dentro de "Execução" e
-   deixava o Portal do Cliente sem link nenhum no menu — corrigidos).
-   `categoria` (2026-09-09, ver DESIGN.md > Colors): mesma cor fixa por
-   significado do MetricCard, agora também no ícone do menu — item que
-   não está na tabela do DESIGN.md (Portal do Cliente, Após o Evento)
-   fica "neutro", nunca inventa uma 6ª cor. -- */
+/* -- núcleos operacionais (ver PRD, seção 3), na ordem do fluxo real do
+   negócio. Ícone e texto SEMPRE neutros (prompt master, seção 2.1/3: "cor
+   do núcleo NÃO aparece em ícones da sidebar") — só o item ATIVO ganha a
+   cor de marca (âmbar), nunca a cor do módulo. */
 const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
   {
     titulo: 'Comercial & Cliente',
     itens: [
-      { to: '/crm', rotulo: 'CRM & Pipeline', Icone: Filter, categoria: 'pessoas' },
-      { to: '/orcamentos', rotulo: 'Gerador de Orçamentos', Icone: Receipt, categoria: 'dinheiro' },
-      { to: '/contratos', rotulo: 'Contratos', Icone: ClipboardCheck, categoria: 'dinheiro' },
-      { to: '/portal-cliente', rotulo: 'Portal do Cliente', Icone: Link2, categoria: 'neutro' },
+      { to: '/crm', rotulo: 'CRM & Pipeline', Icone: Filter },
+      { to: '/orcamentos', rotulo: 'Gerador de Orçamentos', Icone: Receipt },
+      { to: '/contratos', rotulo: 'Contratos', Icone: ClipboardCheck },
+      { to: '/portal-cliente', rotulo: 'Portal do Cliente', Icone: Link2 },
     ],
   },
   {
     titulo: 'Planejamento & Pré-Produção',
     itens: [
-      { to: '/agenda', rotulo: 'Agenda Operacional', Icone: Calendar, categoria: 'agenda' },
-      { to: '/escala', rotulo: 'Equipe do Evento', Icone: Users, categoria: 'pessoas' },
-      { to: '/estoque', rotulo: 'Estoque', Icone: Package, categoria: 'operacao' },
-      { to: '/logistica', rotulo: 'Frota e Entregas', Icone: Truck, categoria: 'operacao' },
+      { to: '/agenda', rotulo: 'Agenda Operacional', Icone: Calendar },
+      { to: '/escala', rotulo: 'Equipe do Evento', Icone: Users },
+      { to: '/estoque', rotulo: 'Estoque', Icone: Package },
+      { to: '/logistica', rotulo: 'Frota e Entregas', Icone: Truck },
     ],
   },
   {
     titulo: 'Execução em Tempo Real',
     itens: [
-      { to: '/roteiro', rotulo: 'Roteiro do Evento', Icone: ListChecks, categoria: 'agenda' },
-      { to: '/ponto', rotulo: 'Confirmação de Chegada', Icone: Fingerprint, categoria: 'pessoas' },
+      { to: '/roteiro', rotulo: 'Roteiro do Evento', Icone: ListChecks },
+      { to: '/ponto', rotulo: 'Confirmação de Chegada', Icone: Fingerprint },
     ],
   },
   {
     titulo: 'Encerramento & Controladoria',
     itens: [
-      { to: '/auditoria', rotulo: 'Após o Evento', Icone: ClipboardCheck, categoria: 'neutro' },
-      { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet, categoria: 'dinheiro' },
-      { to: '/fechamento', rotulo: 'Fechamento Mensal', Icone: BarChart3, categoria: 'dinheiro' },
+      { to: '/auditoria', rotulo: 'Após o Evento', Icone: ClipboardCheck },
+      { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
+      { to: '/fechamento', rotulo: 'Fechamento Mensal', Icone: BarChart3 },
     ],
   },
 ];
 
-/* -- barra inferior mobile: só os 7 módulos que o PRD marca como "Mobile".
-   Sem o vidro da sidebar desktop (DESIGN.md só pede glass pra sidebar),
-   mas o item ativo agora usa a MESMA cor de categoria do menu lateral
-   (2026-09-09, auditoria do usuário: antes era âmbar fixo em todo item,
-   inconsistente com a sidebar já recolorida por categoria). -- */
+/* -- barra inferior mobile: só os 7 módulos que o PRD marca como
+   "Mobile". Mesma regra da sidebar — neutro em repouso, âmbar só no
+   ativo (v2, 2026-09-10: a v1 tinha uma cor por categoria aqui). -- */
 const BOTTOMBAR: ItemNav[] = [
-  { to: '/', rotulo: 'Painel', Icone: LayoutDashboard, categoria: 'acao' },
-  { to: '/crm', rotulo: 'CRM', Icone: Filter, categoria: 'pessoas' },
-  { to: '/orcamentos', rotulo: 'Orçamento', Icone: Receipt, categoria: 'dinheiro' },
-  { to: '/agenda', rotulo: 'Agenda', Icone: Calendar, categoria: 'agenda' },
-  { to: '/ponto', rotulo: 'Chegada', Icone: Fingerprint, categoria: 'pessoas' },
-  { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet, categoria: 'dinheiro' },
-  { to: '/fechamento', rotulo: 'Fechamento', Icone: BarChart3, categoria: 'dinheiro' },
+  { to: '/', rotulo: 'Painel', Icone: LayoutDashboard },
+  { to: '/crm', rotulo: 'CRM', Icone: Filter },
+  { to: '/orcamentos', rotulo: 'Orçamento', Icone: Receipt },
+  { to: '/agenda', rotulo: 'Agenda', Icone: Calendar },
+  { to: '/ponto', rotulo: 'Chegada', Icone: Fingerprint },
+  { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
+  { to: '/fechamento', rotulo: 'Fechamento', Icone: BarChart3 },
 ];
 
 function classesLink({ isActive }: { isActive: boolean }) {
-  return ['nav-item flex items-center gap-2.5 rounded-sm px-3 py-2 text-sm font-medium', isActive ? 'is-active' : ''].join(' ');
+  return ['nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium', isActive ? 'is-active' : ''].join(' ');
 }
 
 export default function Layout() {
@@ -139,23 +115,22 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen bg-bg">
       {/* -- sidebar (desktop, ≥960px) — recolhível pra sobrar mais tela pro
-          conteúdo (pedido do usuário: telas com muita coluna, tipo o
-          Pipeline do CRM, ficavam apertadas). Preferência salva no
-          navegador, cada aparelho lembra o que você escolheu. -- */}
+          conteúdo. Fundo sólido `--color-sidebar` (prompt master, seção
+          2.1) — v2 não usa mais vidro/blur aqui, só na TopBar. -- */}
       <aside
         className={`sidebar-glass fixed inset-y-0 left-0 hidden flex-col gap-6 overflow-y-auto overflow-x-hidden py-5 transition-[width] duration-200 lg:flex ${
-          colapsada ? 'w-16 px-2' : 'w-[220px] px-3'
+          colapsada ? 'w-16 px-2' : 'w-[210px] px-3.5'
         }`}
       >
-        <div className={`flex items-center gap-2 ${colapsada ? 'flex-col' : 'justify-between px-2'}`}>
+        <div className={`flex items-center gap-2 ${colapsada ? 'flex-col' : 'justify-between px-1'}`}>
           <a href="/" className="flex items-center gap-2.5 overflow-hidden">
-            <span
-              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-sm bg-gradient-to-br from-accent-strong to-accent text-[11px] font-bold text-accent-ink"
-              style={{ boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.35), 0 2px 6px -1px rgba(0,0,0,0.4)' }}
-            >
-              EC
-            </span>
-            {!colapsada && <span className="whitespace-nowrap text-[13.5px] font-semibold text-text">Em Cena</span>}
+            <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[11px] bg-white text-[12px] font-black text-[#050507]">EC</span>
+            {!colapsada && (
+              <span className="flex flex-col leading-tight">
+                <span className="whitespace-nowrap text-[13.5px] font-extrabold text-text">EM CENA</span>
+                <span className="whitespace-nowrap font-mono text-[8px] uppercase tracking-widest text-text-ultra">Sala de Operações</span>
+              </span>
+            )}
           </a>
           <button
             type="button"
@@ -169,17 +144,18 @@ export default function Layout() {
 
         <nav className="flex flex-1 flex-col gap-5">
           <div className="flex flex-col gap-1 border-b border-line pb-4">
-            <NavLink key={PAINEL.to} to={PAINEL.to} end title={colapsada ? PAINEL.rotulo : undefined} className={classesLink} style={estiloCategoria(PAINEL.categoria)}>
-              <PAINEL.Icone className="nav-icon h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
+            {!colapsada && <p className="px-3 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-text-ultra">Principal</p>}
+            <NavLink key={PAINEL.to} to={PAINEL.to} end title={colapsada ? PAINEL.rotulo : undefined} className={classesLink}>
+              <PAINEL.Icone className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
               {!colapsada && <span className="truncate">{PAINEL.rotulo}</span>}
             </NavLink>
           </div>
           {NUCLEOS.map((nucleo) => (
             <div key={nucleo.titulo} className="flex flex-col gap-1">
-              {!colapsada && <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-text-faint">{nucleo.titulo}</p>}
+              {!colapsada && <p className="px-3 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-text-ultra">{nucleo.titulo}</p>}
               {nucleo.itens.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.to === '/'} title={colapsada ? item.rotulo : undefined} className={classesLink} style={estiloCategoria(item.categoria)}>
-                  <item.Icone className="nav-icon h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
+                <NavLink key={item.to} to={item.to} end={item.to === '/'} title={colapsada ? item.rotulo : undefined} className={classesLink}>
+                  <item.Icone className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
                   {!colapsada && <span className="truncate">{item.rotulo}</span>}
                 </NavLink>
               ))}
@@ -187,37 +163,36 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* perfil — clicar aqui ou na "foto" leva pra Configurações
-            (perfil, trocar senha, sair da conta ficam todos lá, ver
-            pedido do usuário). */}
-        <NavLink
-          to="/configuracoes"
-          title={colapsada ? 'Configurações' : undefined}
-          className={({ isActive }) =>
-            `flex items-center gap-2.5 rounded-sm border-t border-line px-3 pt-3 text-sm font-medium transition-colors ${isActive ? 'text-[var(--item-label)]' : 'text-text-dim hover:text-text'}`
-          }
-          style={estiloCategoria('neutro')}
-        >
-          {/* Configurações não está na tabela de categorias do DESIGN.md
-              — neutro, igual a qualquer item de menu sem categoria clara
-              (2026-09-09, auditoria do usuário: era âmbar fixo). */}
-          <span
-            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[var(--item-label)]"
-            style={{ background: 'color-mix(in srgb, var(--item-color) 15%, transparent)' }}
-          >
-            <User className="h-4 w-4" strokeWidth={1.75} />
-          </span>
+        {/* rodapé — status operacional (prompt master, seção 2.1) +
+            atalho de perfil (clicar leva pra Configurações: perfil, trocar
+            senha, sair da conta ficam todos lá). */}
+        <div className="flex flex-col gap-3 border-t border-line pt-3">
           {!colapsada && (
-            <div className="min-w-0 flex-1 text-left">
-              <p className="truncate text-[12.5px] font-medium">{nomePerfil}</p>
-              <p className="text-[10.5px] text-text-faint">Configurações</p>
+            <div className="flex items-center gap-1.5 px-3 font-mono text-[9.5px] font-medium text-text-faint">
+              <DotLive categoria="execucao" />
+              Operação Normal
             </div>
           )}
-        </NavLink>
+          <NavLink
+            to="/configuracoes"
+            title={colapsada ? 'Configurações' : undefined}
+            className={({ isActive }) => `nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'is-active' : ''}`}
+          >
+            <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-raised text-text-faint">
+              <User className="h-4 w-4" strokeWidth={1.75} />
+            </span>
+            {!colapsada && (
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-[12.5px] font-medium">{nomePerfil}</p>
+                <p className="text-[10.5px] text-text-ultra">Configurações</p>
+              </div>
+            )}
+          </NavLink>
+        </div>
       </aside>
 
       {/* -- conteúdo -- */}
-      <div className={`flex-1 pb-20 transition-[margin] duration-200 lg:pb-0 ${colapsada ? 'lg:ml-16' : 'lg:ml-[220px]'}`}>
+      <div className={`flex-1 pb-20 transition-[margin] duration-200 lg:pb-0 ${colapsada ? 'lg:ml-16' : 'lg:ml-[210px]'}`}>
         <Outlet />
       </div>
 
@@ -229,12 +204,8 @@ export default function Layout() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              [
-                'flex flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1 text-[9.5px] font-semibold transition-colors',
-                isActive ? 'text-[var(--item-label)]' : 'text-text-faint',
-              ].join(' ')
+              ['flex flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1 text-[9.5px] font-semibold transition-colors', isActive ? 'text-accent' : 'text-text-faint'].join(' ')
             }
-            style={estiloCategoria(item.categoria)}
           >
             <item.Icone className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="truncate">{item.rotulo}</span>
@@ -245,14 +216,18 @@ export default function Layout() {
   );
 }
 
-/** Cabeçalho padrão de cada tela — mesmo padrão do painel anterior
-    (faixa de status com relógio real + título + subtítulo). */
+/** Cabeçalho padrão de cada tela — faixa de status (TopBar) + título +
+    subtítulo. TopBar v2 (prompt master, seção 2.1): label mono
+    ultra-muted + relógio à esquerda, alternador de tema à direita — é o
+    único elemento do sistema, além do card, que ainda leva um traço de
+    vidro (`.topbar-glass`, blur médio), porque fica fixo no topo e
+    precisa se destacar do conteúdo passando por baixo dele ao rolar. */
 export function Cabecalho({ titulo, subtitulo }: { titulo: string; subtitulo: string }) {
   return (
     <header className="border-b border-line px-5 pt-3.5 lg:px-8">
       <div className="mx-auto max-w-[1680px]">
         <RelogioStatus />
-        <h1 className="mb-1 mt-1 text-[26px] font-bold tracking-tight text-text">{titulo}</h1>
+        <h1 className="mb-1 mt-1 text-[26px] font-extrabold tracking-tight text-text">{titulo}</h1>
         <p className="pb-5 text-sm text-text-dim">{subtitulo}</p>
       </div>
     </header>
@@ -268,8 +243,8 @@ function RelogioStatus() {
   }, []);
   return (
     <div className="mt-6 flex items-center gap-2">
-      <span className="h-1.5 w-1.5 flex-shrink-0 animate-pulse rounded-full bg-accent" />
-      <span className="text-[10px] font-bold uppercase tracking-widest text-text-faint">Em Cena · Sala de Operações</span>
+      <DotLive categoria="acao" />
+      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-ultra">Centro Integrado de Controle</span>
       <span className="ml-auto font-mono text-xs tabular-nums text-text-dim">{hora}</span>
       <button
         type="button"
@@ -283,9 +258,7 @@ function RelogioStatus() {
   );
 }
 
-/** Container padrão pra conteúdo de página (largura máxima + respiro).
-    Aumentado de 1200px pra 1680px (pedido do usuário: seções como o
-    Pipeline do CRM ficavam apertadas em monitores largos). */
+/** Container padrão pra conteúdo de página (largura máxima + respiro). */
 export function Conteudo({ children }: { children: ReactNode }) {
   return <main className="mx-auto max-w-[1680px] px-5 py-6 lg:px-8">{children}</main>;
 }

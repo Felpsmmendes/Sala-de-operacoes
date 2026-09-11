@@ -10,14 +10,14 @@ const CLASSES: Record<TomBadge, string> = {
   neutro: 'border-neutral/25 bg-neutral/15 text-neutral',
 };
 
-/** Selo de estado — tom + ícone, nunca só cor (mesma regra do painel
-    anterior: estado precisa ser legível mesmo em escala de cinza). Borda
-    sutil (2026-09-08) além do fundo tintado — dá mais definição de borda
-    no pill, em vez de só uma mancha de cor chapada. */
+/** Selo de estado — tom + ícone, nunca só cor (estado precisa ser
+    legível mesmo em escala de cinza). Fonte mono uppercase (prompt
+    master, seção 2.4/5, 2026-09-10) — antes era sans; o resto (borda +
+    fundo tintado) já vinha do sistema anterior. */
 export function Badge({ tom, texto }: { tom: TomBadge; texto: string }) {
   const Icone = ICONE[tom];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${CLASSES[tom]}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide ${CLASSES[tom]}`}>
       <Icone className="h-2.5 w-2.5" strokeWidth={2.5} />
       {texto}
     </span>

@@ -1,9 +1,8 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import type { Lead, NovaTarefaAgenda } from '../../lib/types';
-
-const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-schedule';
-const rotulo = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 
 /** "+ Tarefa" no topo da Agenda (pedido do usuário, 2026-09-09) — acesso
     direto sem precisar clicar num dia primeiro (o formulário inline por
@@ -28,30 +27,18 @@ export function ModalTarefaNova({ leads, onFechar, onCriar, criando }: { leads: 
 
         <div className="mb-4 flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
-            <label>
-              <span className={rotulo}>Data</span>
-              <input type="date" value={data} onChange={(e) => setData(e.target.value)} className={campo} />
-            </label>
-            <label>
-              <span className={rotulo}>Horário (opcional)</span>
-              <input type="time" value={horario} onChange={(e) => setHorario(e.target.value)} className={campo} />
-            </label>
+            <Input rotulo="Data" categoria="agenda" type="date" value={data} onChange={(e) => setData(e.target.value)} />
+            <Input rotulo="Horário (opcional)" categoria="agenda" type="time" value={horario} onChange={(e) => setHorario(e.target.value)} />
           </div>
-          <label>
-            <span className={rotulo}>Título</span>
-            <input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex: Degustação, ligar fornecedor…" className={campo} />
-          </label>
-          <label>
-            <span className={rotulo}>Lead relacionado (opcional)</span>
-            <select value={leadId} onChange={(e) => setLeadId(e.target.value)} className={campo}>
-              <option value="">Nenhum</option>
-              {leads.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.nome}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Input rotulo="Título" categoria="agenda" autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex: Degustação, ligar fornecedor…" />
+          <Select rotulo="Lead relacionado (opcional)" categoria="agenda" value={leadId} onChange={(e) => setLeadId(e.target.value)}>
+            <option value="">Nenhum</option>
+            {leads.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nome}
+              </option>
+            ))}
+          </Select>
         </div>
 
         <button

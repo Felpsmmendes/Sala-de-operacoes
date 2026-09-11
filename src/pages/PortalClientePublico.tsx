@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { diasAteEvento } from '../lib/api/contratos';
 import { aprovarMoldura, aprovarVideo, assinarHomologacao, buscarPortalPorToken } from '../lib/api/portalCliente';
+import { Input } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
@@ -108,8 +109,6 @@ export default function PortalClientePublico() {
     }
   }
 
-  const campo = 'w-full rounded-sm border border-line bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-neutral';
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
       <div className="w-full max-w-lg rounded-lg border border-line bg-panel p-6">
@@ -203,8 +202,8 @@ export default function PortalClientePublico() {
                     <p className="text-[12.5px] text-text-dim">Aprove a moldura e o vídeo acima pra liberar a assinatura.</p>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      <input className={campo} placeholder="Seu nome completo" value={nome} onChange={(e) => setNome(e.target.value)} disabled={travado} />
-                      <input className={campo} placeholder="CPF" value={cpf} onChange={(e) => setCpf(e.target.value)} disabled={travado} />
+                      <Input placeholder="Seu nome completo" value={nome} onChange={(e) => setNome(e.target.value)} disabled={travado} />
+                      <Input placeholder="CPF" value={cpf} onChange={(e) => setCpf(e.target.value)} disabled={travado} />
                       <button type="button" disabled={!nome || !cpf || travado || processando} onClick={aoClicarAssinar} className="rounded-sm bg-accent px-3 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
                         {processando ? 'Enviando…' : 'Assinar e confirmar homologação'}
                       </button>
