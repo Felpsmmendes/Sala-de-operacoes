@@ -8,7 +8,9 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
 import { Checkbox } from '../components/ui/Checkbox';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { RotuloCampo } from '../components/ui/RotuloCampo';
 import { Select } from '../components/ui/Select';
@@ -151,9 +153,9 @@ export default function Auditoria() {
           <Panel>
             <PanelHeader titulo="Eventos" desc={carregando ? undefined : `${eventos.length} não cancelados`} />
             {carregando ? (
-              <p className="text-sm text-text-dim">Carregando…</p>
+              <SkeletonLinhas />
             ) : eventos.length === 0 ? (
-              <p className="text-sm text-text-dim">Nenhum evento ainda.</p>
+              <EstadoVazio Icone={ClipboardCheck} titulo="Nenhum evento ainda" descricao="Eventos não cancelados aparecem aqui pra avaliação pós-evento." />
             ) : (
               <div className="flex max-h-[560px] flex-col gap-1.5 overflow-y-auto">
                 {eventos.map((ev) => {

@@ -1,5 +1,5 @@
 import { AlertTriangle, X } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Input } from './ui/Input';
 
 /**
@@ -36,6 +36,15 @@ export type ConfirmDialogProps = {
 
 export function ConfirmDialog({ titulo, mensagem, textoConfirmar = 'Confirmar', textoCancelar = 'Cancelar', perigo = false, digitarParaConfirmar, aberto, onConfirmar, onFechar }: ConfirmDialogProps) {
   const [digitado, setDigitado] = useState('');
+
+  useEffect(() => {
+    if (!aberto) return;
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === 'Escape') onFechar();
+    }
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [aberto, onFechar]);
 
   if (!aberto) return null;
 

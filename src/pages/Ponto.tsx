@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Copy, Users } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle2, Copy, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
@@ -7,6 +7,8 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { FUNCAO_EQUIPE_ROTULO, formatarData } from '../lib/status';
@@ -132,11 +134,11 @@ export default function Ponto() {
           />
 
           {carregando ? (
-            <p className="text-sm text-text-dim">Carregando…</p>
+            <SkeletonLinhas />
           ) : !eventoAtual ? (
-            <p className="text-sm text-text-dim">Nenhum evento futuro ainda.</p>
+            <EstadoVazio Icone={Calendar} titulo="Nenhum evento futuro ainda" />
           ) : presenca.length === 0 ? (
-            <p className="text-sm text-text-dim">Ninguém escalado pra este evento ainda — vá em Escala &amp; Equipe primeiro.</p>
+            <EstadoVazio Icone={Users} titulo="Ninguém escalado pra este evento ainda" descricao="Vá em Escala & Equipe primeiro." />
           ) : (
             <div className="flex flex-col gap-2">
               {presenca.map((p) => (
@@ -159,7 +161,7 @@ export default function Ponto() {
         <Panel>
           <PanelHeader titulo="Próximas datas — cobertura de equipe" desc="Panorama de convocação e chegada pra você não descobrir uma falta em cima da hora." />
           {eventos.length === 0 ? (
-            <p className="text-sm text-text-dim">Nenhum evento futuro cadastrado.</p>
+            <EstadoVazio Icone={Calendar} titulo="Nenhum evento futuro cadastrado" />
           ) : (
             <div className="overflow-x-auto">
               {/* Mini-cards de vidro leve (DESIGN.md > Tables & Lists,

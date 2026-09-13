@@ -2,6 +2,8 @@ import type { Session } from '@supabase/supabase-js';
 import { Check, Clock, LogIn, LogOut, ShieldOff, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { baterPonto, cadastrarMeuNome, definirAtivoFuncionario, listarFuncionariosInternos, listarMeusRegistrosHoje, listarRegistrosDeHoje, obterMeuFuncionario } from '../lib/api/pontoInterno';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { supabasePontoInterno } from '../lib/supabasePontoInterno';
@@ -221,7 +223,7 @@ export default function PontoInterno() {
           </div>
 
           {carregando ? (
-            <p className="text-sm text-text-dim">Carregando…</p>
+            <SkeletonLinhas />
           ) : !session ? (
             <form onSubmit={aoEntrar} className="flex flex-col gap-3">
               <Input rotulo="E-mail" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -240,7 +242,7 @@ export default function PontoInterno() {
               </button>
             </div>
           ) : meuFuncionario === undefined ? (
-            <p className="text-sm text-text-dim">Carregando…</p>
+            <SkeletonLinhas />
           ) : meuFuncionario === null ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-text-dim">Primeiro acesso — qual é o seu nome?</p>
@@ -322,7 +324,7 @@ export default function PontoInterno() {
               <p className="text-[13px] font-semibold text-text">Equipe interna hoje</p>
             </div>
             {equipe.length === 0 ? (
-              <p className="text-[12.5px] text-text-dim">Nenhum funcionário cadastrado ainda — a pessoa aparece aqui no primeiro login dela.</p>
+              <EstadoVazio Icone={Users} titulo="Nenhum funcionário cadastrado ainda" descricao="A pessoa aparece aqui no primeiro login dela." />
             ) : (
               <div className="flex flex-col gap-2">
                 {equipe.map((f) => {

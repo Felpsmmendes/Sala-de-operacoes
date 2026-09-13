@@ -21,6 +21,8 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { ChecklistEvento } from '../components/estoque/ChecklistEvento';
 import { ItemForm } from '../components/estoque/ItemForm';
 import { ModalCompra } from '../components/estoque/ModalCompra';
@@ -192,9 +194,9 @@ export default function Estoque() {
           <Panel>
             <PanelHeader titulo="Checklist de carga por evento" desc="Itens do pacote contratado (padrão) + observações/brindes do contrato, por evento." />
             {carregando ? (
-              <p className="text-sm text-text-dim">Carregando…</p>
+              <SkeletonLinhas />
             ) : contratos.length === 0 ? (
-              <p className="text-sm text-text-dim">Nenhum contrato ativo ainda.</p>
+              <EstadoVazio Icone={ClipboardList} titulo="Nenhum contrato ativo ainda" descricao="O checklist de carga aparece aqui por evento assim que houver um contrato." />
             ) : (
               <div className="flex flex-col gap-3">
                 {contratos.map((c) => (
@@ -249,9 +251,9 @@ export default function Estoque() {
             <Panel>
               <PanelHeader titulo="Itens do galpão" desc={carregando ? undefined : `${itens.length} item(ns)`} />
               {carregando ? (
-                <p className="text-sm text-text-dim">Carregando…</p>
+                <SkeletonLinhas />
               ) : itens.length === 0 ? (
-                <p className="text-sm text-text-dim">Nenhum item cadastrado ainda.</p>
+                <EstadoVazio Icone={Package} titulo="Nenhum item cadastrado ainda" descricao="Cadastre bebidas, insumos, gelo ou descartáveis do galpão acima." />
               ) : (
                 <div className="flex flex-col gap-2">
                   {itens.map((item) => (
@@ -289,7 +291,7 @@ export default function Estoque() {
           <Panel>
             <PanelHeader titulo="Histórico de avarias" desc="Quebras e perdas registradas." />
             {avarias.length === 0 ? (
-              <p className="text-sm text-text-dim">Nenhuma avaria registrada.</p>
+              <EstadoVazio Icone={Package} titulo="Nenhuma avaria registrada" />
             ) : (
               <div className="flex flex-col gap-2">
                 {avarias.map((m) => (

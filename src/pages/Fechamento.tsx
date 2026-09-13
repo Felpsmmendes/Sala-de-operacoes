@@ -5,6 +5,7 @@ import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarMoeda } from '../lib/status';
 import type { ContratoComLead } from '../lib/types';
@@ -56,7 +57,7 @@ export default function Fechamento() {
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
         {carregando ? (
-          <p className="text-sm text-text-dim">Carregando…</p>
+          <SkeletonLinhas />
         ) : (
           <>
             <Panel className="mb-4">

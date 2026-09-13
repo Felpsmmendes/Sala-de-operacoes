@@ -1,7 +1,8 @@
-import { X } from 'lucide-react';
+import { Users, X } from 'lucide-react';
 import { useState } from 'react';
 import type { MembroEquipe } from '../../lib/types';
 import { FUNCAO_EQUIPE_ROTULO } from '../../lib/status';
+import { EstadoVazio } from '../ui/EmptyState';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
@@ -20,7 +21,7 @@ export function ModalConvocar({ membros, onFechar, onConfirmar }: { membros: Mem
         </div>
 
         {membros.length === 0 ? (
-          <p className="text-sm text-text-dim">Nenhum membro cadastrado na equipe ainda — cadastre um antes de convocar.</p>
+          <EstadoVazio Icone={Users} titulo="Nenhum membro cadastrado na equipe ainda" descricao="Cadastre um antes de convocar." />
         ) : (
           <>
             <div className="mb-3">

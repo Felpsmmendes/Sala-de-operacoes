@@ -21,6 +21,8 @@ import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Skeleton } from '../components/Skeleton';
+import { DotLive } from '../components/ui/DotLive';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Reveal } from '../components/ui/Reveal';
 import { mensagemDeErro } from '../lib/erroAmigavel';
@@ -310,6 +312,20 @@ export default function Dashboard() {
     <>
       <Cabecalho titulo="Sala de Operações" subtitulo="Visão geral do negócio + monitor ao vivo dos eventos de hoje e cobertura de equipe." />
       <Conteudo>
+        {/* banner "evento ao vivo" (checklist externo, 2026-09-13) — só
+            aparece quando tem evento rolando hoje, pra chamar atenção pro
+            monitor ao vivo logo abaixo sem duplicar o resumo neutro da
+            linha seguinte. */}
+        {!carregando && eventosHoje.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-md border border-execucao/25 bg-execucao/10 px-4 py-2.5">
+            <DotLive categoria="execucao" />
+            <span className="text-[13px] font-semibold text-execucao">
+              {eventosHoje.length} evento{eventosHoje.length > 1 ? 's' : ''} acontecendo agora
+            </span>
+            <span className="text-[12px] text-text-dim">— monitor ao vivo abaixo</span>
+          </div>
+        )}
+
         {/* resumo rápido do dia (pedido do usuário, "continue o design" —
             2026-09-10) — 3 fatos reais, nunca um "sem gargalos" fabricado:
             o terceiro segmento só fica verde quando os 3 sinais que já
@@ -454,7 +470,7 @@ export default function Dashboard() {
               }
             />
             {presenca.length === 0 ? (
-              <p className="py-4 text-center text-sm text-text-dim">Ninguém escalado pra hoje.</p>
+              <EstadoVazio Icone={Users} titulo="Ninguém escalado pra hoje" />
             ) : (
               <>
                 <strong className="block font-mono text-3xl font-semibold text-text">{totalConfirmadosHoje}</strong>

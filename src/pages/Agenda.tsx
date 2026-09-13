@@ -9,6 +9,8 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { CalendarioMensal } from '../components/agenda/CalendarioMensal';
 import { ModalBloqueioNovo } from '../components/agenda/ModalBloqueioNovo';
 import { ModalTarefaNova } from '../components/agenda/ModalTarefaNova';
@@ -174,7 +176,7 @@ export default function Agenda() {
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
         {carregando ? (
-          <p className="text-sm text-text-dim">Carregando…</p>
+          <SkeletonLinhas />
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
             <Panel>
@@ -205,7 +207,7 @@ export default function Agenda() {
               <Panel>
                 <PanelHeader titulo="Próximos eventos" desc={`${proximos.length} nos próximos meses`} />
                 {proximos.length === 0 ? (
-                  <p className="text-sm text-text-dim">Nenhum evento futuro ainda — gere um contrato pra criar o primeiro.</p>
+                  <EstadoVazio Icone={Calendar} titulo="Nenhum evento futuro ainda" descricao="Gere um contrato pra criar o primeiro." />
                 ) : (
                   <div className="flex flex-col gap-3">
                     {proximos.map((ev) => (

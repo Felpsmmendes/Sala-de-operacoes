@@ -1,6 +1,8 @@
 import { Pencil, Plus, Trash2, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { atualizarAtivoFluxo, buscarFluxoCompleto, criarFluxo, excluirFluxo, listarFluxos } from '../../lib/api/automacoes';
+import { SkeletonLinhas } from '../Skeleton';
+import { EstadoVazio } from '../ui/EmptyState';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
 import type { FluxoAutomacao, FluxoCompleto, FunilLead } from '../../lib/types';
 import { Input } from '../ui/Input';
@@ -120,9 +122,9 @@ export function AutomacoesCrm({ funis }: { funis: FunilLead[] }) {
       {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
       {carregando ? (
-        <p className="text-sm text-text-dim">Carregando…</p>
+        <SkeletonLinhas />
       ) : fluxos.length === 0 ? (
-        <p className="text-sm text-text-dim">Nenhum fluxo criado ainda.</p>
+        <EstadoVazio Icone={Zap} titulo="Nenhum fluxo criado ainda" descricao="Crie um fluxo acima e desenhe o restante no canvas." />
       ) : (
         <div className="flex flex-col gap-2">
           {fluxos.map((f) => (

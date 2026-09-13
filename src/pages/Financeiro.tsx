@@ -14,6 +14,8 @@ import { GraficoDRE } from '../components/charts/GraficoDRE';
 import { LancamentoForm } from '../components/financeiro/LancamentoForm';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { gerarRelatorioExecutivoPdf } from '../lib/pdfRelatorioExecutivo';
 import { formatarData, formatarMoeda } from '../lib/status';
@@ -199,9 +201,9 @@ export default function Financeiro() {
           />
 
           {carregando ? (
-            <p className="text-sm text-text-dim">Carregando…</p>
+            <SkeletonLinhas />
           ) : visiveis.length === 0 ? (
-            <p className="text-sm text-text-dim">Nenhum lançamento aqui.</p>
+            <EstadoVazio Icone={Wallet} titulo="Nenhum lançamento aqui" />
           ) : (
             <div className="flex flex-col gap-2">
               {/* Mini-card de vidro leve por lançamento (DESIGN.md > Tables &
@@ -265,9 +267,9 @@ export default function Financeiro() {
           </MetricGrid>
 
           {carregando ? (
-            <p className="text-sm text-text-dim">Carregando…</p>
+            <SkeletonLinhas />
           ) : dreMeses.length === 0 ? (
-            <p className="text-sm text-text-dim">Nenhum lançamento pago ainda.</p>
+            <EstadoVazio Icone={Wallet} titulo="Nenhum lançamento pago ainda" />
           ) : (
             <>
               <div className="mb-4">

@@ -2,6 +2,7 @@ import { CheckCircle2, Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { buscarPresencaDoEvento, registrarChegada } from '../lib/api/ponto';
+import { SkeletonLinhas } from '../components/Skeleton';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { FUNCAO_EQUIPE_ROTULO, formatarData } from '../lib/status';
 import type { EscalaPresenca } from '../lib/types';
@@ -63,7 +64,7 @@ export default function PontoPublico() {
         </div>
 
         {carregando ? (
-          <p className="mt-4 text-sm text-text-dim">Carregando…</p>
+          <SkeletonLinhas />
         ) : erro ? (
           <p className="mt-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>
         ) : linhas.length === 0 ? (

@@ -7,7 +7,9 @@ import { Cabecalho, Conteudo } from '../components/Layout';
 import { CueForm } from '../components/cueSheet/CueForm';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
 import { Checkbox } from '../components/ui/Checkbox';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData } from '../lib/status';
@@ -125,9 +127,9 @@ export default function CueSheet() {
           />
 
           {carregando ? (
-            <p className="text-sm text-text-dim">Carregando…</p>
+            <SkeletonLinhas />
           ) : !eventoAtual ? (
-            <p className="text-sm text-text-dim">Nenhum evento disponível ainda — gere um contrato na Agenda primeiro.</p>
+            <EstadoVazio Icone={ListChecks} titulo="Nenhum evento disponível ainda" descricao="Gere um contrato na Agenda primeiro." />
           ) : (
             <CueForm proximoNumero={proximoNumero} onSalvar={aoCriarCue} salvando={salvando} />
           )}
@@ -137,7 +139,7 @@ export default function CueSheet() {
           <Panel>
             <PanelHeader titulo="Cronograma" desc={cues.length === 0 ? undefined : `${concluidos} de ${cues.length} concluídos`} />
             {cues.length === 0 ? (
-              <p className="text-sm text-text-dim">Nenhum cue cadastrado ainda pra este evento.</p>
+              <EstadoVazio Icone={ListChecks} titulo="Nenhum cue cadastrado ainda pra este evento" />
             ) : (
               <ol className="flex flex-col gap-2">
                 {cues.map((c) => (

@@ -6,6 +6,8 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { RotuloCampo } from '../components/ui/RotuloCampo';
 import { mensagemDeErro } from '../lib/erroAmigavel';
@@ -123,9 +125,9 @@ export default function PortalClienteAdmin() {
           <Panel>
             <PanelHeader titulo="Contratos" desc={carregando ? undefined : `${contratos.length} ativo(s)`} />
             {carregando ? (
-              <p className="text-sm text-text-dim">Carregando…</p>
+              <SkeletonLinhas />
             ) : contratos.length === 0 ? (
-              <p className="text-sm text-text-dim">Nenhum contrato ainda.</p>
+              <EstadoVazio Icone={FileSignature} titulo="Nenhum contrato ainda" descricao="Portais aparecem aqui assim que um contrato for criado." />
             ) : (
               <div className="flex max-h-[560px] flex-col gap-1.5 overflow-y-auto">
                 {contratos.map((c) => (

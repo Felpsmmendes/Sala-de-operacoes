@@ -1,4 +1,4 @@
-import { Copy, FileDown, MessageSquare, Pencil, X } from 'lucide-react';
+import { Copy, FileDown, MessageSquare, Pencil, Receipt, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { atualizarOrcamento, criarOrcamento, calcularValorHoraAdicional, calcularValorServico, listarOrcamentos } from '../lib/api/orcamentos';
 import { listarLeads, registrarInteracao } from '../lib/api/leads';
@@ -7,6 +7,8 @@ import { listarServicos } from '../lib/api/servicos';
 import { listarVeiculos } from '../lib/api/veiculos';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { ServicoCard } from '../components/orcamentos/ServicoCard';
 import { SeletorCliente } from '../components/orcamentos/SeletorCliente';
 import { Input } from '../components/ui/Input';
@@ -254,7 +256,7 @@ export default function Orcamentos() {
     <>
       <Cabecalho titulo="Gerador de Orçamentos" subtitulo="Coquetelaria + atrações, cálculo automático do modelo 20% sinal / 80% quitação." />
       <Conteudo>
-        {carregando && <p className="text-sm text-text-dim">Carregando…</p>}
+        {carregando && <SkeletonLinhas />}
         {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
         {!carregando && !erro && (
@@ -339,7 +341,7 @@ export default function Orcamentos() {
               <Panel>
                 <PanelHeader titulo="Orçamentos salvos" desc={`${orcamentos.length} orçamento(s)`} />
                 {orcamentos.length === 0 ? (
-                  <p className="text-sm text-text-dim">Nenhum orçamento salvo ainda.</p>
+                  <EstadoVazio Icone={Receipt} titulo="Nenhum orçamento salvo ainda" />
                 ) : (
                   <div className="flex flex-col gap-2">
                     {orcamentos.map((o) => (

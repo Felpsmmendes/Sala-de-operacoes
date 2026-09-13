@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, Pencil, Plus, Wallet } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, FileSignature, Pencil, Plus, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { bloqueioNaData, listarBloqueios } from '../lib/api/bloqueiosAgenda';
 import { atualizarContrato, cancelarContrato, criarContrato, diasAteEvento, excluirContrato, listarContratos, marcarSinalPago, atualizarStatusSaldo, type EdicaoContrato } from '../lib/api/contratos';
@@ -8,6 +8,8 @@ import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { AnaliseVendas } from '../components/contratos/AnaliseVendas';
 import { ConfigPix, carregarConfigPix, type ConfigPixDados } from '../components/contratos/ConfigPix';
 import { ModalContratoNovo, type DadosContratoNovo } from '../components/contratos/ModalContratoNovo';
@@ -257,9 +259,9 @@ export default function Contratos() {
               </button>
             }
           />
-          {carregando && <p className="text-sm text-text-dim">Carregando…</p>}
+          {carregando && <SkeletonLinhas />}
           {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
-          {!carregando && !erro && contratos.length === 0 && <p className="text-sm text-text-dim">Nenhum contrato ainda.</p>}
+          {!carregando && !erro && contratos.length === 0 && <EstadoVazio Icone={FileSignature} titulo="Nenhum contrato ainda" descricao="Gere um contrato a partir de um orçamento aceito ou crie um do zero." />}
 
           <div className="flex flex-col gap-3">
             {/* Mini-card de vidro leve por contrato (DESIGN.md > Tables &

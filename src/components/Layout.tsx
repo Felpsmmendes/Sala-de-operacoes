@@ -11,6 +11,7 @@ import {
   Moon,
   Package,
   Receipt,
+  Search,
   Sun,
   Truck,
   User,
@@ -21,9 +22,10 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTema } from '../lib/useTema';
+import { CommandPalette } from './ui/CommandPalette';
 import { DotLive } from './ui/DotLive';
 
-type ItemNav = { to: string; rotulo: string; Icone: typeof LayoutDashboard };
+export type ItemNav = { to: string; rotulo: string; Icone: typeof LayoutDashboard };
 
 const CHAVE_SIDEBAR_COLAPSADA = 'emcena_sidebar_colapsada';
 
@@ -35,7 +37,7 @@ const PAINEL: ItemNav = { to: '/', rotulo: 'Sala de Operações', Icone: LayoutD
    negócio. Ícone e texto SEMPRE neutros (prompt master, seção 2.1/3: "cor
    do núcleo NÃO aparece em ícones da sidebar") — só o item ATIVO ganha a
    cor de marca (âmbar), nunca a cor do módulo. */
-const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
+export const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
   {
     titulo: 'Comercial & Cliente',
     itens: [
@@ -70,6 +72,11 @@ const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
     ],
   },
 ];
+
+/** Lista achatada de toda tela navegável (Painel + núcleos +
+    Configurações) — fonte única reaproveitada pelo CommandPalette
+    (Cmd/Ctrl+K), pra nunca ficar desalinhada da sidebar de verdade. */
+export const ITENS_BUSCAVEIS: ItemNav[] = [PAINEL, ...NUCLEOS.flatMap((n) => n.itens), { to: '/configuracoes', rotulo: 'Configurações', Icone: User }];
 
 /* -- barra inferior mobile: só os 7 módulos que o PRD marca como
    "Mobile". Mesma regra da sidebar — neutro em repouso, âmbar só no
@@ -212,6 +219,8 @@ export default function Layout() {
           </NavLink>
         ))}
       </nav>
+
+      <CommandPalette />
     </div>
   );
 }
@@ -246,6 +255,14 @@ function RelogioStatus() {
       <DotLive categoria="acao" />
       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-ultra">Centro Integrado de Controle</span>
       <span className="ml-auto font-mono text-xs tabular-nums text-text-dim">{hora}</span>
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+        title="Busca rápida (Ctrl/Cmd + K)"
+        className="hidden items-center gap-1 rounded-sm border border-line bg-raised px-1.5 py-0.5 font-mono text-[9.5px] text-text-faint transition-colors hover:text-text sm:flex"
+      >
+        <Search className="h-2.5 w-2.5" strokeWidth={2} /> ⌘K
+      </button>
       <button
         type="button"
         onClick={alternar}

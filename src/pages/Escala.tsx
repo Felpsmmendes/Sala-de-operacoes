@@ -12,7 +12,9 @@ import { ModalConvocar } from '../components/escala/ModalConvocar';
 import { ModalHoraExtra } from '../components/escala/ModalHoraExtra';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
 import { Checkbox } from '../components/ui/Checkbox';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { Select } from '../components/ui/Select';
 import { montarMensagemConvocacao } from '../lib/mensagemConvocacao';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
@@ -238,14 +240,14 @@ export default function Escala() {
         )}
 
         {carregando ? (
-          <p className="text-sm text-text-dim">Carregando…</p>
+          <SkeletonLinhas />
         ) : eventos.length === 0 ? (
           <Panel>
-            <p className="text-sm text-text-dim">Nenhum evento disponível ainda — gere um contrato na Agenda primeiro.</p>
+            <EstadoVazio Icone={CalendarClock} titulo="Nenhum evento disponível ainda" descricao="Gere um contrato na Agenda primeiro." />
           </Panel>
         ) : eventosFiltrados.length === 0 ? (
           <Panel>
-            <p className="text-sm text-text-dim">Nenhum evento nesse período.</p>
+            <EstadoVazio Icone={CalendarClock} titulo="Nenhum evento nesse período" />
           </Panel>
         ) : (
           <div className="flex flex-col gap-4">
@@ -306,7 +308,7 @@ export default function Escala() {
                   </p>
 
                   {desteEvento.length === 0 ? (
-                    <p className="text-sm text-text-dim">Ninguém convocado pra este evento ainda.</p>
+                    <EstadoVazio Icone={Users} titulo="Ninguém convocado pra este evento ainda" />
                   ) : (
                     <div className="flex flex-col gap-2">
                       {desteEvento.map((esc) => (

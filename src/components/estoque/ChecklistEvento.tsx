@@ -1,4 +1,4 @@
-import { Printer } from 'lucide-react';
+import { ClipboardList, Printer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   atualizarQuantidadeChecklistExtra,
@@ -7,6 +7,8 @@ import {
   sincronizarChecklistExtraDoContrato,
   type ItemChecklistPadrao,
 } from '../../lib/api/estoque';
+import { SkeletonLinhas } from '../Skeleton';
+import { EstadoVazio } from '../ui/EmptyState';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
 import { formatarData } from '../../lib/status';
 import type { ChecklistExtraItem, ContratoComLead } from '../../lib/types';
@@ -70,15 +72,20 @@ export function ChecklistEvento({ contrato }: { contrato: ContratoComLead }) {
         </div>
 
         {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
-        {carregando && !erro && <p className="text-sm text-text-dim">Carregando checklist…</p>}
+        {carregando && !erro && <SkeletonLinhas />}
 
         {!carregando && !erro && (
           <>
             {semItens ? (
-              <p className="text-sm text-text-dim">
-                Nenhum item de checklist padrão pra este contrato {!contrato.orcamento_id && '(criado sem orçamento — sem itens pra saber o pacote contratado) '}e nenhuma observação/brinde
-                cadastrado.
-              </p>
+              <EstadoVazio
+                Icone={ClipboardList}
+                titulo="Nenhum item de checklist pra este contrato"
+                descricao={
+                  !contrato.orcamento_id
+                    ? 'Criado sem orçamento — sem itens pra saber o pacote contratado — e nenhuma observação/brinde cadastrado.'
+                    : 'Nenhuma observação/brinde cadastrado.'
+                }
+              />
             ) : (
               <div className="flex flex-col gap-1.5">
                 {/* Mini-card de vidro leve por item (DESIGN.md > Tables &

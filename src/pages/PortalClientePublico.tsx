@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { diasAteEvento } from '../lib/api/contratos';
 import { aprovarMoldura, aprovarVideo, assinarHomologacao, buscarPortalPorToken } from '../lib/api/portalCliente';
+import { SkeletonLinhas } from '../components/Skeleton';
 import { Input } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarData } from '../lib/status';
@@ -123,7 +124,7 @@ export default function PortalClientePublico() {
         </div>
 
         {carregando ? (
-          <p className="text-sm text-text-dim">Carregando…</p>
+          <SkeletonLinhas />
         ) : erro ? (
           <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>
         ) : !portal ? (

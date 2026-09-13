@@ -7,6 +7,7 @@ import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader, Segmented } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
 import { AutomacoesCrm } from '../components/crm/AutomacoesCrm';
 import { Conversas } from '../components/crm/Conversas';
 import { DetalheLead } from '../components/crm/DetalheLead';
@@ -326,7 +327,7 @@ export default function Crm() {
                   </div>
                   <div className="rounded-md border border-line bg-raised p-4">
                     {leadDetalhe && leadDetalhe.id !== selecionadoId ? (
-                      <p className="py-10 text-center text-sm text-text-dim">Carregando…</p>
+                      <SkeletonLinhas />
                     ) : (
                       <DetalheLead
                         lead={leadDetalhe}

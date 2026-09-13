@@ -2,6 +2,9 @@ import { Search, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { listarInteracoesDoLead, registrarInteracao } from '../../lib/api/leads';
 import { Badge } from '../Badge';
+import { SkeletonLinhas } from '../Skeleton';
+import { EstadoVazio } from '../ui/EmptyState';
+import { Select } from '../ui/Select';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
 import { funilDoLead, TIPO_INTERACAO_ROTULO, formatarData, formatarMoeda } from '../../lib/status';
 import type { FunilLead, Lead, LeadInteracao, TipoInteracao } from '../../lib/types';
@@ -89,7 +92,7 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
         </div>
         <div className="flex-1 overflow-y-auto">
           {leadsFiltrados.length === 0 ? (
-            <p className="p-4 text-center text-[12.5px] text-text-faint">Nenhum lead encontrado.</p>
+            <EstadoVazio Icone={Search} titulo="Nenhum lead encontrado" />
           ) : (
             leadsFiltrados.map((l) => (
               <button
@@ -125,9 +128,9 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
 
             <div className="flex-1 overflow-y-auto p-4">
               {carregando ? (
-                <p className="text-sm text-text-dim">Carregando…</p>
+                <SkeletonLinhas />
               ) : interacoes.length === 0 ? (
-                <p className="text-center text-sm text-text-faint">Nenhuma conversa registrada com {leadSelecionado.nome} ainda.</p>
+                <EstadoVazio Icone={Send} titulo="Nenhuma conversa registrada" descricao={`Registre o primeiro contato com ${leadSelecionado.nome} abaixo.`} />
               ) : (
                 <div className="flex flex-col gap-2.5">
                   {[...interacoes].reverse().map((i) => (
@@ -142,15 +145,17 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
             </div>
 
             <div className="flex items-end gap-2 border-t border-line bg-panel p-3">
-              <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoInteracao)} className="rounded-sm border border-line bg-input px-2 py-2.5 text-[12px] text-text outline-none focus:border-people">
-                {(Object.keys(TIPO_INTERACAO_ROTULO) as TipoInteracao[])
-                  .filter((t) => t !== 'mensagem_whatsapp')
-                  .map((t) => (
-                    <option key={t} value={t}>
-                      {TIPO_INTERACAO_ROTULO[t]}
-                    </option>
-                  ))}
-              </select>
+              <div className="w-fit">
+                <Select categoria="pessoas" value={tipo} onChange={(e) => setTipo(e.target.value as TipoInteracao)} className="py-2.5 text-[12px]">
+                  {(Object.keys(TIPO_INTERACAO_ROTULO) as TipoInteracao[])
+                    .filter((t) => t !== 'mensagem_whatsapp')
+                    .map((t) => (
+                      <option key={t} value={t}>
+                        {TIPO_INTERACAO_ROTULO[t]}
+                      </option>
+                    ))}
+                </Select>
+              </div>
               <input
                 value={conteudo}
                 onChange={(e) => setConteudo(e.target.value)}

@@ -11,6 +11,8 @@ import { VeiculoForm } from '../components/logistica/VeiculoForm';
 import { calcularFrete } from '../lib/freteConfig';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
+import { SkeletonLinhas } from '../components/Skeleton';
+import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
@@ -252,9 +254,9 @@ export default function Logistica() {
         <Panel>
           <PanelHeader titulo="Compras chegando" desc="Pendentes, ordenadas pela chegada prevista." />
           {carregando ? (
-            <p className="text-sm text-text-dim">Carregando…</p>
+            <SkeletonLinhas />
           ) : comprasPendentes.length === 0 ? (
-            <p className="text-sm text-text-dim">Nenhuma compra pendente.</p>
+            <EstadoVazio Icone={PackageCheck} titulo="Nenhuma compra pendente" descricao="Compras entram aqui quando o estoque fica crítico." />
           ) : (
             <div className="flex flex-col gap-2">
               {comprasPendentes.map((c) => (

@@ -1,8 +1,9 @@
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { formatarMoeda } from '../../lib/status';
 import type { ContratoComLead } from '../../lib/types';
 import { Panel, PanelHeader } from '../Panel';
+import { EstadoVazio } from '../ui/EmptyState';
 import { Select } from '../ui/Select';
 
 function formatarMes(mes: string): string {
@@ -83,7 +84,7 @@ export function AnaliseVendas({ contratos }: { contratos: ContratoComLead[] }) {
       />
 
       {meses.length === 0 ? (
-        <p className="text-sm text-text-dim">Nenhum contrato fechado ainda.</p>
+        <EstadoVazio Icone={TrendingUp} titulo="Nenhum contrato fechado ainda" />
       ) : (
         <>
           <p className="mb-3 text-[12.5px] text-text-dim">

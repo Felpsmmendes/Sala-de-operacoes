@@ -1,5 +1,7 @@
+import { Filter } from 'lucide-react';
 import type { FunilLead, Lead } from '../../lib/types';
 import { Badge } from '../Badge';
+import { EstadoVazio } from '../ui/EmptyState';
 import { funilDoLead, formatarMoeda } from '../../lib/status';
 
 const COLS = 'grid grid-cols-[1.6fr_1.4fr_1fr_110px_120px_70px] items-center gap-2.5';
@@ -12,7 +14,7 @@ const COLS = 'grid grid-cols-[1.6fr_1.4fr_1fr_110px_120px_70px] items-center gap
     fica só gradiente + borda por performance/legibilidade (nota do
     DESIGN.md). */
 export function TabelaLeads({ leads, funis, selecionadoId, onSelecionar }: { leads: Lead[]; funis: FunilLead[]; selecionadoId: string | null; onSelecionar: (id: string) => void }) {
-  if (leads.length === 0) return <p className="py-6 text-sm text-text-dim">Nenhum lead encontrado com esses filtros.</p>;
+  if (leads.length === 0) return <EstadoVazio Icone={Filter} titulo="Nenhum lead encontrado com esses filtros" />;
   return (
     <div className="overflow-x-auto">
       <div className="flex min-w-[620px] flex-col gap-2">
