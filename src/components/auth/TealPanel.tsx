@@ -1,39 +1,17 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 interface TealPanelProps {
-  visible: boolean;
-  side: 'left' | 'right';
   heading: ReactNode;
   sub: ReactNode;
   showStats?: boolean;
-  actionLabel: string;
-  onAction: () => void;
 }
 
-export function TealPanel({ visible, side, heading, sub, showStats, actionLabel, onAction }: TealPanelProps) {
+/** Conteúdo do painel teal do Login — só identidade de marca + status,
+    sem mais nenhuma ação (o "Criar acesso" saiu com o cadastro, ver
+    Login.tsx). */
+export function TealPanel({ heading, sub, showStats }: TealPanelProps) {
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        // Posição dentro do painel:
-        // login → ocupa a parte esquerda (left:0, width:42% do painel que é 42% do card)
-        // signup → ocupa a parte direita (right:0)
-        ...(side === 'left' ? { left: 0, right: 0 } : { right: 0, width: '42%' }),
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: side === 'right' ? 'flex-end' : 'flex-start',
-        justifyContent: 'center',
-        padding: '0 40px',
-        gap: '14px',
-        zIndex: 2,
-        textAlign: side === 'right' ? 'right' : 'left',
-        opacity: visible ? 1 : 0,
-        transition: 'opacity 0.22s ease',
-        pointerEvents: visible ? 'auto' : 'none',
-      }}
-    >
+    <div className="relative z-10 flex h-full flex-col justify-center gap-3">
       {/* Logo */}
       <div
         style={{
@@ -60,16 +38,13 @@ export function TealPanel({ visible, side, heading, sub, showStats, actionLabel,
       {/* Sub */}
       <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.65 }}>{sub}</div>
 
-      {/* Stats — só no painel de login */}
+      {/* Status — só no painel de login */}
       {showStats && (
         <>
           <StatusPill />
           <MiniStats />
         </>
       )}
-
-      {/* Botão */}
-      <PanelButton onClick={onAction}>{actionLabel}</PanelButton>
     </div>
   );
 }
@@ -85,6 +60,7 @@ function StatusPill() {
         border: '1px solid rgba(255,255,255,0.10)',
         borderRadius: '99px',
         padding: '5px 13px',
+        width: 'fit-content',
       }}
     >
       <style>{`
@@ -139,31 +115,5 @@ function MiniStats() {
         </div>
       ))}
     </div>
-  );
-}
-
-function PanelButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        marginTop: '4px',
-        padding: '8px 22px',
-        borderRadius: '99px',
-        background: hovered ? 'rgba(255,255,255,0.09)' : 'transparent',
-        border: `1.5px solid ${hovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.22)'}`,
-        color: hovered ? '#fff' : 'rgba(255,255,255,0.75)',
-        fontSize: '12px',
-        fontWeight: 600,
-        cursor: 'pointer',
-        transform: hovered ? 'translateY(-1px)' : 'translateY(0)',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      {children}
-    </button>
   );
 }

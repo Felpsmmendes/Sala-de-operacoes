@@ -17,6 +17,7 @@ const Contratos = lazy(() => import('./pages/Contratos'));
 const Crm = lazy(() => import('./pages/Crm'));
 const CueSheet = lazy(() => import('./pages/CueSheet'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DrinksPublico = lazy(() => import('./pages/DrinksPublico'));
 const Escala = lazy(() => import('./pages/Escala'));
 const Estoque = lazy(() => import('./pages/Estoque'));
 const Fechamento = lazy(() => import('./pages/Fechamento'));
@@ -29,6 +30,7 @@ const PontoInterno = lazy(() => import('./pages/PontoInterno'));
 const PontoPublico = lazy(() => import('./pages/PontoPublico'));
 const PortalClienteAdmin = lazy(() => import('./pages/PortalClienteAdmin'));
 const PortalClientePublico = lazy(() => import('./pages/PortalClientePublico'));
+const RedefinirSenha = lazy(() => import('./pages/RedefinirSenha'));
 
 function CarregandoTela() {
   return <div className="flex min-h-screen items-center justify-center bg-bg text-text-dim">Carregando…</div>;
@@ -44,12 +46,19 @@ export default function App() {
             <Route path="/portal/:token" element={<PortalClientePublico />} />
             {/* pública — freelancer confirma chegada sem login (decisão do usuário, ver README) */}
             <Route path="/ponto/:eventoId" element={<PontoPublico />} />
+            {/* pública — contador de drinks em tempo real, sem login (Fase C do roadmap, 2026-09-11) */}
+            <Route path="/drinks/:eventoId" element={<DrinksPublico />} />
             {/* Ponto Eletrônico de verdade, só funcionário interno (login próprio) —
                 fora do <ProtectedRoute> de propósito: tem login embutido na própria
                 tela, pensado pra um dispositivo fixo compartilhado (ver PontoInterno.tsx) */}
             <Route path="/ponto-interno" element={<PontoInterno />} />
 
             <Route path="/login" element={<Login />} />
+            {/* pública de propósito — chegada só pelo link do e-mail de
+                "Esqueci minha senha" (ver LoginForm.tsx); a própria tela
+                checa se existe sessão de recuperação antes de deixar
+                trocar a senha. */}
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
             {/* internas — só o gestor, atrás de login (ver README) */}
             <Route

@@ -1,11 +1,13 @@
-import { CheckCircle2, Filter, MessageCircle, UserPlus, Users } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { atualizarLead, criarLead, excluirLead, listarLeads, obterLead } from '../lib/api/leads';
+import { CheckCircle2, Filter, MessageCircle, Snowflake, UserPlus, Users, Zap } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { aplicarAutomacoesEvento } from '../lib/api/automacoes';
+import { atualizarLead, buscarUltimoContatoPorLead, criarLead, excluirLead, listarLeads, obterLead } from '../lib/api/leads';
 import { atualizarFunil, criarFunil, excluirFunil, listarFunis, reordenarFunis } from '../lib/api/funis';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader, Segmented } from '../components/Panel';
+import { AutomacoesCrm } from '../components/crm/AutomacoesCrm';
 import { Conversas } from '../components/crm/Conversas';
 import { DetalheLead } from '../components/crm/DetalheLead';
 import { LeadForm } from '../components/crm/LeadForm';
@@ -14,16 +16,27 @@ import { TabelaLeads } from '../components/crm/TabelaLeads';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
-import { corFunilPorIndice } from '../lib/status';
+import { corFunilPorIndice, formatarMoeda } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import type { FunilLead, Lead, StatusLead } from '../lib/types';
 
-type Aba = 'leads' | 'conversas' | 'novo';
+type Aba = 'leads' | 'conversas' | 'novo' | 'automacoes';
 const ABAS: { id: Aba; rotulo: string; Icone: typeof Users }[] = [
   { id: 'leads', rotulo: 'Leads', Icone: Users },
   { id: 'conversas', rotulo: 'Conversas', Icone: MessageCircle },
   { id: 'novo', rotulo: 'Adicionar Lead', Icone: UserPlus },
+  { id: 'automacoes', rotulo: 'Automações', Icone: Zap },
 ];
+
+/** Reporta o resultado de `aplicarAutomacoesEvento` (Fase D+, 2026-09-11)
+    sem travar a ação principal — se nenhuma automação aplicável existir,
+    fica em silêncio; se alguma falhou (ex.: WhatsApp ainda sem
+    credencial), avisa qual e por quê, mas o lead já foi criado/movido
+    de qualquer jeito. */
+function avisarResultadoAutomacoes(resultado: { aplicadas: string[]; falhas: { nome: string; motivo: string }[] }) {
+  if (resultado.falhas.length === 0) return;
+  window.alert(`Automação(ões) com problema:\n${resultado.falhas.map((f) => `• ${f.nome}: ${f.motivo}`).join('\n')}`);
+}
 
 export default function Crm() {
   const [aba, setAba] = useState<Aba>('leads');
@@ -35,6 +48,7 @@ export default function Crm() {
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<StatusLead | ''>('');
+  const [ultimoContatoPorLead, setUltimoContatoPorLead] = useState<Map<string, string>>(new Map());
 
   const [modo, setModo] = useState<'pipeline' | 'tabela'>('pipeline');
   const [novoErro, setNovoErro] = useState<string | null>(null);
@@ -56,6 +70,10 @@ export default function Crm() {
       setLeads(filtrados);
       setTodosLeads(todos);
       setFunis(listaFunis);
+      // "leads esfriando" (Fase D do roadmap, 2026-09-11) precisa da data
+      // de contato mais recente de cada lead — busca em lote (1 consulta,
+      // nunca 1 por lead) depois de saber quem são todos os leads.
+      setUltimoContatoPorLead(await buscarUltimoContatoPorLead(todos.map((l) => l.id)));
     } catch (e) {
       setErroLista(mensagemDeErro(e));
     } finally {
@@ -80,9 +98,10 @@ export default function Crm() {
     setNovoSalvando(true);
     setNovoErro(null);
     try {
-      await criarLead(dados);
+      const lead = await criarLead(dados);
       setFormKey((k) => k + 1);
       carregar();
+      aplicarAutomacoesEvento('lead_criado', lead).then(avisarResultadoAutomacoes).catch((e) => window.alert(mensagemDeErro(e)));
     } catch (e) {
       setNovoErro(mensagemDeErro(e));
     } finally {
@@ -126,6 +145,7 @@ export default function Crm() {
     if (leadDetalhe?.id === leadId) setLeadDetalhe((prev) => (prev ? { ...prev, status: funilId } : prev));
     try {
       await atualizarLead(leadId, { status: funilId });
+      aplicarAutomacoesEvento('mudanca_funil', { ...lead, status: funilId }, { funilNovoId: funilId }).then(avisarResultadoAutomacoes).catch((e) => window.alert(mensagemDeErro(e)));
     } catch (e) {
       window.alert(mensagemDeErro(e));
       carregar();
@@ -162,6 +182,27 @@ export default function Crm() {
   const ganhos = leads.filter((l) => funisPorId.get(l.status)?.papel === 'ganho').length;
   const perdidos = leads.filter((l) => funisPorId.get(l.status)?.papel === 'perdido').length;
 
+  // "Leads esfriando" (Fase D do roadmap, 2026-09-11) — só considera quem
+  // ainda está em negociação (papel null: ganho/perdido já são casos
+  // encerrados, não "esfriam"), a partir de TODOS os leads (nunca da
+  // busca/filtro atual — risco comercial não pode ficar escondido atrás
+  // de um filtro esquecido ligado). 7 dias sem contato é o limiar; ordena
+  // pelos mais valiosos primeiro, depois pelos mais frios.
+  const DIAS_SEM_CONTATO_LIMITE = 7;
+  const leadsEsfriando = useMemo(() => {
+    const hoje = Date.now();
+    return todosLeads
+      .filter((l) => funisPorId.get(l.status)?.papel == null)
+      .map((l) => {
+        const ultimoContato = ultimoContatoPorLead.get(l.id) ?? l.criado_em;
+        const dias = Math.floor((hoje - new Date(ultimoContato).getTime()) / 86_400_000);
+        return { lead: l, dias };
+      })
+      .filter((x) => x.dias >= DIAS_SEM_CONTATO_LIMITE)
+      .sort((a, b) => (b.lead.valor_estimado ?? 0) - (a.lead.valor_estimado ?? 0) || b.dias - a.dias);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todosLeads, funis, ultimoContatoPorLead]);
+
   return (
     <>
       <Cabecalho titulo="CRM & Pipeline de Leads" subtitulo="Novo lead → degustação agendada → proposta enviada → contrato fechado." />
@@ -190,7 +231,42 @@ export default function Crm() {
               <MetricCard Icone={Filter} rotulo="Em negociação" valor={String(emNegociacao)} legenda="Nos funis do meio" categoria="pessoas" />
               <MetricCard Icone={CheckCircle2} rotulo="Ganhos" valor={String(ganhos)} legenda="Virou contrato" categoria="pessoas" />
               <MetricCard Icone={Users} rotulo="Perdidos" valor={String(perdidos)} legenda="Fora do funil" categoria="pessoas" />
+              <MetricCard
+                Icone={Snowflake}
+                rotulo="Leads esfriando"
+                valor={String(leadsEsfriando.length)}
+                legenda={`${DIAS_SEM_CONTATO_LIMITE}+ dias sem contato`}
+                categoria={leadsEsfriando.length > 0 ? 'pessoas' : 'neutro'}
+              />
             </MetricGrid>
+
+            {leadsEsfriando.length > 0 && (
+              <Panel className="mb-4">
+                <PanelHeader titulo="Leads esfriando" desc={`Em negociação, sem contato há ${DIAS_SEM_CONTATO_LIMITE}+ dias — ordenado pelos mais valiosos primeiro.`} />
+                <div className="flex flex-col gap-2">
+                  {leadsEsfriando.slice(0, 8).map(({ lead, dias }) => (
+                    <button
+                      key={lead.id}
+                      type="button"
+                      onClick={() => {
+                        setAba('leads');
+                        setSelecionadoId(lead.id);
+                      }}
+                      className="list-row flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-left text-sm"
+                    >
+                      <div className="min-w-0">
+                        <strong className="text-text">{lead.nome}</strong>
+                        <span className="ml-2 text-[11.5px] text-text-faint">{funisPorId.get(lead.status)?.nome ?? lead.status}</span>
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-3 text-[11.5px]">
+                        <span className="font-mono text-pending">{dias}d sem contato</span>
+                        {lead.valor_estimado != null && <span className="font-mono text-text-dim">{formatarMoeda(lead.valor_estimado)}</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </Panel>
+            )}
 
             {funis.length > 0 && leads.length > 0 && (
               <Panel className="mb-4">
@@ -275,6 +351,16 @@ export default function Crm() {
           <Panel>
             <PanelHeader titulo="Adicionar lead" desc="Cadastre um novo lead ou cliente em potencial." />
             <LeadForm key={formKey} valoresIniciais={{}} funis={funis} salvando={novoSalvando} erro={novoErro} onSalvar={aoCriar} />
+          </Panel>
+        )}
+
+        {aba === 'automacoes' && (
+          <Panel>
+            <PanelHeader
+              titulo="Automações"
+              desc="Regras “se X então Y” que rodam sozinhas — sem contato move de funil, lead novo já dispara uma ação, ou entra num funil e algo acontece."
+            />
+            <AutomacoesCrm funis={funis} />
           </Panel>
         )}
       </Conteudo>

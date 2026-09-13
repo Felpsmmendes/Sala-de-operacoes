@@ -136,6 +136,23 @@ export default function Orcamentos() {
     });
   }
 
+  // atalho "aplicar hora extra pra todo mundo da categoria de uma vez"
+  // (pedido do usuário, 2026-09-10) — antes só dava pra marcar item por
+  // item; num evento grande com vários serviços de bar (ou várias
+  // atrações fotográficas) pedindo a mesma hora adicional, isso poupa
+  // clicar em cada um.
+  function definirHorasAdicionaisPorCategoria(categoria: 'bar' | 'atracao', horas: number) {
+    setHorasPorServico((atual) => {
+      const novo = new Map(atual);
+      for (const i of itens) {
+        if (i.servico.categoria !== categoria) continue;
+        if (horas > 0) novo.set(i.servico.id, horas);
+        else novo.delete(i.servico.id);
+      }
+      return novo;
+    });
+  }
+
   async function recarregarOrcamentos() {
     setOrcamentos(await listarOrcamentos());
   }
@@ -353,6 +370,28 @@ export default function Orcamentos() {
                 </div>
                 <div className="mb-4 flex flex-col gap-2.5 text-sm">
                   {itens.length === 0 && <p className="text-text-faint">Nenhum serviço selecionado</p>}
+                  {(itens.some((i) => i.servico.categoria === 'bar') || itens.some((i) => i.servico.categoria === 'atracao')) && (
+                    <div className="mb-1 flex flex-wrap gap-1.5 border-b border-line pb-3">
+                      {itens.some((i) => i.servico.categoria === 'bar') && (
+                        <button
+                          type="button"
+                          onClick={() => definirHorasAdicionaisPorCategoria('bar', 1)}
+                          className="rounded-full border border-money/30 bg-money/10 px-2.5 py-1 text-[10.5px] font-semibold text-money hover:bg-money/20"
+                        >
+                          Todo o bar +1h
+                        </button>
+                      )}
+                      {itens.some((i) => i.servico.categoria === 'atracao') && (
+                        <button
+                          type="button"
+                          onClick={() => definirHorasAdicionaisPorCategoria('atracao', 1)}
+                          className="rounded-full border border-money/30 bg-money/10 px-2.5 py-1 text-[10.5px] font-semibold text-money hover:bg-money/20"
+                        >
+                          Todas as fotos +1h
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {itens.map((i) => {
                     const podeHoraExtra = i.servico.categoria === 'bar' || i.servico.categoria === 'atracao';
                     const valorExtra = i.horasAdicionais * i.valorHoraAdicional;

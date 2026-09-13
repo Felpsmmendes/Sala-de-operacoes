@@ -418,6 +418,77 @@ export type TarefaComLead = TarefaAgenda & { lead: Pick<Lead, 'id' | 'nome'> | n
 
 export type NovaTarefaAgenda = { titulo: string; data: string; horario: string | null; observacoes: string | null; leadId: string | null };
 
+/* -------------------- Automações do CRM (2026-09-13) --------------------
+   Editor visual em fluxo (canvas, tipo Zapier/n8n — pedido explícito do
+   usuário pra substituir a v1 de "1 gatilho + 1 ação por regra"). Cada
+   `FluxoAutomacao` é um grafo: nós (`NoFluxo`) ligados por conexões
+   (`ConexaoFluxo`), desenhado e editado em AutomacoesCrm.tsx/
+   FluxoCanvas.tsx. Um fluxo sempre tem exatamente 1 nó `gatilho` (a
+   entrada) e daí em diante qualquer sequência de `condicao`/`espera`/
+   `acao`. Execução é stateful — ver ResultadoAutomacoes e
+   src/lib/api/automacoes.ts: uma automação pode ficar "parada, esperando
+   até dia X" num nó de espera, e só um cron consegue retomá-la depois. */
+export type NoTipo = 'gatilho' | 'condicao' | 'espera' | 'acao';
+export type GatilhoAutomacao = 'tempo_sem_contato' | 'mudanca_funil' | 'lead_criado';
+export type CondicaoCampo = 'origem' | 'tem_telefone';
+export type AcaoAutomacao = 'mover_funil' | 'registrar_nota' | 'criar_tarefa' | 'enviar_whatsapp';
+
+/** Config específica do tipo do nó — todos os campos opcionais porque só
+    o subconjunto relevante ao `tipo` do nó é preenchido (ver NoFluxo). */
+export type NoDados = {
+  // gatilho — tempo_sem_contato: gatilho_funil_id null = qualquer funil
+  // "em negociação". mudanca_funil: gatilho_funil_id é o funil de
+  // destino que dispara. lead_criado: gatilho_origem null = qualquer
+  // origem.
+  gatilho_tipo?: GatilhoAutomacao;
+  gatilho_funil_id?: string | null;
+  gatilho_dias?: number | null;
+  gatilho_origem?: string | null;
+  // espera — pausa o fluxo por N dias antes de seguir pro próximo nó.
+  espera_dias?: number;
+  // condicao — 2 saídas (conexões com origem_handle 'sim'/'nao').
+  condicao_campo?: CondicaoCampo;
+  condicao_valor?: string;
+  // acao
+  acao_tipo?: AcaoAutomacao;
+  acao_funil_destino_id?: string | null;
+  /** registrar_nota: texto da nota. criar_tarefa: título da tarefa.
+      enviar_whatsapp: corpo/parâmetro variável da mensagem. */
+  acao_texto?: string | null;
+  /** só criar_tarefa — cria a tarefa pra "hoje + N dias". */
+  acao_dias_prazo?: number | null;
+  /** só enviar_whatsapp — nome do template aprovado na Meta. */
+  acao_whatsapp_template?: string | null;
+};
+
+export type NoFluxo = {
+  id: string;
+  fluxo_id: string;
+  tipo: NoTipo;
+  pos_x: number;
+  pos_y: number;
+  dados: NoDados;
+};
+
+/** origem_handle diferencia as 2 saídas de um nó `condicao` — null pra
+    qualquer outro tipo de nó (só tem 1 saída). */
+export type ConexaoFluxo = {
+  id: string;
+  fluxo_id: string;
+  origem_no_id: string;
+  destino_no_id: string;
+  origem_handle: 'sim' | 'nao' | null;
+};
+
+export type FluxoAutomacao = {
+  id: string;
+  nome: string;
+  ativo: boolean;
+  criado_em: string;
+};
+
+export type FluxoCompleto = FluxoAutomacao & { nos: NoFluxo[]; conexoes: ConexaoFluxo[] };
+
 /* -------------------- Bloqueio de data (2026-09-09) --------------------
    Diferente de tarefa (lembrete livre): marca que uma data — ou
    intervalo — está reservada por outro motivo, sem estar ligado a lead

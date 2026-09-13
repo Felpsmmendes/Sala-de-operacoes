@@ -25,6 +25,11 @@ type AuthState = {
       (ver ProtectedRoute). */
   ehGestor: boolean | null;
   entrar: (email: string, senha: string) => Promise<{ erro: string | null }>;
+  /** Dispara o e-mail de redefinição de senha do Supabase Auth — o link
+      leva pra `/redefinir-senha` (fora do <ProtectedRoute>), que detecta
+      a sessão de recuperação sozinha (`detectSessionInUrl`, padrão do
+      supabase-js) e deixa trocar a senha sem precisar da antiga. */
+  recuperarSenha: (email: string) => Promise<{ erro: string | null }>;
   sair: () => Promise<void>;
   atualizarNome: (nome: string) => Promise<{ erro: string | null }>;
   atualizarSenha: (novaSenha: string) => Promise<{ erro: string | null }>;
@@ -90,6 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { erro: error ? traduzErro(error.message) : null };
   }
 
+  async function recuperarSenha(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/redefinir-senha` });
+    return { erro: error ? traduzErro(error.message) : null };
+  }
+
   async function sair() {
     await supabase.auth.signOut();
   }
@@ -109,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { erro: error ? error.message : null };
   }
 
-  return <AuthContext.Provider value={{ session, carregando, ehGestor, entrar, sair, atualizarNome, atualizarSenha }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ session, carregando, ehGestor, entrar, recuperarSenha, sair, atualizarNome, atualizarSenha }}>{children}</AuthContext.Provider>;
 }
 
 function traduzErro(msg: string) {

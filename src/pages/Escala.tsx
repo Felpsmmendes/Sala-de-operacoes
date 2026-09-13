@@ -16,6 +16,7 @@ import { Checkbox } from '../components/ui/Checkbox';
 import { Select } from '../components/ui/Select';
 import { montarMensagemConvocacao } from '../lib/mensagemConvocacao';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
+import { enviarConvocacaoEmLote, enviarConvocacaoWhatsapp } from '../lib/api/whatsapp';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { FUNCAO_EQUIPE_ROTULO, STATUS_ESCALA_INFO, formatarData } from '../lib/status';
 import type { EscalaComMembro, EventoComLead, MembroEquipe, NovoMembroEquipe, StatusEscala } from '../lib/types';
@@ -41,6 +42,12 @@ export default function Escala() {
   // um seletor de data manual.
   const [filtroPeriodo, setFiltroPeriodo] = useState<'todos' | '7d' | '30d'>('todos');
   const [orcamentosComHoraExtra, setOrcamentosComHoraExtra] = useState<Set<string>>(new Set());
+  // Fase B do roadmap (2026-09-11) — envio de convocação via WhatsApp
+  // Business Cloud API, em lote (todo mundo do evento) ou individual;
+  // guarda o id de quem está enviando agora só pra desabilitar o botão
+  // certo, nunca a tela toda.
+  const [enviandoLoteEventoId, setEnviandoLoteEventoId] = useState<string | null>(null);
+  const [enviandoEscalaId, setEnviandoEscalaId] = useState<string | null>(null);
 
   async function carregarBase() {
     setCarregando(true);
@@ -92,6 +99,38 @@ export default function Escala() {
       await recarregarEscalas();
     } catch (e) {
       aoFalhar(e);
+    }
+  }
+
+  /** Envia a convocação de UM escalado via WhatsApp (Fase B do roadmap) —
+      mesma mensagem que "Copiar convocação" já monta, só que disparada
+      direto pela API em vez de copiar/colar. */
+  async function aoEnviarConvocacaoIndividual(esc: EscalaComMembro, evento: EventoComLead) {
+    setEnviandoEscalaId(esc.id);
+    try {
+      await enviarConvocacaoWhatsapp(esc, evento);
+      window.alert(`Convocação enviada pro WhatsApp de ${esc.membro?.nome ?? 'membro'}.`);
+    } catch (e) {
+      aoFalhar(e);
+    } finally {
+      setEnviandoEscalaId(null);
+    }
+  }
+
+  /** Envia pra todo mundo escalado no evento de uma vez (o próprio pedido
+      da Fase B: "um botão que seleciona todos"). Continua mesmo se
+      alguém falhar (ex.: sem telefone) — reporta quem deu certo e quem
+      não no final, nunca aborta o lote inteiro por um erro isolado. */
+  async function aoEnviarConvocacaoEmLote(escalados: EscalaComMembro[], evento: EventoComLead) {
+    setEnviandoLoteEventoId(evento.id);
+    try {
+      const resultado = await enviarConvocacaoEmLote(escalados, evento);
+      const partes = [];
+      if (resultado.enviados.length > 0) partes.push(`Enviado pra: ${resultado.enviados.join(', ')}.`);
+      if (resultado.falhas.length > 0) partes.push(`Falhou pra: ${resultado.falhas.map((f) => `${f.nome} (${f.motivo})`).join(', ')}.`);
+      window.alert(partes.join('\n\n') || 'Nenhum escalado pra enviar.');
+    } finally {
+      setEnviandoLoteEventoId(null);
     }
   }
 
@@ -246,6 +285,16 @@ export default function Escala() {
                       ) : (
                         <Badge tom="sucesso" texto="Equipe de bar completa" />
                       )}
+                      {desteEvento.length > 0 && (
+                        <button
+                          type="button"
+                          disabled={enviandoLoteEventoId === evento.id}
+                          onClick={() => aoEnviarConvocacaoEmLote(desteEvento, evento)}
+                          className="rounded-sm border border-people/40 bg-people/10 px-3 py-1.5 text-[12.5px] font-semibold text-people hover:bg-people/20 disabled:opacity-50"
+                        >
+                          {enviandoLoteEventoId === evento.id ? 'Enviando…' : 'Enviar convocação a todos (WhatsApp)'}
+                        </button>
+                      )}
                       <button type="button" onClick={() => setConvocarParaEvento(evento)} className="rounded-sm bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
                         Convocar
                       </button>
@@ -307,6 +356,14 @@ export default function Escala() {
                               className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text"
                             >
                               Copiar convocação (WhatsApp)
+                            </button>
+                            <button
+                              type="button"
+                              disabled={enviandoEscalaId === esc.id}
+                              onClick={() => aoEnviarConvocacaoIndividual(esc, evento)}
+                              className="rounded-sm border border-people/40 bg-people/10 px-2.5 py-1 text-[11.5px] font-semibold text-people hover:bg-people/20 disabled:opacity-50"
+                            >
+                              {enviandoEscalaId === esc.id ? 'Enviando…' : 'Enviar via WhatsApp'}
                             </button>
                             <button type="button" onClick={() => setHoraExtraAberta({ escala: esc, evento })} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
                               Hora extra

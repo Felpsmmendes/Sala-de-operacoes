@@ -1,8 +1,10 @@
-import { Activity, AlertTriangle, Banknote, Calendar, Clock3, Filter, Lock, Package, PackageCheck, Star, TrendingUp, Truck, Users, Wallet } from 'lucide-react';
+import { Activity, AlertTriangle, Banknote, Calendar, CheckCircle2, Clock3, Filter, Fingerprint, GlassWater, Lock, Package, PackageCheck, Star, TrendingUp, Truck, Users, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listarAuditorias } from '../lib/api/auditoria';
 import { calcularFaturamentoPorMes, diasAteEvento, listarContratos } from '../lib/api/contratos';
+import { listarCuesDoEvento } from '../lib/api/cueSheet';
+import { calcularRitmoDrinksPorHora, listarRegistrosDrink, type RegistroDrink } from '../lib/api/drinks';
 import { listarCompras, listarItens, type CompraComItem, type ItemEstoque } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
 import { listarDreMensal } from '../lib/api/financeiro';
@@ -19,10 +21,12 @@ import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Skeleton } from '../components/Skeleton';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { Reveal } from '../components/ui/Reveal';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
 import { STATUS_EVENTO_INFO, corFunilPorIndice, formatarData, formatarMoeda } from '../lib/status';
-import type { AuditoriaPosEvento, ContratoComLead, DreMes, EscalaPresenca, EventoComLead, FunilLead, Lead } from '../lib/types';
+import type { AuditoriaPosEvento, ContratoComLead, CueSheetItem, DreMes, EscalaPresenca, EventoComLead, FunilLead, Lead } from '../lib/types';
 
 function formatarMes(mes: string): string {
   const [ano, m] = mes.slice(0, 7).split('-');
@@ -56,6 +60,8 @@ export default function Dashboard() {
   const [orcamentosComHoraExtra, setOrcamentosComHoraExtra] = useState<Set<string>>(new Set());
   const [compras, setCompras] = useState<CompraComItem[]>([]);
   const [auditorias, setAuditorias] = useState<AuditoriaPosEvento[]>([]);
+  const [cuesPorEvento, setCuesPorEvento] = useState<Map<string, CueSheetItem[]>>(new Map());
+  const [registrosDrinkHoje, setRegistrosDrinkHoje] = useState<RegistroDrink[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -90,11 +96,21 @@ export default function Dashboard() {
         ]);
         const hoje = new Date().toISOString().slice(0, 10);
         const idsHoje = ev.filter((e) => e.data_evento === hoje && e.status !== 'cancelado').map((e) => e.id);
-        const pres = await buscarPresencaResumo(idsHoje);
+        // roteiro (cue sheet) de cada evento de hoje — pra mostrar em que
+        // fase a operação está e qual a próxima transição de horário no
+        // card do "Monitor ao vivo". Só leitura (nunca sincroniza cues
+        // automáticos daqui — isso é ação do Roteiro do Evento).
+        const [pres, cuesArrays, registrosDrink] = await Promise.all([
+          buscarPresencaResumo(idsHoje),
+          Promise.all(idsHoje.map((id) => listarCuesDoEvento(id).catch(() => []))),
+          listarRegistrosDrink(idsHoje).catch(() => []),
+        ]);
         if (cancelado) return;
         setEventos(ev);
         setContratos(ct);
         setPresenca(pres);
+        setCuesPorEvento(new Map(idsHoje.map((id, i) => [id, cuesArrays[i]])));
+        setRegistrosDrinkHoje(registrosDrink);
         setDreMeses(dre);
         setFunis(fs);
         setLeads(ls);
@@ -166,6 +182,26 @@ export default function Dashboard() {
   }, [presenca]);
   const totalConfirmadosHoje = presenca.filter((p) => p.status_escala === 'confirmado').length;
 
+  // cobertura por função hoje (bartender/barback) — mesma regra de
+  // dimensionamento da Escala (calcularStaffNecessario), somada nos
+  // eventos de hoje, comparada com quem já está escalado (recusado não
+  // conta como cobertura).
+  const coberturaFuncaoHoje = useMemo(() => {
+    const necessario = eventosHoje.reduce(
+      (acc, ev) => {
+        const r = calcularStaffNecessario(ev.convidados);
+        return { bartender: acc.bartender + r.bartender, barback: acc.barback + r.barback };
+      },
+      { bartender: 0, barback: 0 }
+    );
+    const ativos = presenca.filter((p) => p.status_escala !== 'recusado');
+    return {
+      necessario,
+      bartender: ativos.filter((p) => funcaoContaComo(p.membro_funcao) === 'bartender').length,
+      barback: ativos.filter((p) => funcaoContaComo(p.membro_funcao) === 'barback').length,
+    };
+  }, [eventosHoje, presenca]);
+
   // achado da revisão de design (2026-09-06/08): a Sala de Operações só
   // mostrava o monitor do dia — nada de tendência financeira, funil
   // comercial ou risco de contrato/estoque. Layout revisado (2026-09-08)
@@ -182,6 +218,36 @@ export default function Dashboard() {
     [contratos]
   );
   const itensCriticos = useMemo(() => itensEstoque.filter((i) => i.estoque_atual <= i.estoque_minimo).length, [itensEstoque]);
+
+  // "Trava D-15" (mesmo conceito já usado no Portal do Cliente — ver
+  // PortalClienteAdmin/PortalClientePublico: diasAteEvento < 15 trava
+  // edição do cliente) — aqui aplicado ao saldo: contrato ativo com
+  // evento em até 15 dias e saldo ainda não quitado é um valor "travado"
+  // (risco de liquidez), o resto já está "liberado" na tesouraria.
+  const travaD15 = useMemo(() => {
+    const naJanela = contratos.filter((c) => c.status !== 'cancelado' && diasAteEvento(c.data_evento) <= 15 && diasAteEvento(c.data_evento) >= 0);
+    const travados = naJanela.filter((c) => c.saldo_status !== 'quitado').length;
+    return { total: naJanela.length, travados, liberados: naJanela.length - travados };
+  }, [contratos]);
+
+  // pontos de atenção reais (nunca fabricados) pra resumir "tá tudo ok?"
+  // no topo da tela — mesmos 3 sinais que já geram alerta em outro lugar
+  // da própria tela (estoque crítico, contrato em risco, NPS baixo).
+  const pontosDeAtencao = itensCriticos + contratosEmRisco + clientesInsatisfeitos.length;
+
+  // Fase C do roadmap (2026-09-11) — dado REAL de consumo (contador de
+  // drinks, ver DrinksPublico.tsx), no lugar do número fabricado que o
+  // print original pedia. Ritmo só aparece com pelo menos 2 toques —
+  // menos que isso não é "ritmo", é 1 ponto solto.
+  const ritmoDrinksPorHora = useMemo(() => calcularRitmoDrinksPorHora(registrosDrinkHoje), [registrosDrinkHoje]);
+
+  function copiarLinkDrinks(eventoId: string) {
+    const link = `${window.location.origin}/drinks/${eventoId}`;
+    navigator.clipboard
+      .writeText(link)
+      .then(() => window.alert('Link do contador de drinks copiado — manda pro celular de quem vai tocar no posto.'))
+      .catch(() => window.alert('Não foi possível copiar automaticamente. Link: ' + link));
+  }
 
   // "Financeiro do mês": mesmo recorte de contratos do mês do card de
   // faturamento, dividido pelo que já foi de fato pago (sinal/saldo
@@ -244,7 +310,32 @@ export default function Dashboard() {
     <>
       <Cabecalho titulo="Sala de Operações" subtitulo="Visão geral do negócio + monitor ao vivo dos eventos de hoje e cobertura de equipe." />
       <Conteudo>
-        <section className="metric-grid mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {/* resumo rápido do dia (pedido do usuário, "continue o design" —
+            2026-09-10) — 3 fatos reais, nunca um "sem gargalos" fabricado:
+            o terceiro segmento só fica verde quando os 3 sinais que já
+            geram alerta no resto da tela (estoque crítico, contrato em
+            risco, NPS baixo) estão todos zerados. */}
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-[12.5px] text-text-dim">
+          <span>
+            <strong className="font-mono text-text">{eventosHoje.length}</strong> evento{eventosHoje.length === 1 ? '' : 's'} acontecendo hoje
+          </span>
+          <span className="text-text-ultra">·</span>
+          <span>
+            <strong className="font-mono text-text">{totalConfirmadosHoje}</strong> de {presenca.length} escalados confirmados
+          </span>
+          <span className="text-text-ultra">·</span>
+          {pontosDeAtencao === 0 ? (
+            <span className="flex items-center gap-1 text-success">
+              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} /> Sem gargalos ou incidentes
+            </span>
+          ) : (
+            <span className="text-pending">
+              {pontosDeAtencao} ponto{pontosDeAtencao === 1 ? '' : 's'} de atenção (estoque, contrato ou satisfação)
+            </span>
+          )}
+        </div>
+
+        <section className="metric-grid mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
           <MetricCard Icone={Calendar} rotulo="Eventos hoje" valor={String(eventosHoje.length)} legenda={formatarData(hoje)} categoria="agenda" aoVivo />
           <MetricCard
             Icone={Banknote}
@@ -259,6 +350,22 @@ export default function Dashboard() {
           <MetricCard Icone={Users} rotulo="Equipe confirmada hoje" valor={String(totalConfirmadosHoje)} legenda={`de ${presenca.length} escalados`} categoria="pessoas" aoVivo />
           <MetricCard Icone={AlertTriangle} rotulo="Contratos em risco D-20" valor={String(contratosEmRisco)} legenda="Saldo pendente, evento em ≤20 dias" categoria="dinheiro" comoLink="/contratos" />
           <MetricCard Icone={Package} rotulo="Estoque em nível crítico" valor={String(itensCriticos)} legenda="Itens abaixo do mínimo" categoria="operacao" comoLink="/estoque" />
+          <MetricCard
+            Icone={Lock}
+            rotulo="Trava D-15"
+            valor={String(travaD15.travados)}
+            legenda={travaD15.total === 0 ? 'Nenhum contrato na janela' : `${travaD15.liberados} de ${travaD15.total} já liberado(s) (saldo quitado)`}
+            categoria="dinheiro"
+            comoLink="/contratos"
+          />
+          <MetricCard
+            Icone={GlassWater}
+            rotulo="Drinks servidos hoje"
+            valor={String(registrosDrinkHoje.length)}
+            legenda={ritmoDrinksPorHora != null ? `~${ritmoDrinksPorHora.toFixed(0)} drinks/hora` : 'Ritmo aparece com 2+ registros'}
+            categoria="operacao"
+            aoVivo={registrosDrinkHoje.length > 0}
+          />
         </section>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -360,6 +467,36 @@ export default function Dashboard() {
                     { rotulo: 'Recusado', valor: presenca.filter((p) => p.status_escala === 'recusado').length, corClasse: 'text-danger' },
                   ]}
                 />
+
+                {/* cobertura por função (pedido do usuário, "continue o
+                    design") — mesma regra de dimensionamento da Escala
+                    (calcularStaffNecessario), aplicada aos eventos de hoje. */}
+                <div className="mt-4 flex flex-col gap-2.5 border-t border-line pt-3">
+                  <div>
+                    <div className="mb-1 flex justify-between text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                      <span>Bartenders</span>
+                      <span className="font-mono text-text-dim">
+                        {coberturaFuncaoHoje.bartender}/{coberturaFuncaoHoje.necessario.bartender}
+                      </span>
+                    </div>
+                    <ProgressBar
+                      valor={coberturaFuncaoHoje.necessario.bartender > 0 ? (coberturaFuncaoHoje.bartender / coberturaFuncaoHoje.necessario.bartender) * 100 : 0}
+                      categoria="pessoas"
+                    />
+                  </div>
+                  <div>
+                    <div className="mb-1 flex justify-between text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                      <span>Barbacks</span>
+                      <span className="font-mono text-text-dim">
+                        {coberturaFuncaoHoje.barback}/{coberturaFuncaoHoje.necessario.barback}
+                      </span>
+                    </div>
+                    <ProgressBar
+                      valor={coberturaFuncaoHoje.necessario.barback > 0 ? (coberturaFuncaoHoje.barback / coberturaFuncaoHoje.necessario.barback) * 100 : 0}
+                      categoria="pessoas"
+                    />
+                  </div>
+                </div>
               </>
             )}
           </Panel>
@@ -461,6 +598,27 @@ export default function Dashboard() {
                         )}
                       </div>
 
+                      {(() => {
+                        // roteiro do evento (CueSheet) — mesma fonte que a
+                        // tela Roteiro do Evento usa, só leitura aqui.
+                        const cues = cuesPorEvento.get(ev.id) ?? [];
+                        if (cues.length === 0) return null;
+                        const concluidos = cues.filter((c) => c.concluido).length;
+                        const proxima = cues.find((c) => !c.concluido);
+                        return (
+                          <div className="mb-3">
+                            <div className="mb-1 flex items-center justify-between text-[10.5px] text-text-faint">
+                              <span>
+                                Roteiro: {concluidos}/{cues.length} etapas
+                              </span>
+                              {proxima && <span className="font-mono text-pending">próxima {proxima.horario.slice(0, 5)}</span>}
+                            </div>
+                            <ProgressBar valor={(concluidos / cues.length) * 100} categoria="agenda" />
+                            {proxima && <p className="mt-1 text-[11px] text-text-dim">Próxima transição: {proxima.titulo}</p>}
+                          </div>
+                        );
+                      })()}
+
                       <div className="flex flex-wrap gap-2">
                         <Link to={`/roteiro?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
                           Roteiro
@@ -474,6 +632,13 @@ export default function Dashboard() {
                         <Link to={`/ponto?evento=${ev.id}`} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
                           Ponto
                         </Link>
+                        <button
+                          type="button"
+                          onClick={() => copiarLinkDrinks(ev.id)}
+                          className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text"
+                        >
+                          Copiar link do contador de drinks
+                        </button>
                       </div>
                     </article>
                   );
@@ -498,6 +663,12 @@ export default function Dashboard() {
                 <Link to="/agenda?novo=bloqueio" className="flex items-center justify-between rounded-sm border border-line px-3 py-2.5 text-[13px] text-text hover:bg-raised">
                   <span className="flex items-center gap-1.5">
                     <Lock className="h-3.5 w-3.5 text-text-faint" strokeWidth={2} /> Bloquear data
+                  </span>
+                  <span className="text-text-faint">→</span>
+                </Link>
+                <Link to="/ponto" className="flex items-center justify-between rounded-sm border border-line px-3 py-2.5 text-[13px] text-text hover:bg-raised">
+                  <span className="flex items-center gap-1.5">
+                    <Fingerprint className="h-3.5 w-3.5 text-text-faint" strokeWidth={2} /> Confirmação de chegada
                   </span>
                   <span className="text-text-faint">→</span>
                 </Link>

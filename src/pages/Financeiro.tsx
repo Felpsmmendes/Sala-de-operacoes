@@ -1,6 +1,12 @@
-import { ArrowDownCircle, ArrowUpCircle, BarChart3, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, BarChart3, FileDown, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
+import { listarAuditorias } from '../lib/api/auditoria';
+import { diasAteEvento, listarContratos } from '../lib/api/contratos';
+import { listarEscalasDosEventos } from '../lib/api/escalas';
+import { listarEventos } from '../lib/api/eventos';
 import { atualizarStatusLancamento, criarLancamento, excluirLancamento, listarDreMensal, listarLancamentos } from '../lib/api/financeiro';
+import { listarFunis } from '../lib/api/funis';
+import { listarLeads } from '../lib/api/leads';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
@@ -9,6 +15,7 @@ import { LancamentoForm } from '../components/financeiro/LancamentoForm';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { gerarRelatorioExecutivoPdf } from '../lib/pdfRelatorioExecutivo';
 import { formatarData, formatarMoeda } from '../lib/status';
 import type { DreMes, Lancamento, NovoLancamento } from '../lib/types';
 
@@ -29,6 +36,7 @@ export default function Financeiro() {
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [filtro, setFiltro] = useState<'todos' | 'pendentes' | 'pagos'>('pendentes');
+  const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
 
   async function carregar() {
     setCarregando(true);
@@ -84,6 +92,65 @@ export default function Financeiro() {
   // lucro sempre calculados a partir dos lançamentos já pagos.
   const dreMesAtual = dreMeses.find((m) => m.mes.slice(0, 7) === mesAtual);
   const margemAtual = dreMesAtual && dreMesAtual.receita_bruta > 0 ? (dreMesAtual.lucro_liquido / dreMesAtual.receita_bruta) * 100 : null;
+
+  /** Relatório Executivo em PDF (Fase D do roadmap, 2026-09-11) — junta
+      financeiro (já carregado nesta tela) com operação/comercial/
+      satisfação, buscados só quando o botão é clicado (evita pesar o
+      carregamento normal da tela com dado que a maioria das visitas
+      nunca usa). Nunca fabrica número: NPS sem auditoria no mês vira
+      "sem dado", conversão sem histórico vira "sem dado suficiente". */
+  async function aoGerarRelatorioExecutivo() {
+    setGerandoRelatorio(true);
+    try {
+      const [contratos, eventos, leads, funis, auditorias] = await Promise.all([listarContratos(), listarEventos(), listarLeads(), listarFunis(), listarAuditorias()]);
+
+      const contratosDoMes = contratos.filter((c) => c.status !== 'cancelado' && c.data_evento.slice(0, 7) === mesAtual);
+      const faturamentoContratado = contratosDoMes.reduce((s, c) => s + c.valor_total, 0);
+      const faturamentoRecebidoMes = contratosDoMes.reduce((s, c) => s + (c.sinal_pago ? c.valor_sinal : 0) + (c.saldo_status === 'quitado' ? c.valor_saldo : 0), 0);
+      const faturamentoAReceberMes = Math.max(0, faturamentoContratado - faturamentoRecebidoMes);
+      const contratosTravadosD15 = contratos.filter((c) => c.status !== 'cancelado' && c.saldo_status !== 'quitado' && diasAteEvento(c.data_evento) <= 15 && diasAteEvento(c.data_evento) >= 0).length;
+
+      const eventosDoMes = eventos.filter((e) => e.status !== 'cancelado' && e.data_evento.slice(0, 7) === mesAtual);
+      const convidadosAtendidos = eventosDoMes.reduce((s, e) => s + (e.convidados ?? 0), 0);
+      const escalasDoMes = await listarEscalasDosEventos(eventosDoMes.map((e) => e.id));
+      const escalasConfirmadasNoMes = escalasDoMes.filter((e) => e.status === 'confirmado').length;
+
+      const funisPorId = new Map(funis.map((f) => [f.id, f]));
+      const leadsNovosNoMes = leads.filter((l) => l.criado_em.slice(0, 7) === mesAtual).length;
+      const leadsEmNegociacao = leads.filter((l) => funisPorId.get(l.status)?.papel == null).length;
+      const leadsGanhosTotal = leads.filter((l) => funisPorId.get(l.status)?.papel === 'ganho').length;
+      const leadsPerdidosTotal = leads.filter((l) => funisPorId.get(l.status)?.papel === 'perdido').length;
+
+      const auditoriasDoMes = auditorias.filter((a) => a.criado_em.slice(0, 7) === mesAtual);
+      const comNota = auditoriasDoMes.filter((a) => a.nps_nota != null);
+      const npsMedioNoMes = comNota.length > 0 ? comNota.reduce((s, a) => s + (a.nps_nota as number), 0) / comNota.length : null;
+
+      gerarRelatorioExecutivoPdf({
+        mesRotulo: formatarMes(`${mesAtual}-01`),
+        faturamentoContratado,
+        faturamentoRecebido: faturamentoRecebidoMes,
+        faturamentoAReceber: faturamentoAReceberMes,
+        receitaBrutaDre: dreMesAtual?.receita_bruta ?? 0,
+        custosDre: dreMesAtual?.custos_totais ?? 0,
+        lucroLiquidoDre: dreMesAtual?.lucro_liquido ?? 0,
+        eventosNoMes: eventosDoMes.length,
+        convidadosAtendidos,
+        escalasNoMes: escalasDoMes.length,
+        escalasConfirmadasNoMes,
+        leadsNovosNoMes,
+        leadsEmNegociacao,
+        leadsGanhosTotal,
+        leadsPerdidosTotal,
+        npsMedioNoMes,
+        eventosAuditadosNoMes: auditoriasDoMes.length,
+        contratosTravadosD15,
+      });
+    } catch (e) {
+      aoFalhar(e);
+    } finally {
+      setGerandoRelatorio(false);
+    }
+  }
 
   return (
     <>
@@ -176,7 +243,20 @@ export default function Financeiro() {
         {/* DRE completo — mudou do Fechamento Mensal pra cá (2026-09-09),
             mesma lógica de sempre (view dre_mensal, só lançamentos pagos). */}
         <Panel className="mt-4">
-          <PanelHeader titulo="DRE — receita, custo e lucro líquido" desc="Sempre calculado a partir dos lançamentos pagos, nunca digitado à parte." />
+          <PanelHeader
+            titulo="DRE — receita, custo e lucro líquido"
+            desc="Sempre calculado a partir dos lançamentos pagos, nunca digitado à parte."
+            acao={
+              <button
+                type="button"
+                disabled={gerandoRelatorio}
+                onClick={aoGerarRelatorioExecutivo}
+                className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-1.5 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text disabled:opacity-50"
+              >
+                <FileDown className="h-3.5 w-3.5" strokeWidth={2} /> {gerandoRelatorio ? 'Gerando…' : 'Relatório Executivo (PDF)'}
+              </button>
+            }
+          />
           <MetricGrid>
             <MetricCard Icone={TrendingUp} rotulo="Receita bruta do mês" valor={formatarMoeda(dreMesAtual?.receita_bruta ?? 0)} legenda="Lançamentos de receita pagos" categoria="dinheiro" />
             <MetricCard Icone={PiggyBank} rotulo="Custos do mês" valor={formatarMoeda(dreMesAtual?.custos_totais ?? 0)} legenda="Lançamentos de despesa pagos" categoria="dinheiro" />

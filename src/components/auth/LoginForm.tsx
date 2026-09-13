@@ -3,11 +3,13 @@ import { useAuth } from '../../lib/AuthContext';
 import { AuthButton, AuthInput, AuthLabel } from './AuthShared';
 
 export function LoginForm() {
-  const { entrar } = useAuth();
+  const { entrar, recuperarSenha } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [mensagemRecuperar, setMensagemRecuperar] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const [enviandoRecuperar, setEnviandoRecuperar] = useState(false);
 
   async function aoSubmeter(e: FormEvent) {
     e.preventDefault();
@@ -16,6 +18,18 @@ export function LoginForm() {
     const { erro } = await entrar(email, senha);
     if (erro) setErro(erro);
     setEnviando(false);
+  }
+
+  async function aoEsquecerSenha() {
+    if (!email.trim()) {
+      setMensagemRecuperar({ tipo: 'erro', texto: 'Preencha o e-mail acima primeiro.' });
+      return;
+    }
+    setEnviandoRecuperar(true);
+    setMensagemRecuperar(null);
+    const { erro } = await recuperarSenha(email.trim());
+    setEnviandoRecuperar(false);
+    setMensagemRecuperar(erro ? { tipo: 'erro', texto: erro } : { tipo: 'ok', texto: 'Link de redefinição enviado — confira seu e-mail.' });
   }
 
   return (
@@ -29,7 +43,24 @@ export function LoginForm() {
       <AuthLabel>Senha</AuthLabel>
       <AuthInput type="password" placeholder="••••••••" value={senha} onChange={(e) => setSenha(e.target.value)} required />
 
-      <ForgotButton />
+      <ForgotButton onClick={aoEsquecerSenha} enviando={enviandoRecuperar} />
+
+      {mensagemRecuperar && (
+        <div
+          style={{
+            fontSize: '11px',
+            color: mensagemRecuperar.tipo === 'erro' ? '#fca5a5' : '#5eead4',
+            background: mensagemRecuperar.tipo === 'erro' ? 'rgba(239,68,68,0.1)' : 'rgba(20,184,166,0.1)',
+            border: `1px solid ${mensagemRecuperar.tipo === 'erro' ? 'rgba(239,68,68,0.25)' : 'rgba(20,184,166,0.25)'}`,
+            borderRadius: '9px',
+            padding: '8px 11px',
+            marginTop: '-4px',
+            marginBottom: '14px',
+          }}
+        >
+          {mensagemRecuperar.texto}
+        </div>
+      )}
 
       {erro && (
         <div
@@ -64,18 +95,20 @@ export function LoginForm() {
   );
 }
 
-function ForgotButton() {
+function ForgotButton({ onClick, enviando }: { onClick: () => void; enviando: boolean }) {
   const [h, setH] = useState(false);
   return (
     <button
       type="button"
+      onClick={onClick}
+      disabled={enviando}
       style={{
         alignSelf: 'flex-end',
         fontSize: '10px',
         marginTop: '-4px',
         marginBottom: '16px',
-        color: h ? 'rgba(148,163,184,0.65)' : 'rgba(148,163,184,0.32)',
-        cursor: 'pointer',
+        color: enviando ? 'rgba(148,163,184,0.4)' : h ? 'rgba(148,163,184,0.65)' : 'rgba(148,163,184,0.32)',
+        cursor: enviando ? 'default' : 'pointer',
         background: 'none',
         border: 'none',
         fontFamily: 'JetBrains Mono, monospace',
@@ -84,7 +117,7 @@ function ForgotButton() {
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
     >
-      Esqueci minha senha
+      {enviando ? 'Enviando...' : 'Esqueci minha senha'}
     </button>
   );
 }

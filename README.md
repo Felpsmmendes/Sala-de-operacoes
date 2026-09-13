@@ -61,6 +61,134 @@ npm run dev
 Abra `http://localhost:5173` e entre com o e-mail/senha que você criou no
 passo 1.
 
+## Alerta automático de Trava D-15/D-20 (Fase A do roadmap, 2026-09-10)
+
+E-mail diário quando existe contrato ativo com saldo não quitado e evento
+em até 20 dias — mesma regra do card "Contratos em risco D-20" do
+Dashboard, só que chega até você sem precisar abrir o sistema. Só manda
+e-mail quando há algo pra alertar (sem "tudo ok" diário).
+
+- **Código:** `supabase/functions/alerta-trava-d15/index.ts` (Edge
+  Function) + `supabase/migration_025_alerta_trava_d15_cron.sql` (agenda
+  via `pg_cron`, 1x por dia).
+- **Envio:** [Resend](https://resend.com) (grátis até 3.000 e-mails/mês).
+  Sem domínio verificado, o remetente é `onboarding@resend.dev` — funciona,
+  só não tem o seu domínio no "De:".
+- **Deploy (uma vez, e de novo só quando o código da function mudar):**
+  ```bash
+  npx supabase login
+  npx supabase link --project-ref <seu-project-ref>
+  npx supabase functions deploy alerta-trava-d15 --no-verify-jwt
+  npx supabase secrets set RESEND_API_KEY=re_xxx ALERTA_EMAIL_DESTINO=voce@emcena.com.br
+  ```
+  Depois disso, rode `migration_025_alerta_trava_d15_cron.sql` no SQL
+  Editor (trocando `<PROJECT_REF>` pelo real antes).
+- **`--no-verify-jwt`:** decisão consciente — a function só envia e-mail,
+  nunca devolve dado sensível, e só o cron interno do projeto a chama.
+  Mesma lógica dos outros endpoints públicos do sistema (RPC security
+  definer em vez de autenticação de usuário).
+
+## Automações do CRM (2026-09-11, reescrita em fluxo visual 2026-09-13)
+
+Editor visual em canvas (aba "Automações" do CRM, `FluxoCanvas.tsx`,
+biblioteca [`@xyflow/react`](https://reactflow.dev)) — tipo Zapier/n8n:
+o gestor arrasta nós conectados por linhas (gatilho → condição → espera
+→ ação → ação...) e desenha o fluxo inteiro na tela, sem precisar chamar
+desenvolvimento pra cada automação nova. Substitui a v1 (formulário de
+"1 gatilho + 1 ação por regra").
+
+- **Nó `gatilho`** (1 por fluxo, sempre a entrada) — 3 tipos: lead novo
+  criado, lead entra num funil específico, lead sem contato há N dias.
+- **Nó `condicao`** — 2 saídas (Sim/Não) avaliadas contra o lead:
+  "tem telefone cadastrado" ou "origem é X".
+- **Nó `espera`** — pausa a execução por N dias antes de seguir pro
+  próximo nó.
+- **Nó `acao`** — mesmas 4 ações de antes: mover pra outro funil,
+  registrar nota automática, criar tarefa na Agenda, enviar WhatsApp
+  (usa o mesmo `enviar-whatsapp` da Fase B — precisa de template
+  aprovado).
+- **Execução é stateful:** `automacoes_execucoes` guarda em qual nó cada
+  lead está parado (`no_atual_id`) — inclusive "esperando até dia X" num
+  nó de espera. `lead_criado`/`mudanca_funil` iniciam a execução na hora
+  (`aplicarAutomacoesEvento`, chamado de `Crm.tsx` logo após criar/mover
+  um lead) e andam pelo grafo até parar; `tempo_sem_contato`, e a
+  retomada de execuções paradas num nó de espera, rodam 1x por dia via
+  cron (`supabase/functions/aplicar-automacoes-tempo`, agendado em
+  `migration_027_automacoes_crm.sql`) — mesmo motor de grafo reescrito em
+  Deno (comentário no arquivo explica o porquê da duplicação). Nunca
+  trava a ação principal do app se uma automação falhar.
+- **Sem duplicar disparo:** só 1 execução ATIVA por (fluxo, lead) —
+  índice único parcial no banco.
+- **Deploy da function do cron** (mesmo fluxo das outras):
+  ```bash
+  npx supabase functions deploy aplicar-automacoes-tempo --no-verify-jwt
+  ```
+  Depois, rodar `migration_027_automacoes_crm.sql` no SQL Editor — ela já
+  faz `drop table if exists` das tabelas da v1 antes de criar o novo
+  schema em grafo (`automacoes_fluxos`/`automacoes_nos`/
+  `automacoes_conexoes`/`automacoes_execucoes`), então pode rodar direto
+  mesmo se a versão antiga da 027 já tiver rodado.
+
+## Comercial: leads esfriando + Relatório Executivo (Fase D do roadmap, 2026-09-11)
+
+- **Leads esfriando** (CRM): painel novo listando leads em negociação
+  (nem ganho, nem perdido) sem contato há 7+ dias, ordenado pelos mais
+  valiosos primeiro. "Contato" é a interação mais recente registrada
+  (`lead_interacoes`) — busca em lote pra todos os leads de uma vez
+  (`buscarUltimoContatoPorLead`, `src/lib/api/leads.ts`), nunca 1
+  consulta por lead. Sempre calculado sobre TODOS os leads, nunca sobre
+  a busca/filtro ativo no momento.
+- **Relatório Executivo em PDF** (Finanças → botão no painel do DRE):
+  consolida financeiro (faturamento, DRE), operação (eventos,
+  convidados, escalas, Trava D-15), comercial (novos leads, conversão) e
+  satisfação (NPS médio do mês) num PDF de 1 página — o "Relatório
+  Executivo" que apareceu no print original e nunca existiu de verdade.
+  Nunca fabrica número: sem auditoria no mês, o NPS vira "sem dado";
+  sem histórico de ganho/perda, a conversão vira "sem dado suficiente".
+  Código: `src/lib/pdfRelatorioExecutivo.ts`.
+
+## Contador de drinks em tempo real (Fase C do roadmap, 2026-09-11)
+
+Link público por evento (`/drinks/:eventoId`, mesmo molde sem login do
+Ponto Eletrônico) — o head bartender toca "+1" a cada drink servido no
+posto. Sem POS, sem catálogo de receita: é um log de toques
+(`registros_drink`, append-only), que alimenta o card "Drinks servidos
+hoje" e o ritmo (drinks/hora) no Dashboard em tempo real — no lugar do
+número fabricado que o print original pedia.
+
+- **Código:** `supabase/migration_026_registros_drink.sql` (tabela + RLS
+  + RPC `contar_drinks_evento`), `src/lib/api/drinks.ts`,
+  `src/pages/DrinksPublico.tsx`.
+- **Segurança:** anon só INSERE (nunca lê a tabela bruta); a tela
+  pública mostra o total via RPC `security definer`, mesma lógica do
+  Portal do Cliente (ver "Segurança" acima). Gestor lê os registros
+  individuais (com horário) por RLS pra calcular o ritmo.
+- **Sem "desfazer"** — mesma aceitação de risco do Ponto Eletrônico
+  público: não é dado financeiro nem prova jurídica, é visibilidade
+  operacional. Toque errado precisa de correção manual (fora do sistema,
+  por ora).
+- **Link pra copiar:** botão "Copiar link do contador de drinks" no card
+  de cada evento de hoje, no Dashboard.
+
+## Testes
+
+```bash
+npm test
+```
+
+Primeira suíte automatizada do projeto (2026-09-10) — até aqui toda
+validação era Playwright manual contra produção, uma vez, durante o
+desenvolvimento de cada fase (ver `docs/ROADMAP.md`), sem rodar de novo
+depois. Cobre as funções puras de maior risco financeiro/operacional
+(`*.test.ts` ao lado do arquivo original): `calcularStaffNecessario`
+(dimensionamento de equipe), `calcularFrete` (preço de frete),
+`diasAteEvento`/`calcularFaturamentoPorMes` (Trava D-15/20 e gráficos de
+tendência), `formatarMoeda`/`formatarData`. Roda com Vitest, `mode: test`
+carrega `.env.test` (valores fictícios, só pra `lib/supabase.ts` não
+travar ao importar um módulo de `lib/api/*.ts`) — nenhum teste chama o
+Supabase de verdade. Ainda não cobre componente/UI nem está num CI —
+próximo passo natural seria isso.
+
 ## Deploy (produção)
 
 O sistema está no ar em **https://sala-de-operacoes.vercel.app** — é o
@@ -139,7 +267,7 @@ para pra confirmar antes da próxima).
 
 - [x] Scaffold Vite + React + TS + Tailwind v4, tokens do design system
 - [x] Schema completo do banco (`supabase/schema.sql`), RLS configurado
-- [x] Roteamento com as 15 telas do PRD (todas como placeholder — ver `EmConstrucao`)
+- [x] Roteamento com as 15 telas do PRD (todas como placeholder no início — o componente `EmConstrucao` que fazia isso foi removido em 2026-09-10, já sem uso desde que a última tela saiu de placeholder)
 - [x] Autenticação (login do gestor, rota protegida)
 - [x] Layout: sidebar fixa (desktop) + barra inferior (mobile), mesmo design system "Mission Control Operations"
 ## Estado atual (Fase 2 — Núcleo Comercial)
@@ -161,10 +289,13 @@ para pra confirmar antes da próxima).
 - [x] Escala & Equipe: cadastro de freelancers (sem login), convocação por
   evento com diária, checklist traje/EPI, mensagem de convocação por
   WhatsApp (copiar/colar), simulador de hora extra
-- [x] Carga & Logística: frota, romaneio por evento com 4 fases de
-  conferência, sugestão automática de itens a partir do checklist padrão
-  real da empresa, calculadora de frete real (30% margem, mínimo R$150),
-  aviso ao tentar embarcar sem saldo quitado
+- [x] Carga & Logística: frota, calculadora de frete real (30% margem,
+  mínimo R$150), compras a caminho com data de chegada prevista.
+  ~~Romaneio por evento com 4 fases de conferência~~ — removido de
+  propósito na migração 016 (2026-09-09, decisão do usuário): a tela virou
+  só a calculadora de frete, sem vínculo com evento. O checklist de carga
+  por evento continua existindo, só que dentro de Estoque (aba
+  "Checklists", `src/components/estoque/ChecklistEvento.tsx`).
 
 Testado ponta a ponta com Playwright contra o Supabase real (ver
 `docs/ROADMAP.md`, Fase 4c/4d, pra detalhes e o bug real corrigido).

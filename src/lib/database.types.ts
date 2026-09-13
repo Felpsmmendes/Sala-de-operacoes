@@ -31,6 +31,60 @@ export type Database = {
         Update: { id?: string; nome?: string; cor?: string; ordem?: number; papel?: string | null; criado_em?: string };
         Relationships: [];
       };
+      automacoes_fluxos: {
+        Row: { id: string; nome: string; ativo: boolean; criado_em: string };
+        Insert: { id?: string; nome: string; ativo?: boolean; criado_em?: string };
+        Update: { id?: string; nome?: string; ativo?: boolean; criado_em?: string };
+        Relationships: [];
+      };
+      automacoes_nos: {
+        Row: { id: string; fluxo_id: string; tipo: string; pos_x: number; pos_y: number; dados: Json };
+        Insert: { id?: string; fluxo_id: string; tipo: string; pos_x?: number; pos_y?: number; dados?: Json };
+        Update: { id?: string; fluxo_id?: string; tipo?: string; pos_x?: number; pos_y?: number; dados?: Json };
+        Relationships: [];
+      };
+      automacoes_conexoes: {
+        Row: { id: string; fluxo_id: string; origem_no_id: string; destino_no_id: string; origem_handle: string | null };
+        Insert: { id?: string; fluxo_id: string; origem_no_id: string; destino_no_id: string; origem_handle?: string | null };
+        Update: { id?: string; fluxo_id?: string; origem_no_id?: string; destino_no_id?: string; origem_handle?: string | null };
+        Relationships: [];
+      };
+      automacoes_execucoes: {
+        Row: {
+          id: string;
+          fluxo_id: string;
+          lead_id: string;
+          no_atual_id: string | null;
+          status: string;
+          aguardando_ate: string | null;
+          erro_mensagem: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          id?: string;
+          fluxo_id: string;
+          lead_id: string;
+          no_atual_id?: string | null;
+          status?: string;
+          aguardando_ate?: string | null;
+          erro_mensagem?: string | null;
+          criado_em?: string;
+          atualizado_em?: string;
+        };
+        Update: {
+          id?: string;
+          fluxo_id?: string;
+          lead_id?: string;
+          no_atual_id?: string | null;
+          status?: string;
+          aguardando_ate?: string | null;
+          erro_mensagem?: string | null;
+          criado_em?: string;
+          atualizado_em?: string;
+        };
+        Relationships: [];
+      };
       leads: {
         Row: {
           id: string;
@@ -527,6 +581,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      registros_drink: {
+        Row: {
+          id: string;
+          evento_id: string;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          evento_id: string;
+          criado_em?: string;
+        };
+        Update: {
+          id?: string;
+          evento_id?: string;
+          criado_em?: string;
+        };
+        Relationships: [];
+      };
       auditoria_pos_evento: {
         Row: {
           id: string;
@@ -686,6 +758,7 @@ export type Database = {
       portal_assinar: { Args: { p_token: string; p_nome: string; p_cpf: string; p_hash: string }; Returns: undefined };
       ponto_obter_presenca: { Args: { p_evento_id: string }; Returns: Database['public']['Views']['vw_escala_presenca']['Row'][] };
       ponto_registrar_chegada: { Args: { p_evento_id: string; p_membro_id: string }; Returns: undefined };
+      contar_drinks_evento: { Args: { p_evento_id: string }; Returns: number };
       /** ver supabase/migration_009_estoque_atomico.sql */
       estoque_registrar_movimento: {
         Args: { p_item_id: string; p_tipo: string; p_quantidade: number; p_evento_id: string | null; p_observacao: string | null };

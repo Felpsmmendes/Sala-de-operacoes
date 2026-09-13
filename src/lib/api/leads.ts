@@ -52,3 +52,20 @@ export async function registrarInteracao(leadId: string, tipo: TipoInteracao, co
   const { error } = await supabase.from('lead_interacoes').insert({ lead_id: leadId, tipo, conteudo });
   if (error) throw new Error(error.message);
 }
+
+/** Data da interação mais recente por lead, numa única consulta (evita
+    1 chamada por lead) — usado pra achar quem está "esfriando" (Fase D
+    do roadmap, 2026-09-11). Lead sem nenhuma linha aqui simplesmente não
+    aparece no Map — quem chama decide o fallback (normalmente:
+    `lead.criado_em`, é a única data de referência que sobra). */
+export async function buscarUltimoContatoPorLead(leadIds: string[]): Promise<Map<string, string>> {
+  if (leadIds.length === 0) return new Map();
+  const { data, error } = await supabase.from('lead_interacoes').select('lead_id, criado_em').in('lead_id', leadIds);
+  if (error) throw new Error(error.message);
+  const mapa = new Map<string, string>();
+  for (const linha of data ?? []) {
+    const atual = mapa.get(linha.lead_id);
+    if (!atual || linha.criado_em > atual) mapa.set(linha.lead_id, linha.criado_em);
+  }
+  return mapa;
+}
