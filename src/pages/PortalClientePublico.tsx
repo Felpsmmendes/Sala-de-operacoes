@@ -1,8 +1,8 @@
-import { CheckCircle2, Lock } from 'lucide-react';
+import { CheckCircle2, FileSignature, Lock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { diasAteEvento } from '../lib/api/contratos';
-import { aprovarMoldura, aprovarVideo, assinarHomologacao, buscarPortalPorToken } from '../lib/api/portalCliente';
+import { aprovarMoldura, aprovarVideo, assinarContrato, assinarHomologacao, buscarPortalPorToken } from '../lib/api/portalCliente';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { Input } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
@@ -24,6 +24,9 @@ export default function PortalClientePublico() {
   const [processando, setProcessando] = useState(false);
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
+  const [nomeContrato, setNomeContrato] = useState('');
+  const [cpfContrato, setCpfContrato] = useState('');
+  const [assinandoContrato, setAssinandoContrato] = useState(false);
   const confirmar = useConfirmDialog();
 
   async function carregar() {
@@ -107,6 +110,46 @@ export default function PortalClientePublico() {
       window.alert(mensagemDeErro(e));
     } finally {
       setProcessando(false);
+    }
+  }
+
+  /** Assinatura do CONTRATO — evento separado da homologação de mídia
+      acima (ver comentário em portalCliente.ts). Mesma fricção de
+      confirmação antes de gravar (achado de UX 2026-09-06, reaplicado
+      aqui): a pessoa está sem login, provavelmente no celular, e isso
+      não pode ser desfeito por aqui depois. */
+  async function aoClicarAssinarContrato() {
+    if (!nomeContrato || !cpfContrato || travado) return;
+    const confirmado = await confirmar.pedir({
+      titulo: 'Confirmar assinatura do contrato',
+      mensagem: (
+        <div className="flex flex-col gap-2">
+          <p>Você está prestes a assinar eletronicamente o contrato de prestação de serviços. Depois de confirmado, isso não pode ser desfeito por aqui.</p>
+          <ul className="flex flex-col gap-1 rounded-sm border border-line bg-input px-3 py-2 text-text">
+            <li>
+              Nome: <strong>{nomeContrato}</strong>
+            </li>
+            <li>
+              CPF: <strong>{cpfContrato}</strong>
+            </li>
+          </ul>
+        </div>
+      ),
+      textoConfirmar: 'Confirmar assinatura',
+    });
+    if (confirmado) await aoAssinarContrato();
+  }
+
+  async function aoAssinarContrato() {
+    if (!token || !portal || !nomeContrato || !cpfContrato) return;
+    setAssinandoContrato(true);
+    try {
+      await assinarContrato(token, portal, nomeContrato, cpfContrato);
+      await carregar();
+    } catch (e) {
+      window.alert(mensagemDeErro(e));
+    } finally {
+      setAssinandoContrato(false);
     }
   }
 
@@ -212,6 +255,44 @@ export default function PortalClientePublico() {
                   )}
                 </div>
               </>
+            )}
+
+            {portal.documento_texto && (
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                  <FileSignature className="h-3.5 w-3.5" strokeWidth={2} /> Contrato de prestação de serviços
+                </p>
+
+                <div className="doc-papel mb-3 max-h-[420px] overflow-y-auto rounded-md bg-white px-5 py-5 text-[13px] leading-relaxed text-[#1a1a1a]" dangerouslySetInnerHTML={{ __html: portal.documento_texto }} />
+
+                {portal.contrato_assinado_em ? (
+                  <div className="rounded-sm border border-success/30 bg-success/10 px-3 py-3 text-[13px] text-success">
+                    <p className="flex items-center gap-2 font-semibold">
+                      <CheckCircle2 className="h-4 w-4" /> Contrato assinado
+                    </p>
+                    <p className="mt-1 text-text-dim">
+                      Assinado por {portal.contrato_assinatura_nome} em {formatarData(portal.contrato_assinado_em)}.
+                    </p>
+                  </div>
+                ) : travado ? (
+                  <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger">Prazo para assinatura encerrado — fale direto com a Em Cena Eventos.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[12px] text-text-dim">Li e concordo com todos os termos do contrato acima. Assine abaixo pra confirmar.</p>
+                    <Input placeholder="Nome completo" value={nomeContrato} onChange={(e) => setNomeContrato(e.target.value)} disabled={assinandoContrato} />
+                    <Input placeholder="CPF (apenas números)" value={cpfContrato} onChange={(e) => setCpfContrato(e.target.value)} disabled={assinandoContrato} />
+                    <button
+                      type="button"
+                      disabled={!nomeContrato || !cpfContrato || assinandoContrato}
+                      onClick={aoClicarAssinarContrato}
+                      className="rounded-sm bg-accent px-3 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"
+                    >
+                      {assinandoContrato ? 'Registrando assinatura…' : 'Assinar contrato eletronicamente'}
+                    </button>
+                    <p className="text-center text-[10.5px] text-text-faint">Sua assinatura eletrônica tem validade jurídica conforme a Lei nº 14.063/2020. Data, hora e identificação ficam registrados.</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

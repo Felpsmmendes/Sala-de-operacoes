@@ -4,6 +4,7 @@ import { bloqueioNaData, listarBloqueios } from '../lib/api/bloqueiosAgenda';
 import { atualizarContrato, cancelarContrato, criarContrato, diasAteEvento, excluirContrato, listarContratos, marcarSinalPago, atualizarStatusSaldo, type EdicaoContrato } from '../lib/api/contratos';
 import { listarLeads } from '../lib/api/leads';
 import { listarOrcamentos } from '../lib/api/orcamentos';
+import { buscarPortalPorContrato } from '../lib/api/portalCliente';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
@@ -13,6 +14,7 @@ import { EstadoVazio } from '../components/ui/EmptyState';
 import { AnaliseVendas } from '../components/contratos/AnaliseVendas';
 import { ConfigPix, carregarConfigPix, type ConfigPixDados } from '../components/contratos/ConfigPix';
 import { ModalContratoNovo, type DadosContratoNovo } from '../components/contratos/ModalContratoNovo';
+import { ModalDocumentoContrato } from '../components/contratos/ModalDocumentoContrato';
 import { ModalEditarContrato } from '../components/contratos/ModalEditarContrato';
 import { ModalPix } from '../components/contratos/ModalPix';
 import { Checkbox } from '../components/ui/Checkbox';
@@ -46,7 +48,23 @@ export default function Contratos() {
   const [criandoContrato, setCriandoContrato] = useState(false);
   const [editando, setEditando] = useState<ContratoComLead | null>(null);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  const [documentoAberto, setDocumentoAberto] = useState<ContratoComLead | null>(null);
+  const [portalTokenDocumento, setPortalTokenDocumento] = useState<string | null>(null);
   const confirmar = useConfirmDialog();
+
+  /** Abre o modal de documento — busca o token do Portal do Cliente na
+      hora (não guarda cacheado: o portal pode não existir ainda pra
+      contratos criados antes dessa etapa, ou o gestor pode ter acabado
+      de gerar um agora mesmo). */
+  async function aoAbrirDocumento(c: ContratoComLead) {
+    setDocumentoAberto(c);
+    try {
+      const portal = await buscarPortalPorContrato(c.id);
+      setPortalTokenDocumento(portal?.token ?? null);
+    } catch {
+      setPortalTokenDocumento(null);
+    }
+  }
 
   async function carregar() {
     setCarregando(true);
@@ -281,7 +299,14 @@ export default function Contratos() {
                       {c.forma_pagamento && <span className="ml-1">· {FORMA_PAGAMENTO_ROTULO[c.forma_pagamento]}</span>}
                     </p>
                   </div>
-                  <BadgeD20 dias={diasAteEvento(c.data_evento)} saldoQuitado={c.saldo_status === 'quitado'} />
+                  <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    <BadgeD20 dias={diasAteEvento(c.data_evento)} saldoQuitado={c.saldo_status === 'quitado'} />
+                    {c.contrato_assinado_em ? (
+                      <Badge tom="sucesso" texto="Contrato assinado" />
+                    ) : (
+                      c.documento_texto && <Badge tom="pendente" texto="Aguardando assinatura" />
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -333,6 +358,9 @@ export default function Contratos() {
                     <span />
                   )}
                   <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => aoAbrirDocumento(c)} className="flex items-center gap-1 text-[12px] font-medium text-money hover:underline">
+                      <FileSignature className="h-3 w-3" strokeWidth={2} /> {c.documento_texto ? 'Ver documento' : 'Gerar documento'}
+                    </button>
                     <button type="button" onClick={() => setEditando(c)} className="flex items-center gap-1 text-[12px] font-medium text-text-dim hover:underline">
                       <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
                     </button>
@@ -366,6 +394,17 @@ export default function Contratos() {
       )}
       {criandoAberto && <ModalContratoNovo leads={leads} onFechar={() => setCriandoAberto(false)} onCriado={aoCriarContratoDoZero} salvando={criandoContrato} />}
       {editando && <ModalEditarContrato contrato={editando} onFechar={() => setEditando(null)} onSalvar={aoSalvarEdicao} salvando={salvandoEdicao} />}
+      {documentoAberto && (
+        <ModalDocumentoContrato
+          contrato={documentoAberto}
+          portalToken={portalTokenDocumento}
+          aoFechar={() => {
+            setDocumentoAberto(null);
+            setPortalTokenDocumento(null);
+          }}
+          aoSalvo={carregar}
+        />
+      )}
       {confirmar.dialogo}
     </>
   );

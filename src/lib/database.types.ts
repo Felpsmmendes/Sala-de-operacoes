@@ -273,6 +273,13 @@ export type Database = {
           horario_fim_servico: string | null;
           horario_saida_equipe: string | null;
           horario_inicio_bar: string | null;
+          tipo_contrato: string | null;
+          documento_texto: string | null;
+          documento_gerado_em: string | null;
+          contrato_assinatura_nome: string | null;
+          contrato_assinatura_cpf: string | null;
+          contrato_assinatura_hash: string | null;
+          contrato_assinado_em: string | null;
         };
         Insert: {
           id?: string;
@@ -297,6 +304,13 @@ export type Database = {
           horario_fim_servico?: string | null;
           horario_saida_equipe?: string | null;
           horario_inicio_bar?: string | null;
+          tipo_contrato?: string | null;
+          documento_texto?: string | null;
+          documento_gerado_em?: string | null;
+          contrato_assinatura_nome?: string | null;
+          contrato_assinatura_cpf?: string | null;
+          contrato_assinatura_hash?: string | null;
+          contrato_assinado_em?: string | null;
         };
         Update: {
           id?: string;
@@ -321,6 +335,13 @@ export type Database = {
           horario_fim_servico?: string | null;
           horario_saida_equipe?: string | null;
           horario_inicio_bar?: string | null;
+          tipo_contrato?: string | null;
+          documento_texto?: string | null;
+          documento_gerado_em?: string | null;
+          contrato_assinatura_nome?: string | null;
+          contrato_assinatura_cpf?: string | null;
+          contrato_assinatura_hash?: string | null;
+          contrato_assinado_em?: string | null;
         };
         Relationships: [];
       };
@@ -746,6 +767,10 @@ export type Database = {
           data_evento: string;
           local: string | null;
           lead_nome: string;
+          tipo_contrato: string | null;
+          documento_texto: string | null;
+          contrato_assinatura_nome: string | null;
+          contrato_assinado_em: string | null;
         };
         Relationships: [];
       };
@@ -756,6 +781,7 @@ export type Database = {
       portal_aprovar_moldura: { Args: { p_token: string }; Returns: undefined };
       portal_aprovar_video: { Args: { p_token: string }; Returns: undefined };
       portal_assinar: { Args: { p_token: string; p_nome: string; p_cpf: string; p_hash: string }; Returns: undefined };
+      portal_assinar_contrato: { Args: { p_token: string; p_nome: string; p_cpf: string; p_hash: string }; Returns: undefined };
       ponto_obter_presenca: { Args: { p_evento_id: string }; Returns: Database['public']['Views']['vw_escala_presenca']['Row'][] };
       ponto_registrar_chegada: { Args: { p_evento_id: string; p_membro_id: string }; Returns: undefined };
       contar_drinks_evento: { Args: { p_evento_id: string }; Returns: number };

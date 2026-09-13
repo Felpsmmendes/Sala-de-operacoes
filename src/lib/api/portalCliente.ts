@@ -69,3 +69,21 @@ export async function assinarHomologacao(token: string, portal: Pick<PortalClien
   const { error } = await supabase.rpc('portal_assinar', { p_token: token, p_nome: nome, p_cpf: cpf, p_hash: hash });
   if (error) throw new Error(error.message);
 }
+
+/** Assinatura do CONTRATO em si (documento jurídico gerado pelo gestor)
+    — evento diferente de `assinarHomologacao` acima (aprovação de
+    moldura/vídeo). Mesmo padrão de hash: cobre o texto do documento no
+    momento da assinatura, então qualquer edição posterior do gestor faz
+    o hash gravado parar de bater com o `documento_texto` atual. RPC
+    própria (`portal_assinar_contrato`) e idempotente — ver
+    migration_028. */
+export async function assinarContrato(token: string, portal: Pick<PortalPublico, 'contrato_id' | 'documento_texto'>, nome: string, cpf: string): Promise<void> {
+  const conteudo = JSON.stringify({ contrato_id: portal.contrato_id, documento_texto: portal.documento_texto, nome, cpf, quando: new Date().toISOString() });
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(conteudo));
+  const hash = Array.from(new Uint8Array(bytes))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const { error } = await supabase.rpc('portal_assinar_contrato', { p_token: token, p_nome: nome, p_cpf: cpf, p_hash: hash });
+  if (error) throw new Error(error.message);
+}

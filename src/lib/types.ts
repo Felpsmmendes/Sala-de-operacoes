@@ -155,7 +155,21 @@ export type Contrato = {
   horario_fim_servico: string | null;
   horario_saida_equipe: string | null;
   horario_inicio_bar: string | null;
+  /* -------------------- Documento de contrato (2026-09-13) --------------------
+     Texto jurídico do contrato — separado do registro financeiro acima.
+     `documento_texto` é HTML (gerado a partir de um template e editado
+     livremente pelo gestor); a assinatura do CLIENTE nessas colunas é um
+     evento DIFERENTE da assinatura de homologação de mídia (que fica em
+     `portal_cliente.assinatura_*`) — ver migration_028. */
+  tipo_contrato: TipoContrato | null;
+  documento_texto: string | null;
+  documento_gerado_em: string | null;
+  contrato_assinatura_nome: string | null;
+  contrato_assinatura_cpf: string | null;
+  contrato_assinado_em: string | null;
 };
+
+export type TipoContrato = 'bar_service' | 'photo_booth' | 'combo';
 
 export type ContratoComLead = Contrato & { lead: Pick<Lead, 'id' | 'nome' | 'telefone'> | null };
 
@@ -368,6 +382,13 @@ export type PortalPublico = Omit<PortalCliente, 'assinatura_ip' | 'assinatura_ha
   data_evento: string;
   local: string | null;
   lead_nome: string;
+  /** Documento de contrato + status da assinatura DO CONTRATO (evento
+      diferente de `assinatura_*` acima, que é a homologação de mídia —
+      ver comentário em `Contrato`, migration_028). */
+  tipo_contrato: TipoContrato | null;
+  documento_texto: string | null;
+  contrato_assinatura_nome: string | null;
+  contrato_assinado_em: string | null;
 };
 
 /* -------------------- Ponto Eletrônico interno (funcionários fixos) --------------------

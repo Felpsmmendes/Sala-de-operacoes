@@ -348,3 +348,18 @@ Testado ponta a ponta com Playwright contra o Supabase real (ver
 - [x] Scroll do Pipeline estilo Figma (arrastar segurando o botão do meio do mouse)
 
 Ver `docs/ROADMAP.md`, seção "Feedback de uso real — CRM".
+
+## Documento de contrato + assinatura do cliente (2026-09-13)
+
+Fluxo: escolher tipo de contrato (Bar Service / Photo Booth / Combo) →
+sistema preenche o template com os dados do contrato → gestor edita
+livremente → salva e copia o link do Portal do Cliente → cliente lê e
+assina eletronicamente (nome + CPF + hash SHA-256 do conteúdo, mesmo
+padrão da assinatura de homologação de mídia — mas um evento SEPARADO:
+"aprovei a moldura" e "assinei o contrato" nunca se misturam).
+
+- `src/lib/contratoTemplates.ts` — os 3 templates (HTML) + `preencherTemplate`.
+- `ModalDocumentoContrato.tsx` (aba Contratos, botão "Gerar/Ver documento" em cada card) — editor rico simples via `contentEditable` não controlado (evita o bug clássico do cursor pular pro início a cada tecla quando `dangerouslySetInnerHTML` é re-renderizado a cada input).
+- Portal do Cliente (`/portal/:token`) — nova seção abaixo da homologação de mídia, com o documento em fundo branco (papel) e o formulário de assinatura; trava D-15 já existente também bloqueia a assinatura do contrato.
+- Badge "Contrato assinado" / "Aguardando assinatura" na listagem de Contratos.
+- **Rodar `migration_028_documento_contrato.sql`** no SQL Editor do Supabase antes de usar — adiciona as colunas em `contratos` e estende a view `vw_portal_publico` (mesma view que a homologação já usa, só com 4 colunas novas) + a RPC pública `portal_assinar_contrato`.

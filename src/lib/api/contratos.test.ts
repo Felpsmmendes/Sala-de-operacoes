@@ -33,6 +33,12 @@ function contratoFake(overrides: Partial<ContratoComLead>): ContratoComLead {
     horario_fim_servico: null,
     horario_saida_equipe: null,
     horario_inicio_bar: null,
+    tipo_contrato: null,
+    documento_texto: null,
+    documento_gerado_em: null,
+    contrato_assinatura_nome: null,
+    contrato_assinatura_cpf: null,
+    contrato_assinado_em: null,
     lead: null,
     ...overrides,
   };

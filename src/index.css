@@ -384,6 +384,37 @@ button:not(:disabled):active {
   }
 }
 
+/* Documento de contrato (2026-09-13) — o texto vem de
+   dangerouslySetInnerHTML (editor/preview em ModalDocumentoContrato,
+   leitura no Portal do Cliente), então as tags h1/h2/p/ul injetadas não
+   têm nenhuma classe Tailwind pra estilizar; uma única classe
+   compartilhada evita repetir isso 3x em componentes diferentes. */
+.doc-papel h1 {
+  margin-bottom: 16px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+}
+.doc-papel h2 {
+  margin: 18px 0 8px;
+  /* neutro (não preto/branco fixo) — a mesma classe serve pro editor
+     (fundo escuro) e pro preview/portal do cliente (fundo branco). */
+  border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+  padding-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.doc-papel p {
+  margin: 0 0 10px;
+}
+.doc-papel ul {
+  margin: 0 0 10px 20px;
+  list-style: disc;
+}
+.doc-papel li {
+  margin-bottom: 4px;
+}
+
 /* Botão "Imprimir" do checklist de carga (Estoque) — truque clássico de
    "imprimir só esta parte": esconde tudo por visibilidade (não display,
    que um `display:none` num ancestral não deixaria o `.print-area` filho

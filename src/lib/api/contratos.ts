@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
 import { sincronizarChecklistExtraDoContrato } from './estoque';
 import { sincronizarLancamento } from './financeiro';
-import type { ContratoComLead, FormaPagamento, StatusSaldo } from '../types';
+import type { ContratoComLead, FormaPagamento, StatusSaldo, TipoContrato } from '../types';
 
 /** Todo contrato tem um evento 1:1 (ver `criarContrato`) — usado só pra
     marcar o lançamento financeiro com o evento certo (pra aparecer nos
@@ -199,6 +199,17 @@ export async function atualizarStatusSaldo(id: string, status: StatusSaldo): Pro
 
 export async function salvarChavePix(id: string, chave: string): Promise<void> {
   const { error } = await supabase.from('contratos').update({ chave_pix: chave }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/** Salva o tipo + texto (HTML) do documento de contrato — gerado a
+    partir de um template (ver contratoTemplates.ts) e editado livremente
+    pelo gestor. Não mexe na assinatura: se o contrato já estava
+    assinado e o gestor edita o texto de novo, a assinatura antiga
+    continua gravada (o hash dela é que vai deixar de bater com o texto
+    atual — evidência de alteração pós-assinatura, ver migration_028). */
+export async function salvarDocumentoContrato(id: string, tipo: TipoContrato, textoHtml: string): Promise<void> {
+  const { error } = await supabase.from('contratos').update({ tipo_contrato: tipo, documento_texto: textoHtml, documento_gerado_em: new Date().toISOString() }).eq('id', id);
   if (error) throw new Error(error.message);
 }
 
