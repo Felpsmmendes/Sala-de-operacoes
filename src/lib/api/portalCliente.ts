@@ -8,6 +8,15 @@ export async function buscarPortalPorContrato(contratoId: string): Promise<Porta
   return data as PortalCliente | null;
 }
 
+/** Visão geral do gestor (2026-09-13) — todos os portais de uma vez, pra
+    montar métricas agregadas (quantos assinaram, quantos ainda faltam
+    etc.) em vez de só o portal do contrato selecionado na tela. */
+export async function listarTodosPortais(): Promise<PortalCliente[]> {
+  const { data, error } = await supabase.from('portal_cliente').select('*').order('criado_em', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PortalCliente[];
+}
+
 export async function atualizarMoldura(id: string, url: string): Promise<void> {
   const { error } = await supabase.from('portal_cliente').update({ moldura_arquivo_url: url || null }).eq('id', id);
   if (error) throw new Error(error.message);

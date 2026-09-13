@@ -19,6 +19,7 @@ export default function PontoPublico() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState<string | null>(null);
+  const [confirmado, setConfirmado] = useState<{ nome: string; hora: string } | null>(null);
 
   async function carregar() {
     if (!eventoId) return;
@@ -37,11 +38,16 @@ export default function PontoPublico() {
     carregar();
   }, [eventoId]);
 
-  async function aoConfirmarChegada(membroId: string) {
+  async function aoConfirmarChegada(membroId: string, membroNome: string) {
     if (!eventoId) return;
     setRegistrando(membroId);
     try {
       await registrarChegada(eventoId, membroId);
+      // tela de sucesso em vez de só a linha ficar verde na lista — achado
+      // de UX (2026-09-13): sem login/PIN, quem confirma quer uma
+      // confirmação óbvia de longe (mostrar pro coordenador), não um
+      // detalhe sutil dentro de uma lista comprida.
+      setConfirmado({ nome: membroNome, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
       await carregar();
     } catch (e) {
       window.alert(mensagemDeErro(e));
@@ -63,7 +69,23 @@ export default function PontoPublico() {
           <p className="text-sm font-semibold text-text">Confirmação de chegada</p>
         </div>
 
-        {carregando ? (
+        {confirmado ? (
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-success/30 bg-success/10">
+              <CheckCircle2 className="h-8 w-8 text-success" strokeWidth={2} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-text">Chegada registrada!</p>
+              <p className="mt-1 text-[13px] text-text-dim">
+                <strong className="text-text">{confirmado.nome}</strong> · {confirmado.hora}
+              </p>
+            </div>
+            <p className="text-[12px] text-text-faint">Mostre esta tela pro coordenador como comprovante.</p>
+            <button type="button" onClick={() => setConfirmado(null)} className="mt-2 rounded-sm border border-line px-4 py-2 text-[12.5px] text-text-dim hover:bg-raised hover:text-text">
+              Registrar outra chegada
+            </button>
+          </div>
+        ) : carregando ? (
           <SkeletonLinhas />
         ) : erro ? (
           <p className="mt-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>
@@ -81,7 +103,7 @@ export default function PontoPublico() {
                   key={l.escala_id}
                   type="button"
                   disabled={!!l.chegada_em || registrando === l.membro_id}
-                  onClick={() => aoConfirmarChegada(l.membro_id)}
+                  onClick={() => aoConfirmarChegada(l.membro_id, l.membro_nome)}
                   className={`flex items-center justify-between gap-3 rounded-sm border px-3 py-2.5 text-left text-sm transition-colors ${
                     l.chegada_em ? 'border-success/30 bg-success/10' : 'border-line bg-input hover:bg-raised disabled:opacity-60'
                   }`}

@@ -87,9 +87,14 @@ export function ChecklistEvento({ contrato }: { contrato: ContratoComLead }) {
                 }
               />
             ) : (
-              <div className="flex flex-col gap-1.5">
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 print:grid-cols-1">
                 {/* Mini-card de vidro leve por item (DESIGN.md > Tables &
-                    Lists, 2026-09-09), não mais linha sólida crua. */}
+                    Lists, 2026-09-09), não mais linha sólida crua. 2
+                    colunas a partir de sm (pedido do usuário, 2026-09-13
+                    — 1 coluna deixava espaço em branco enorme, já que
+                    cada item é só um texto curto + quantidade); 1 coluna
+                    na impressão continua mais fácil de riscar item por
+                    item no papel. */}
                 {padrao.map((item, i) => (
                   <div key={`p-${i}`} className="list-row flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span className="text-text">{item.descricao}</span>

@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowUpCircle, BarChart3, FileDown, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, BarChart3, ChevronLeft, ChevronRight, FileDown, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { listarAuditorias } from '../lib/api/auditoria';
 import { diasAteEvento, listarContratos } from '../lib/api/contratos';
@@ -39,6 +39,7 @@ export default function Financeiro() {
   const [salvando, setSalvando] = useState(false);
   const [filtro, setFiltro] = useState<'todos' | 'pendentes' | 'pagos'>('pendentes');
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
+  const [mesDre, setMesDre] = useState(() => new Date().toISOString().slice(0, 7));
 
   async function carregar() {
     setCarregando(true);
@@ -92,8 +93,16 @@ export default function Financeiro() {
   // Fechamento Mensal, que virou só histórico de vendas), lógica intacta:
   // lê a view `dre_mensal`, nunca uma tabela própria — receita/custo/
   // lucro sempre calculados a partir dos lançamentos já pagos.
-  const dreMesAtual = dreMeses.find((m) => m.mes.slice(0, 7) === mesAtual);
-  const margemAtual = dreMesAtual && dreMesAtual.receita_bruta > 0 ? (dreMesAtual.lucro_liquido / dreMesAtual.receita_bruta) * 100 : null;
+  // `mesDre` (2026-09-13) navega entre meses do HISTÓRICO já carregado —
+  // nunca refaz a busca, só troca qual mês os cards/destaque mostram.
+  const dreMesSelecionado = dreMeses.find((m) => m.mes.slice(0, 7) === mesDre);
+  const margemSelecionada = dreMesSelecionado && dreMesSelecionado.receita_bruta > 0 ? (dreMesSelecionado.lucro_liquido / dreMesSelecionado.receita_bruta) * 100 : null;
+
+  function mesDreDeslocado(deslocamento: number): string {
+    const d = new Date(`${mesDre}-01T00:00:00`);
+    d.setMonth(d.getMonth() + deslocamento);
+    return d.toISOString().slice(0, 7);
+  }
 
   /** Relatório Executivo em PDF (Fase D do roadmap, 2026-09-11) — junta
       financeiro (já carregado nesta tela) com operação/comercial/
@@ -102,6 +111,9 @@ export default function Financeiro() {
       nunca usa). Nunca fabrica número: NPS sem auditoria no mês vira
       "sem dado", conversão sem histórico vira "sem dado suficiente". */
   async function aoGerarRelatorioExecutivo() {
+    // sempre o mês atual de verdade — independente de qual mês o gestor
+    // esteja navegando no DRE ao clicar aqui (ver `mesDre`).
+    const dreMesAtual = dreMeses.find((m) => m.mes.slice(0, 7) === mesAtual);
     setGerandoRelatorio(true);
     try {
       const [contratos, eventos, leads, funis, auditorias] = await Promise.all([listarContratos(), listarEventos(), listarLeads(), listarFunis(), listarAuditorias()]);
@@ -249,21 +261,37 @@ export default function Financeiro() {
             titulo="DRE — receita, custo e lucro líquido"
             desc="Sempre calculado a partir dos lançamentos pagos, nunca digitado à parte."
             acao={
-              <button
-                type="button"
-                disabled={gerandoRelatorio}
-                onClick={aoGerarRelatorioExecutivo}
-                className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-1.5 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text disabled:opacity-50"
-              >
-                <FileDown className="h-3.5 w-3.5" strokeWidth={2} /> {gerandoRelatorio ? 'Gerando…' : 'Relatório Executivo (PDF)'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 rounded-sm border border-line">
+                  <button type="button" onClick={() => setMesDre(mesDreDeslocado(-1))} className="px-2 py-1.5 text-text-dim hover:bg-raised hover:text-text" title="Mês anterior">
+                    <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                  <span className="min-w-[64px] text-center font-mono text-[12px] font-semibold text-text">{formatarMes(mesDre)}</span>
+                  <button type="button" disabled={mesDre >= mesAtual} onClick={() => setMesDre(mesDreDeslocado(1))} className="px-2 py-1.5 text-text-dim hover:bg-raised hover:text-text disabled:opacity-30" title="Próximo mês">
+                    <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                </div>
+                {mesDre !== mesAtual && (
+                  <button type="button" onClick={() => setMesDre(mesAtual)} className="rounded-sm border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-text-faint hover:bg-raised hover:text-text">
+                    Mês atual
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={gerandoRelatorio}
+                  onClick={aoGerarRelatorioExecutivo}
+                  className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-1.5 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text disabled:opacity-50"
+                >
+                  <FileDown className="h-3.5 w-3.5" strokeWidth={2} /> {gerandoRelatorio ? 'Gerando…' : 'Relatório Executivo (PDF)'}
+                </button>
+              </div>
             }
           />
           <MetricGrid>
-            <MetricCard Icone={TrendingUp} rotulo="Receita bruta do mês" valor={formatarMoeda(dreMesAtual?.receita_bruta ?? 0)} legenda="Lançamentos de receita pagos" categoria="dinheiro" />
-            <MetricCard Icone={PiggyBank} rotulo="Custos do mês" valor={formatarMoeda(dreMesAtual?.custos_totais ?? 0)} legenda="Lançamentos de despesa pagos" categoria="dinheiro" />
-            <MetricCard Icone={BarChart3} rotulo="Lucro líquido do mês" valor={formatarMoeda(dreMesAtual?.lucro_liquido ?? 0)} legenda="Receita − custos" categoria="dinheiro" />
-            <MetricCard Icone={BarChart3} rotulo="Margem do mês" valor={margemAtual != null ? `${margemAtual.toFixed(1)}%` : '—'} legenda="Lucro líquido / receita bruta" categoria="dinheiro" />
+            <MetricCard Icone={TrendingUp} rotulo={`Receita bruta — ${formatarMes(mesDre)}`} valor={formatarMoeda(dreMesSelecionado?.receita_bruta ?? 0)} legenda="Lançamentos de receita pagos" categoria="dinheiro" />
+            <MetricCard Icone={PiggyBank} rotulo={`Custos — ${formatarMes(mesDre)}`} valor={formatarMoeda(dreMesSelecionado?.custos_totais ?? 0)} legenda="Lançamentos de despesa pagos" categoria="dinheiro" />
+            <MetricCard Icone={BarChart3} rotulo={`Lucro líquido — ${formatarMes(mesDre)}`} valor={formatarMoeda(dreMesSelecionado?.lucro_liquido ?? 0)} legenda="Receita − custos" categoria="dinheiro" />
+            <MetricCard Icone={BarChart3} rotulo={`Margem — ${formatarMes(mesDre)}`} valor={margemSelecionada != null ? `${margemSelecionada.toFixed(1)}%` : '—'} legenda="Lucro líquido / receita bruta" categoria="dinheiro" />
           </MetricGrid>
 
           {carregando ? (
@@ -289,8 +317,14 @@ export default function Financeiro() {
                   </div>
                   {dreMeses.map((m) => {
                     const margem = m.receita_bruta > 0 ? (m.lucro_liquido / m.receita_bruta) * 100 : null;
+                    const selecionado = m.mes.slice(0, 7) === mesDre;
                     return (
-                      <div key={m.mes} className="list-row grid grid-cols-5 items-center gap-3 px-3 py-2 text-[12.5px]">
+                      <div
+                        key={m.mes}
+                        onClick={() => setMesDre(m.mes.slice(0, 7))}
+                        className={`grid cursor-pointer grid-cols-5 items-center gap-3 px-3 py-2 text-[12.5px] ${selecionado ? 'list-row-tint' : 'list-row'}`}
+                        style={selecionado ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : undefined}
+                      >
                         <span className="text-text">{formatarMes(m.mes)}</span>
                         <span className="font-mono text-success">{formatarMoeda(m.receita_bruta)}</span>
                         <span className="font-mono text-danger">{formatarMoeda(m.custos_totais)}</span>

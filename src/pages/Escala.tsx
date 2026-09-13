@@ -288,14 +288,42 @@ export default function Escala() {
                         <Badge tom="sucesso" texto="Equipe de bar completa" />
                       )}
                       {desteEvento.length > 0 && (
-                        <button
-                          type="button"
-                          disabled={enviandoLoteEventoId === evento.id}
-                          onClick={() => aoEnviarConvocacaoEmLote(desteEvento, evento)}
-                          className="rounded-sm border border-people/40 bg-people/10 px-3 py-1.5 text-[12.5px] font-semibold text-people hover:bg-people/20 disabled:opacity-50"
-                        >
-                          {enviandoLoteEventoId === evento.id ? 'Enviando…' : 'Enviar convocação a todos (WhatsApp)'}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const mensagens = desteEvento
+                                .filter((esc) => esc.membro)
+                                .map((esc) =>
+                                  montarMensagemConvocacao({
+                                    membro: esc.membro!,
+                                    clienteNome: evento.contrato?.lead?.nome ?? 'evento',
+                                    dataEvento: evento.data_evento,
+                                    local: evento.local,
+                                    horaInicio: evento.hora_inicio,
+                                    diaria: esc.diaria,
+                                  })
+                                )
+                                .join('\n\n---\n\n');
+                              navigator.clipboard
+                                .writeText(mensagens)
+                                .then(() => window.alert(`${desteEvento.length} convocação(ões) copiada(s) — cole no grupo do WhatsApp.`))
+                                .catch(() => window.alert('Não foi possível copiar. Copie individualmente.'));
+                            }}
+                            className="rounded-sm border border-line px-3 py-1.5 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text"
+                            title="Copia a convocação de todo mundo escalado neste evento, separadas por linha — útil enquanto o envio automático não está disponível pra alguém."
+                          >
+                            Copiar convocação de todos
+                          </button>
+                          <button
+                            type="button"
+                            disabled={enviandoLoteEventoId === evento.id}
+                            onClick={() => aoEnviarConvocacaoEmLote(desteEvento, evento)}
+                            className="rounded-sm border border-people/40 bg-people/10 px-3 py-1.5 text-[12.5px] font-semibold text-people hover:bg-people/20 disabled:opacity-50"
+                          >
+                            {enviandoLoteEventoId === evento.id ? 'Enviando…' : 'Enviar convocação a todos (WhatsApp)'}
+                          </button>
+                        </>
                       )}
                       <button type="button" onClick={() => setConvocarParaEvento(evento)} className="rounded-sm bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
                         Convocar

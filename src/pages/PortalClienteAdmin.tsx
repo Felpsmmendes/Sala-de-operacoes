@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, Copy, FileSignature } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { diasAteEvento, listarContratos } from '../lib/api/contratos';
-import { atualizarMoldura, atualizarVideo, buscarPortalPorContrato } from '../lib/api/portalCliente';
+import { atualizarMoldura, atualizarVideo, buscarPortalPorContrato, listarTodosPortais } from '../lib/api/portalCliente';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
@@ -23,6 +23,7 @@ function aoFalhar(e: unknown) {
     /portal/:token, sem login (ver PortalClientePublico.tsx). */
 export default function PortalClienteAdmin() {
   const [contratos, setContratos] = useState<ContratoComLead[]>([]);
+  const [todosPortais, setTodosPortais] = useState<PortalCliente[]>([]);
   const [contratoId, setContratoId] = useState('');
   const [portal, setPortal] = useState<PortalCliente | null>(null);
   const [molduraUrl, setMolduraUrl] = useState('');
@@ -35,9 +36,10 @@ export default function PortalClienteAdmin() {
     setCarregando(true);
     setErro(null);
     try {
-      const ct = await listarContratos();
+      const [ct, portais] = await Promise.all([listarContratos(), listarTodosPortais()]);
       const ativos = ct.filter((c) => c.status !== 'cancelado').sort((a, b) => b.data_evento.localeCompare(a.data_evento));
       setContratos(ativos);
+      setTodosPortais(portais);
       setContratoId((atual) => atual || ativos[0]?.id || '');
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -100,23 +102,23 @@ export default function PortalClienteAdmin() {
     }
   }
 
-  const totalComPortal = contratos.length;
+  // Visão geral (2026-09-13) — agregada de TODOS os portais, não só o
+  // selecionado na tela (o painel de baixo continua mostrando o detalhe
+  // de um contrato por vez).
+  const totalPortais = todosPortais.length;
+  const totalHomologados = todosPortais.filter((p) => p.assinatura_em).length;
+  const totalPendentes = totalPortais - totalHomologados;
+  const totalMolduraAprovada = todosPortais.filter((p) => p.moldura_aprovada).length;
 
   return (
     <>
       <Cabecalho titulo="Portal do Cliente" subtitulo="Acompanhe a homologação de cardápio, moldura e assinatura de cada contrato." />
       <Conteudo>
         <MetricGrid>
-          <MetricCard Icone={FileSignature} rotulo="Contratos com portal" valor={String(totalComPortal)} legenda="Todo contrato ganha um automaticamente" categoria="neutro" />
-          <MetricCard Icone={CheckCircle2} rotulo="Assinado" valor={portal?.assinatura_em ? 'Sim' : 'Não'} legenda={contratoAtual ? contratoAtual.lead?.nome ?? '—' : '—'} categoria="pessoas" />
-          <MetricCard
-            Icone={AlertTriangle}
-            rotulo="Trava D-15"
-            valor={diasRestantes != null ? (travado ? 'Travado' : `D-${diasRestantes}`) : '—'}
-            legenda={travado ? 'Cliente não edita mais' : 'Cliente ainda pode editar'}
-            categoria="pessoas"
-          />
-          <MetricCard Icone={CheckCircle2} rotulo="Moldura + vídeo" valor={portal ? `${portal.moldura_aprovada ? '✓' : '—'} / ${portal.video_aprovado ? '✓' : '—'}` : '—'} legenda="Aprovados pelo cliente" categoria="pessoas" />
+          <MetricCard Icone={FileSignature} rotulo="Total de portais" valor={String(totalPortais)} legenda="Um por contrato ativo" categoria="neutro" />
+          <MetricCard Icone={CheckCircle2} rotulo="Homologados" valor={String(totalHomologados)} legenda="Cliente já assinou" categoria="pessoas" />
+          <MetricCard Icone={AlertTriangle} rotulo="Pendentes" valor={String(totalPendentes)} legenda="Aguardando assinatura" categoria="pessoas" />
+          <MetricCard Icone={CheckCircle2} rotulo="Molduras aprovadas" valor={String(totalMolduraAprovada)} legenda={`De ${totalPortais} portais`} categoria="neutro" />
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -130,18 +132,32 @@ export default function PortalClienteAdmin() {
               <EstadoVazio Icone={FileSignature} titulo="Nenhum contrato ainda" descricao="Portais aparecem aqui assim que um contrato for criado." />
             ) : (
               <div className="flex max-h-[560px] flex-col gap-1.5 overflow-y-auto">
-                {contratos.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setContratoId(c.id)}
-                    className={`rounded-sm border px-2.5 py-2 text-left text-[12.5px] transition-colors ${c.id === contratoId ? 'border-neutral bg-raised text-text' : 'border-line bg-input text-text-dim hover:bg-raised'}`}
-                  >
-                    <span className="block truncate">
-                      {formatarData(c.data_evento)} — {c.lead?.nome ?? '—'}
-                    </span>
-                  </button>
-                ))}
+                {contratos.map((c) => {
+                  const portalDoContrato = todosPortais.find((p) => p.contrato_id === c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setContratoId(c.id)}
+                      className={`rounded-sm border px-2.5 py-2 text-left text-[12.5px] transition-colors ${c.id === contratoId ? 'border-neutral bg-raised text-text' : 'border-line bg-input text-text-dim hover:bg-raised'}`}
+                    >
+                      <span className="block truncate">
+                        {formatarData(c.data_evento)} — {c.lead?.nome ?? '—'}
+                      </span>
+                      {portalDoContrato && (
+                        <span className={`mt-0.5 flex items-center gap-1 text-[10px] font-semibold ${portalDoContrato.assinatura_em ? 'text-success' : 'text-pending'}`}>
+                          {portalDoContrato.assinatura_em ? (
+                            <>
+                              <CheckCircle2 className="h-2.5 w-2.5" strokeWidth={2.5} /> Assinado
+                            </>
+                          ) : (
+                            'Pendente'
+                          )}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </Panel>
