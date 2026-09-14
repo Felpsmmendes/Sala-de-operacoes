@@ -1,9 +1,10 @@
-import { AlertTriangle, ClipboardCheck, PackageCheck, Star } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, Download, PackageCheck, Star } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { buscarAuditoriaDoEvento, listarAuditorias, salvarAuditoria } from '../lib/api/auditoria';
 import { buscarChecklistPadrao, listarChecklistExtra } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
+import { criarTarefa } from '../lib/api/tarefasAgenda';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
@@ -16,6 +17,7 @@ import { RotuloCampo } from '../components/ui/RotuloCampo';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
+import { exportarCsv } from '../lib/exportarCsv';
 import { formatarData, formatarMoeda } from '../lib/status';
 import type { AuditoriaPosEvento, DadosAuditoria, EventoComLead } from '../lib/types';
 
@@ -117,10 +119,32 @@ export default function Auditoria() {
       nps_nota: npsNota ? Number(npsNota) : null,
       nps_comentario: npsComentario || null,
     };
+    // guarda o NPS ANTES de salvar — a tarefa de follow-up só é criada na
+    // transição pra "insatisfeito" (nota ≤4), nunca de novo a cada re-save
+    // da mesma auditoria (ex.: gestor volta só pra editar a descrição da
+    // avaria) — senão duplicaria tarefa toda vez que salvasse de novo.
+    const npsJaEraBaixo = atual?.nps_nota != null && atual.nps_nota <= 4;
     try {
       await salvarAuditoria(eventoId, dados);
       await carregarBase();
       toast.sucesso('Auditoria salva.');
+
+      if (dados.nps_nota != null && dados.nps_nota <= 4 && !npsJaEraBaixo) {
+        const eventoInfo = eventoPorId.get(eventoId);
+        try {
+          await criarTarefa({
+            titulo: `⚠ Follow-up urgente — NPS ${dados.nps_nota} (${eventoInfo?.contrato?.lead?.nome ?? 'cliente'})`,
+            data: new Date().toISOString().slice(0, 10),
+            horario: null,
+            observacoes: `NPS baixo registrado na auditoria do evento de ${eventoInfo ? formatarData(eventoInfo.data_evento) : 'data não informada'}.${dados.nps_comentario ? ` Comentário: "${dados.nps_comentario}"` : ''}`,
+            leadId: eventoInfo?.contrato?.lead?.id ?? null,
+          });
+          toast.aviso('NPS baixo — tarefa de follow-up criada automaticamente na Agenda.');
+        } catch {
+          // silencioso — não bloqueia o salvamento da auditoria, que já
+          // foi confirmado acima; a tarefa é um bônus, não o registro em si.
+        }
+      }
     } catch (e) {
       aoFalhar(e);
     } finally {
@@ -129,6 +153,7 @@ export default function Auditoria() {
   }
 
   const auditoriaPorEvento = useMemo(() => new Map(auditorias.map((a) => [a.evento_id, a])), [auditorias]);
+  const eventoPorId = useMemo(() => new Map(eventos.map((e) => [e.id, e])), [eventos]);
   const eventoAtual = eventos.find((e) => e.id === eventoId) ?? null;
   const pendentes = eventos.filter((e) => !auditoriaPorEvento.has(e.id)).length;
   const mediaNps = useMemo(() => {
@@ -246,7 +271,40 @@ export default function Auditoria() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
           <Panel>
-            <PanelHeader titulo="Eventos" desc={carregando ? undefined : `${eventos.length} não cancelados`} />
+            <PanelHeader
+              titulo="Eventos"
+              desc={carregando ? undefined : `${eventos.length} não cancelados`}
+              acao={
+                <button
+                  type="button"
+                  disabled={auditorias.length === 0}
+                  onClick={() =>
+                    exportarCsv(
+                      [
+                        ['Evento', 'Data', 'NPS', 'Avaria (R$)', 'Item Avariado', 'Comentário', 'Sobras Reintegradas'],
+                        ...auditorias.map((a) => {
+                          const ev = eventoPorId.get(a.evento_id);
+                          return [
+                            ev?.contrato?.lead?.nome ?? '—',
+                            ev ? formatarData(ev.data_evento) : '—',
+                            a.nps_nota != null ? String(a.nps_nota) : '—',
+                            a.avarias_valor ? formatarMoeda(a.avarias_valor) : '—',
+                            a.avarias_descricao ?? '—',
+                            a.nps_comentario ?? '—',
+                            a.sobras_reintegradas ? 'Sim' : 'Não',
+                          ];
+                        }),
+                      ],
+                      `auditorias-${new Date().toISOString().slice(0, 7)}`
+                    )
+                  }
+                  className="flex items-center gap-1.5 rounded-sm border border-line px-2.5 py-1.5 text-[11.5px] text-text-dim hover:bg-raised hover:text-text disabled:opacity-40"
+                >
+                  <Download className="h-3 w-3" strokeWidth={2} />
+                  Exportar CSV
+                </button>
+              }
+            />
             {carregando ? (
               <SkeletonLinhas />
             ) : eventos.length === 0 ? (

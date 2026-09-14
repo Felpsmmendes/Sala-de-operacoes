@@ -360,6 +360,10 @@ export type Lancamento = {
   data_pagamento: string | null;
   observacoes: string | null;
   criado_em: string;
+  /** Texto livre (2026-09-14, ver migration_034) — "Bar Service", "Equipe",
+      "Frete" etc.; a UI sugere via datalist, mas nunca trava num enum
+      fixo. null nos lançamentos criados antes desta coluna existir. */
+  categoria: string | null;
 };
 
 export type NovoLancamento = {
@@ -369,6 +373,7 @@ export type NovoLancamento = {
   valor: number;
   vencimento: string | null;
   observacoes: string | null;
+  categoria?: string | null;
 };
 
 /** Linha da view `dre_mensal` (agregação de `lancamentos_financeiros` já
@@ -397,13 +402,17 @@ export type PortalCliente = {
   assinatura_ip: string | null;
   assinatura_em: string | null;
   criado_em: string;
+  /** Quando o cliente abriu o link pela 1ª vez, e quantas vezes no total
+      (2026-09-14, ver migration_033) — null/0 = ainda não abriu. */
+  aberto_em: string | null;
+  visualizacoes: number;
 };
 
 /** Linha da view `vw_portal_publico` — usada pela tela pública
     (`/portal/:token`, sem login). Nunca inclui valor_total/sinal/saldo/
     chave_pix do contrato, só o necessário pro cliente reconhecer o
     evento certo. */
-export type PortalPublico = Omit<PortalCliente, 'assinatura_ip' | 'assinatura_hash' | 'criado_em'> & {
+export type PortalPublico = Omit<PortalCliente, 'assinatura_ip' | 'assinatura_hash' | 'criado_em' | 'aberto_em' | 'visualizacoes'> & {
   data_evento: string;
   local: string | null;
   lead_nome: string;

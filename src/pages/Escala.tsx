@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarClock, Clock3, Timer, Users } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Clock3, Download, Timer, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
@@ -22,7 +22,8 @@ import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
 import { enviarConvocacaoEmLote, enviarConvocacaoWhatsapp } from '../lib/api/whatsapp';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
-import { FUNCAO_EQUIPE_ROTULO, STATUS_ESCALA_INFO, formatarData } from '../lib/status';
+import { FUNCAO_EQUIPE_ROTULO, STATUS_ESCALA_INFO, formatarData, formatarMoeda } from '../lib/status';
+import { exportarCsv } from '../lib/exportarCsv';
 import type { EscalaComMembro, EventoComLead, MembroEquipe, NovoMembroEquipe, StatusEscala } from '../lib/types';
 
 /** Sem `.catch` toda ação vira rejeição de promise silenciosa quando o
@@ -293,6 +294,29 @@ export default function Escala() {
                       )}
                       {desteEvento.length > 0 && (
                         <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              exportarCsv(
+                                [
+                                  ['Nome', 'Função', 'Diária', 'Status', 'Confirmado em'],
+                                  ...desteEvento.map((e) => [
+                                    e.membro?.nome ?? '—',
+                                    e.membro ? FUNCAO_EQUIPE_ROTULO[e.membro.funcao] : '—',
+                                    formatarMoeda(e.diaria),
+                                    STATUS_ESCALA_INFO[e.status].rotulo,
+                                    e.confirmado_em ? formatarData(e.confirmado_em) : '—',
+                                  ]),
+                                ],
+                                `escala-${evento.data_evento}`
+                              )
+                            }
+                            className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-1.5 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text"
+                            title="Exporta a escala deste evento em CSV"
+                          >
+                            <Download className="h-3 w-3" strokeWidth={2} />
+                            CSV
+                          </button>
                           <button
                             type="button"
                             onClick={() => {

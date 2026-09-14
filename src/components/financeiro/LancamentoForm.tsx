@@ -1,7 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import type { NovoLancamento, TipoLancamento } from '../../lib/types';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+
+// Sugestões por tipo (2026-09-14) — texto livre com datalist, nunca um
+// enum travado: a lista real de categorias do negócio muda com o tempo
+// (novo tipo de despesa aparece), então o campo aceita qualquer texto —
+// isso aqui é só atalho de digitação, não validação.
+const CATEGORIAS_RECEITA = ['Bar Service', 'Photo Booth', 'Combo', 'Sinal', 'Saldo'];
+const CATEGORIAS_DESPESA = ['Equipe', 'Insumos', 'Frete', 'Aluguel de equipamento', 'Taxas', 'Marketing', 'Outros'];
 
 export function LancamentoForm({ onSalvar, salvando }: { onSalvar: (dados: NovoLancamento) => void; salvando: boolean }) {
   const [tipo, setTipo] = useState<TipoLancamento>('despesa');
@@ -9,14 +16,16 @@ export function LancamentoForm({ onSalvar, salvando }: { onSalvar: (dados: NovoL
   const [valor, setValor] = useState('');
   const [vencimento, setVencimento] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [categoria, setCategoria] = useState('');
 
   function aoSubmeter(ev: FormEvent) {
     ev.preventDefault();
-    onSalvar({ tipo, eventoId: null, descricao, valor: Number(valor), vencimento: vencimento || null, observacoes: observacoes || null });
+    onSalvar({ tipo, eventoId: null, descricao, valor: Number(valor), vencimento: vencimento || null, observacoes: observacoes || null, categoria: categoria.trim() || null });
     setDescricao('');
     setValor('');
     setVencimento('');
     setObservacoes('');
+    setCategoria('');
   }
 
   return (
@@ -31,6 +40,22 @@ export function LancamentoForm({ onSalvar, salvando }: { onSalvar: (dados: NovoL
       <Input rotulo="Valor (R$)" categoria="dinheiro" type="number" min={0.01} step="0.01" required value={valor} onChange={(e) => setValor(e.target.value)} />
       <div className="sm:col-span-2">
         <Input rotulo="Vencimento (opcional)" categoria="dinheiro" type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} />
+      </div>
+      <div>
+        <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Categoria (opcional)</span>
+        <input
+          list={`categorias-${tipo}`}
+          value={categoria}
+          onChange={(e) => setCategoria(e.target.value)}
+          className="campo px-3 py-2.5 text-sm text-text placeholder:text-text-ultra"
+          placeholder="Ex: Bar Service, Equipe…"
+          style={{ '--campo-cor': 'var(--color-money)' } as CSSProperties}
+        />
+        <datalist id={`categorias-${tipo}`}>
+          {(tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA).map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
       </div>
       <div className="sm:col-span-2">
         <Input rotulo="Observações (opcional)" categoria="dinheiro" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />

@@ -43,6 +43,14 @@ export async function buscarPortalPorToken(token: string): Promise<PortalPublico
   return ((data as PortalPublico[]) ?? [])[0] ?? null;
 }
 
+/** Registra que o cliente abriu o link (2026-09-14, ver migration_033) —
+    incrementa o contador e grava a data da 1ª abertura. Silencioso de
+    propósito: uma falha aqui é só a métrica que não atualiza, nunca deve
+    impedir o cliente de ver o portal. */
+export async function registrarVisualizacao(token: string): Promise<void> {
+  await supabase.rpc('portal_registrar_visualizacao', { p_token: token }).catch(() => {});
+}
+
 export async function aprovarMoldura(token: string): Promise<void> {
   const { error } = await supabase.rpc('portal_aprovar_moldura', { p_token: token });
   if (error) throw new Error(error.message);

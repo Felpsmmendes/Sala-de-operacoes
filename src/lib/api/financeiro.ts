@@ -15,6 +15,7 @@ export async function criarLancamento(dados: NovoLancamento): Promise<void> {
     valor: dados.valor,
     vencimento: dados.vencimento,
     observacoes: dados.observacoes,
+    categoria: dados.categoria || null,
   });
   if (error) throw new Error(error.message);
 }

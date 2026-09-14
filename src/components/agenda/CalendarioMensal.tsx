@@ -17,6 +17,21 @@ function dataDoDia(ano: number, mes: number, dia: number): string {
   return `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
 }
 
+/** Domingo da semana que contém `data` — base da view semanal (2026-09-14).
+    `new Date(d)` clona antes de mutar (nunca edita a data recebida). */
+function domingoDaSemana(data: Date): Date {
+  const d = new Date(data);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+
+function deslocarSemana(base: Date, dias: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + dias);
+  return d;
+}
+
 export function CalendarioMensal({
   eventos,
   tarefas,
@@ -58,6 +73,15 @@ export function CalendarioMensal({
   const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
   const totalDias = new Date(ano, mes + 1, 0).getDate();
   const hoje = new Date();
+
+  // View semanal (2026-09-14, pedido do usuário) — alternativa ao grid
+  // mensal, útil pra ver a semana corrida sem os "buracos" das outras
+  // semanas do mês. Reaproveita as MESMAS listas (eventos/tarefas/
+  // bloqueios) já carregadas pelo mensal — nunca busca de novo.
+  const [viewAgenda, setViewAgenda] = useState<'mes' | 'semana'>('mes');
+  const [semanaBase, setSemanaBase] = useState<Date>(() => domingoDaSemana(new Date()));
+  const fimSemana = deslocarSemana(semanaBase, 6);
+  const rotuloSemana = `${semanaBase.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })} – ${fimSemana.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}`;
 
   const eventosPorDia: Record<number, EventoComLead[]> = {};
   eventos.forEach((ev) => {
@@ -120,59 +144,143 @@ export function CalendarioMensal({
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => onMudarMes(-12)} className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-raised hover:text-text" aria-label="Ano anterior" title="Ano anterior">
-            <ChevronsLeft className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={() => onMudarMes(-1)} className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-raised hover:text-text" aria-label="Mês anterior">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        </div>
+        {viewAgenda === 'mes' ? (
+          <>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => onMudarMes(-12)} className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-raised hover:text-text" aria-label="Ano anterior" title="Ano anterior">
+                <ChevronsLeft className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => onMudarMes(-1)} className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-raised hover:text-text" aria-label="Mês anterior">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </div>
 
-        <div className="flex items-center gap-1.5">
-          <div className="w-32">
-            <Select categoria="agenda" value={mes} onChange={(e) => onIrParaMes(ano, Number(e.target.value))}>
-              {NOME_MES.map((nome, i) => (
-                <option key={nome} value={i}>
-                  {nome}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="w-20">
-            <Select categoria="agenda" value={ano} onChange={(e) => onIrParaMes(Number(e.target.value), mes)}>
-              {anos.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <button type="button" onClick={onIrParaHoje} className="ml-1 text-[10.5px] font-medium text-schedule hover:underline">
-            Hoje
-          </button>
-        </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-32">
+                <Select categoria="agenda" value={mes} onChange={(e) => onIrParaMes(ano, Number(e.target.value))}>
+                  {NOME_MES.map((nome, i) => (
+                    <option key={nome} value={i}>
+                      {nome}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="w-20">
+                <Select categoria="agenda" value={ano} onChange={(e) => onIrParaMes(Number(e.target.value), mes)}>
+                  {anos.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <button type="button" onClick={onIrParaHoje} className="ml-1 text-[10.5px] font-medium text-schedule hover:underline">
+                Hoje
+              </button>
+            </div>
 
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => onMudarMes(1)} className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-raised hover:text-text" aria-label="Próximo mês">
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={() => onMudarMes(12)} className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-raised hover:text-text" aria-label="Próximo ano" title="Próximo ano">
-            <ChevronsRight className="h-4 w-4" />
-          </button>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => onMudarMes(1)} className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-raised hover:text-text" aria-label="Próximo mês">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => onMudarMes(12)} className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-raised hover:text-text" aria-label="Próximo ano" title="Próximo ano">
+                <ChevronsRight className="h-4 w-4" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setSemanaBase((d) => deslocarSemana(d, -7))}
+              className="rounded-sm border border-line px-2.5 py-1.5 text-[12px] text-text-dim hover:bg-raised hover:text-text"
+            >
+              ← Semana anterior
+            </button>
+            <span className="text-[13px] font-semibold text-text">{rotuloSemana}</span>
+            <button
+              type="button"
+              onClick={() => setSemanaBase((d) => deslocarSemana(d, 7))}
+              className="rounded-sm border border-line px-2.5 py-1.5 text-[12px] text-text-dim hover:bg-raised hover:text-text"
+            >
+              Próxima semana →
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Toggle Mês/Semana — canto, não disputa espaço com a navegação
+          principal de cada modo (2026-09-14, pedido do usuário). */}
+      <div className="mb-3 flex justify-end">
+        <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
+          {(['mes', 'semana'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setViewAgenda(v)}
+              className={`rounded-[5px] px-3 py-1 text-[12px] font-medium transition-colors ${viewAgenda === v ? 'bg-raised text-text' : 'text-text-dim hover:text-text'}`}
+            >
+              {v === 'mes' ? 'Mês' : 'Semana'}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="mb-1.5 grid grid-cols-7 gap-1.5">
-        {DIA_SEMANA.map((d, i) => (
-          <span key={i} className="text-center text-[10px] font-bold uppercase tracking-wide text-text-faint">
-            {d}
-          </span>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1.5">{celulas}</div>
+      {viewAgenda === 'semana' ? (
+        <div className="grid grid-cols-7 gap-1.5">
+          {Array.from({ length: 7 }).map((_, i) => {
+            const dia = new Date(semanaBase);
+            dia.setDate(dia.getDate() + i);
+            const isoStr = dataDoDia(dia.getFullYear(), dia.getMonth(), dia.getDate());
+            const ehHojeSemana = isoStr === dataDoDia(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
 
-      {diaSelecionado && dataDiaSelecionado && (
+            const eventosNoDia = eventos.filter((ev) => ev.data_evento === isoStr);
+            const tarefasNoDia = tarefas.filter((t) => t.data === isoStr);
+            const bloqueioNoDia = bloqueios.some((b) => isoStr >= b.data_inicio && isoStr <= b.data_fim);
+
+            return (
+              <div
+                key={isoStr}
+                className={`min-h-[120px] rounded-sm border p-2 ${ehHojeSemana ? 'border-schedule bg-schedule/5' : bloqueioNoDia ? 'border-danger/25 bg-danger/4' : 'border-line bg-input'}`}
+              >
+                <p className={`mb-1.5 text-[11px] font-bold ${ehHojeSemana ? 'text-schedule' : 'text-text-dim'}`}>{dia.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' })}</p>
+                <div className="flex flex-col gap-1">
+                  {eventosNoDia.map((ev) => (
+                    <div key={ev.id} className="truncate rounded border border-success/20 bg-success/8 px-1.5 py-0.5 text-[10.5px] font-medium text-success" title={ev.contrato?.lead?.nome ?? 'Evento'}>
+                      🎉 {ev.contrato?.lead?.nome ?? 'Evento'}
+                    </div>
+                  ))}
+                  {tarefasNoDia.map((t) => (
+                    <div
+                      key={t.id}
+                      className={`truncate rounded border px-1.5 py-0.5 text-[10.5px] ${t.concluida ? 'border-line bg-panel text-text-faint line-through' : 'border-pending/20 bg-pending/8 text-pending'}`}
+                      title={t.titulo}
+                    >
+                      {t.concluida ? '✓' : '◷'} {t.titulo}
+                    </div>
+                  ))}
+                  {bloqueioNoDia && eventosNoDia.length === 0 && tarefasNoDia.length === 0 && (
+                    <div className="rounded border border-danger/20 bg-danger/8 px-1.5 py-0.5 text-[10.5px] text-danger">🔒 Bloqueado</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <>
+          <div className="mb-1.5 grid grid-cols-7 gap-1.5">
+            {DIA_SEMANA.map((d, i) => (
+              <span key={i} className="text-center text-[10px] font-bold uppercase tracking-wide text-text-faint">
+                {d}
+              </span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1.5">{celulas}</div>
+        </>
+      )}
+
+      {viewAgenda === 'mes' && diaSelecionado && dataDiaSelecionado && (
         <div className="mt-3.5 border-t border-line pt-3.5">
           {eventosDoDia.length === 0 && tarefasDoDia.length === 0 && bloqueiosDoDia.length === 0 && <p className="mb-3 text-sm text-text-dim">Nenhum evento, tarefa ou bloqueio neste dia ainda.</p>}
 

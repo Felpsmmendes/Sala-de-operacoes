@@ -204,6 +204,18 @@ export default function PortalClienteAdmin() {
                   </div>
                 </div>
 
+                {/* Rastreio de abertura (2026-09-14) — antes não dava pra saber se
+                    o cliente sequer tinha visto o link antes de cobrar aprovação/
+                    assinatura dele. */}
+                {portal.aberto_em ? (
+                  <p className="text-[12px] text-text-dim">
+                    👁 Aberto em {new Date(portal.aberto_em).toLocaleString('pt-BR')}
+                    {portal.visualizacoes > 1 ? ` · ${portal.visualizacoes} visualizações` : ''}
+                  </p>
+                ) : (
+                  <p className="text-[12px] text-text-faint">Ainda não foi aberto pelo cliente</p>
+                )}
+
                 <div className="rounded-sm border border-line bg-input p-3 text-sm">
                   <RotuloCampo>Assinatura de homologação</RotuloCampo>
                   {portal.assinatura_em ? (

@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowUpCircle, BarChart3, ChevronLeft, ChevronRight, FileDown, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, BarChart3, ChevronLeft, ChevronRight, Download, FileDown, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { listarAuditorias } from '../lib/api/auditoria';
 import { diasAteEvento, listarContratos } from '../lib/api/contratos';
@@ -19,8 +19,9 @@ import { EstadoVazio } from '../components/ui/EmptyState';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { gerarRelatorioExecutivoPdf } from '../lib/pdfRelatorioExecutivo';
+import { exportarCsv } from '../lib/exportarCsv';
 import { formatarData, formatarMoeda } from '../lib/status';
-import type { DreMes, Lancamento, NovoLancamento } from '../lib/types';
+import type { DreMes, Lancamento, NovoLancamento, TipoLancamento } from '../lib/types';
 
 function formatarMes(mes: string): string {
   const [ano, m] = mes.slice(0, 7).split('-');
@@ -115,6 +116,23 @@ export default function Financeiro() {
   // nunca refaz a busca, só troca qual mês os cards/destaque mostram.
   const dreMesSelecionado = dreMeses.find((m) => m.mes.slice(0, 7) === mesDre);
   const margemSelecionada = dreMesSelecionado && dreMesSelecionado.receita_bruta > 0 ? (dreMesSelecionado.lucro_liquido / dreMesSelecionado.receita_bruta) * 100 : null;
+
+  // Breakdown por categoria do mês do DRE (2026-09-14) — a view `dre_mensal`
+  // só agrega receita/custo/lucro no total; quebrar por categoria exigiria
+  // uma view nova no banco, então por ora é calculado aqui em cima dos
+  // MESMOS lançamentos já carregados (pagos, com categoria, do mês
+  // selecionado) — cobre os lançamentos lançados com categoria daqui pra
+  // frente; os antigos (sem coluna na época) ficam de fora, sem quebrar.
+  const breakdownPorCategoria = useMemo(() => {
+    const doMes = lancamentos.filter((l) => l.status === 'pago' && (l.data_pagamento ?? '').slice(0, 7) === mesDre && l.categoria);
+    const porCat = new Map<string, { tipo: TipoLancamento; total: number }>();
+    for (const l of doMes) {
+      const cat = l.categoria as string;
+      const atual = porCat.get(cat) ?? { tipo: l.tipo, total: 0 };
+      porCat.set(cat, { tipo: atual.tipo, total: atual.total + l.valor });
+    }
+    return [...porCat.entries()];
+  }, [lancamentos, mesDre]);
 
   function mesDreDeslocado(deslocamento: number): string {
     const d = new Date(`${mesDre}-01T00:00:00`);
@@ -249,6 +267,31 @@ export default function Financeiro() {
                     </button>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  disabled={visiveis.length === 0}
+                  onClick={() =>
+                    exportarCsv(
+                      [
+                        ['Tipo', 'Descrição', 'Valor', 'Vencimento', 'Status', 'Pago em', 'Observações'],
+                        ...visiveis.map((l) => [
+                          l.tipo === 'receita' ? 'Receita' : 'Despesa',
+                          l.descricao,
+                          formatarMoeda(l.valor),
+                          l.vencimento ? formatarData(l.vencimento) : '—',
+                          l.status === 'pago' ? 'Pago' : 'Pendente',
+                          l.data_pagamento ? formatarData(l.data_pagamento) : '—',
+                          l.observacoes ?? '—',
+                        ]),
+                      ],
+                      `lancamentos-${mesLancamentos}-${filtro}`
+                    )
+                  }
+                  className="flex items-center gap-1.5 rounded-sm border border-line px-2.5 py-1.5 text-[11.5px] text-text-dim hover:bg-raised hover:text-text disabled:opacity-40"
+                >
+                  <Download className="h-3 w-3" strokeWidth={2} />
+                  Exportar CSV
+                </button>
               </div>
             }
           />
@@ -271,6 +314,7 @@ export default function Financeiro() {
                   <div className="min-w-0">
                     <strong className={l.tipo === 'receita' ? 'text-success' : 'text-text'}>{l.tipo === 'receita' ? '+' : '−'} {formatarMoeda(l.valor)}</strong>
                     <span className="ml-2 text-text">{l.descricao}</span>
+                    {l.categoria && <span className="ml-2 rounded-full border border-line bg-input px-2 py-0.5 text-[10px] text-text-faint">{l.categoria}</span>}
                     <p className="text-[11.5px] text-text-faint">
                       {l.vencimento ? `vence ${formatarData(l.vencimento)}` : 'sem vencimento'}
                       {l.data_pagamento ? ` · pago em ${formatarData(l.data_pagamento)}` : ''}
@@ -376,6 +420,20 @@ export default function Financeiro() {
                   })}
                 </div>
               </div>
+
+              {breakdownPorCategoria.length > 0 && (
+                <div className="mt-4 border-t border-line pt-4">
+                  <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Breakdown por categoria — {formatarMes(mesDre)}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {breakdownPorCategoria.map(([cat, { tipo, total }]) => (
+                      <div key={cat} className="rounded-sm border border-line bg-input px-2.5 py-1.5">
+                        <p className="text-[10px] text-text-faint">{cat}</p>
+                        <p className={`font-mono text-[13px] font-semibold ${tipo === 'receita' ? 'text-money' : 'text-danger'}`}>{formatarMoeda(total)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </Panel>

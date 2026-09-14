@@ -266,6 +266,24 @@ export default function Dashboard() {
   // menos que isso não é "ritmo", é 1 ponto solto.
   const ritmoDrinksPorHora = useMemo(() => calcularRitmoDrinksPorHora(registrosDrinkHoje), [registrosDrinkHoje]);
 
+  // Alerta de ritmo abaixo do esperado (2026-09-14) — 0.5 drink/hora por
+  // convidado é uma referência padrão do setor (não um dado medido), só
+  // pra dar um sinal de "algo pode estar travado no bar" enquanto o
+  // evento ainda está rolando; nunca aparece sem convidados cadastrados
+  // no evento (senão a "expectativa" seria inventada do nada).
+  const alertaRitmo = useMemo(() => {
+    if (!ritmoDrinksPorHora || ritmoDrinksPorHora <= 0) return null;
+    const eventoAtivo = eventosHoje[0];
+    const convidados = eventoAtivo?.convidados ?? 0;
+    if (convidados === 0) return null;
+
+    const ritmoEsperado = convidados * 0.5;
+    const pct = (ritmoDrinksPorHora / ritmoEsperado) * 100;
+    if (pct < 60) return { nivel: 'critico' as const, pct: Math.round(pct), ritmoEsperado, convidados };
+    if (pct < 80) return { nivel: 'aviso' as const, pct: Math.round(pct), ritmoEsperado, convidados };
+    return null;
+  }, [ritmoDrinksPorHora, eventosHoje]);
+
   function copiarLinkDrinks(eventoId: string) {
     const link = `${window.location.origin}/drinks/${eventoId}`;
     navigator.clipboard
@@ -444,6 +462,20 @@ export default function Dashboard() {
             aoVivo={registrosDrinkHoje.length > 0}
           />
         </section>
+
+        {alertaRitmo && (
+          <div
+            className={`mb-4 flex items-center gap-2.5 rounded-sm border px-3 py-2.5 text-[12.5px] ${
+              alertaRitmo.nivel === 'critico' ? 'border-danger/30 bg-danger/8 text-danger' : 'border-pending/30 bg-pending/8 text-pending'
+            }`}
+          >
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" strokeWidth={2} />
+            <span>
+              <strong>Ritmo {alertaRitmo.nivel === 'critico' ? 'crítico' : 'abaixo do esperado'}:</strong> {ritmoDrinksPorHora} drinks/hora ({alertaRitmo.pct}% do esperado de{' '}
+              {Math.round(alertaRitmo.ritmoEsperado)}/h para {alertaRitmo.convidados} convidados)
+            </span>
+          </div>
+        )}
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 

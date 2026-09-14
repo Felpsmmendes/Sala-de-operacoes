@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, FileSignature, Pencil, Plus, Wallet } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Download, FileSignature, Pencil, Plus, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { bloqueioNaData, listarBloqueios } from '../lib/api/bloqueiosAgenda';
 import { atualizarContrato, cancelarContrato, criarContrato, diasAteEvento, excluirContrato, listarContratos, marcarSinalPago, atualizarStatusSaldo, type EdicaoContrato } from '../lib/api/contratos';
@@ -23,6 +23,7 @@ import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { CATEGORIA_BLOQUEIO_ROTULO, formatarData, formatarMoeda } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
+import { exportarCsv } from '../lib/exportarCsv';
 import type { BloqueioAgenda, ContratoComLead, FormaPagamento, Lead, OrcamentoCompleto, StatusSaldo } from '../lib/types';
 
 const FORMA_PAGAMENTO_ROTULO: Record<FormaPagamento, string> = { pix: 'PIX', boleto: 'Boleto', cartao: 'Cartão' };
@@ -273,9 +274,39 @@ export default function Contratos() {
             titulo="Contratos"
             desc="Sinal e saldo de cada contrato — a regra dos 20/80 não deixa passar despercebido."
             acao={
-              <button type="button" onClick={() => setCriandoAberto(true)} className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-1.5 text-[12.5px] text-text-dim hover:bg-raised hover:text-text">
-                <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Criar contrato sem orçamento
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={contratos.length === 0}
+                  onClick={() =>
+                    exportarCsv(
+                      [
+                        ['Cliente', 'Data Evento', 'Local', 'Valor Total', 'Sinal', 'Saldo', 'Status', 'Assinado em'],
+                        ...contratos
+                          .filter((c) => c.status !== 'cancelado')
+                          .map((c) => [
+                            c.lead?.nome ?? '—',
+                            c.data_evento,
+                            c.local ?? '—',
+                            formatarMoeda(c.valor_total),
+                            formatarMoeda(c.valor_sinal),
+                            formatarMoeda(c.valor_saldo),
+                            c.status,
+                            c.contrato_assinado_em ? new Date(c.contrato_assinado_em).toLocaleDateString('pt-BR') : '—',
+                          ]),
+                      ],
+                      `contratos-${new Date().toISOString().slice(0, 10)}`
+                    )
+                  }
+                  className="flex items-center gap-1.5 rounded-sm border border-line px-2.5 py-1.5 text-[11.5px] text-text-dim hover:bg-raised hover:text-text disabled:opacity-40"
+                >
+                  <Download className="h-3 w-3" strokeWidth={2} />
+                  Exportar CSV
+                </button>
+                <button type="button" onClick={() => setCriandoAberto(true)} className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-1.5 text-[12.5px] text-text-dim hover:bg-raised hover:text-text">
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Criar contrato sem orçamento
+                </button>
+              </div>
             }
           />
           {carregando && <SkeletonLinhas />}

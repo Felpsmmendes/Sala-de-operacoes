@@ -2,7 +2,7 @@ import { CheckCircle2, FileSignature, Lock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { diasAteEvento } from '../lib/api/contratos';
-import { aprovarMoldura, aprovarVideo, assinarContrato, assinarHomologacao, buscarPortalPorToken } from '../lib/api/portalCliente';
+import { aprovarMoldura, aprovarVideo, assinarContrato, assinarHomologacao, buscarPortalPorToken, registrarVisualizacao } from '../lib/api/portalCliente';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { Input } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
@@ -45,6 +45,12 @@ export default function PortalClientePublico() {
 
   useEffect(() => {
     carregar();
+    // registra a abertura 1x por visita (não dentro de `carregar()`, que é
+    // rechamada depois de toda ação — aprovar moldura/assinar não pode
+    // contar como "abriu o portal de novo", senão o contador de
+    // visualizações infla sem o cliente ter voltado de verdade).
+    if (token) registrarVisualizacao(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const travado = portal ? diasAteEvento(portal.data_evento) < 15 : false;
