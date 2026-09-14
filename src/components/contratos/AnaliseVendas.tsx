@@ -1,4 +1,4 @@
-import { AlertTriangle, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Download, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { formatarMoeda } from '../../lib/status';
 import type { ContratoComLead } from '../../lib/types';
@@ -10,6 +10,24 @@ function formatarMes(mes: string): string {
   const [ano, m] = mes.split('-');
   const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   return `${nomes[Number(m) - 1]}/${ano}`;
+}
+
+/** CSV do mês selecionado (pedido do usuário, 2026-09-13) — sem
+    dependência nova: `Blob`+`<a download>` já basta, não precisa de lib.
+    Separador `;` (não `,`) porque valor em vírgula decimal (padrão
+    BR) quebraria um CSV separado por vírgula no Excel PT-BR. */
+function exportarCsv(contratos: ContratoComLead[], mes: string) {
+  const linhas = [
+    ['Cliente', 'Data do Evento', 'Local', 'Valor Total', 'Status'].join(';'),
+    ...contratos.map((c) => [`"${c.lead?.nome ?? '—'}"`, c.data_evento, `"${c.local ?? '—'}"`, c.valor_total.toFixed(2).replace('.', ','), c.status].join(';')),
+  ];
+  const blob = new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `contratos-${mes}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 type FaixaValor = 'baixo' | 'medio' | 'alto';
@@ -70,14 +88,24 @@ export function AnaliseVendas({ contratos }: { contratos: ContratoComLead[] }) {
         desc="Contratos fechados, agrupados por mês do evento, local e faixa de valor."
         acao={
           meses.length > 0 && (
-            <div className="w-40">
-              <Select categoria="dinheiro" value={mesAtivo} onChange={(e) => setMesEscolhido(e.target.value)}>
-                {meses.map((m) => (
-                  <option key={m} value={m}>
-                    {formatarMes(m)}
-                  </option>
-                ))}
-              </Select>
+            <div className="flex items-center gap-2">
+              <div className="w-40">
+                <Select categoria="dinheiro" value={mesAtivo} onChange={(e) => setMesEscolhido(e.target.value)}>
+                  {meses.map((m) => (
+                    <option key={m} value={m}>
+                      {formatarMes(m)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <button
+                type="button"
+                onClick={() => exportarCsv(doMes, mesAtivo)}
+                disabled={doMes.length === 0}
+                className="flex flex-shrink-0 items-center gap-1.5 rounded-sm border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-text-dim hover:bg-raised hover:text-text disabled:opacity-40"
+              >
+                <Download className="h-3.5 w-3.5" strokeWidth={2} /> CSV
+              </button>
             </div>
           )
         }

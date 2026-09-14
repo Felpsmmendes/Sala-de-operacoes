@@ -11,11 +11,12 @@ import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { FUNCAO_EQUIPE_ROTULO, formatarData } from '../lib/status';
 import type { EscalaPresenca, EventoComLead } from '../lib/types';
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 export default function Ponto() {
@@ -72,8 +73,8 @@ export default function Ponto() {
     const link = `${window.location.origin}/ponto/${eventoId}`;
     navigator.clipboard
       .writeText(link)
-      .then(() => window.alert('Link copiado — manda no grupo do WhatsApp da equipe.'))
-      .catch(() => window.alert('Não foi possível copiar automaticamente. Link: ' + link));
+      .then(() => toast.sucesso('Link copiado — manda no grupo do WhatsApp da equipe.'))
+      .catch(() => toast.aviso('Não foi possível copiar automaticamente. Link: ' + link));
   }
 
   const resumoPorEvento = useMemo(() => {

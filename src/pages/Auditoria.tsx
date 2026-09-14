@@ -15,11 +15,12 @@ import { Input } from '../components/ui/Input';
 import { RotuloCampo } from '../components/ui/RotuloCampo';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarData, formatarMoeda } from '../lib/status';
 import type { AuditoriaPosEvento, DadosAuditoria, EventoComLead } from '../lib/types';
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 export default function Auditoria() {
@@ -119,7 +120,7 @@ export default function Auditoria() {
     try {
       await salvarAuditoria(eventoId, dados);
       await carregarBase();
-      window.alert('Auditoria salva.');
+      toast.sucesso('Auditoria salva.');
     } catch (e) {
       aoFalhar(e);
     } finally {

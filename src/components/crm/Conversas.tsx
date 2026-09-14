@@ -6,11 +6,12 @@ import { SkeletonLinhas } from '../Skeleton';
 import { EstadoVazio } from '../ui/EmptyState';
 import { Select } from '../ui/Select';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
+import { toast } from '../../lib/toast';
 import { funilDoLead, TIPO_INTERACAO_ROTULO, formatarData, formatarMoeda } from '../../lib/status';
 import type { FunilLead, Lead, LeadInteracao, TipoInteracao } from '../../lib/types';
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 function iniciais(nome: string): string {

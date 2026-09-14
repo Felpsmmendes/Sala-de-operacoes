@@ -16,11 +16,12 @@ import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarData, formatarMoeda } from '../lib/status';
 import type { EventoComLead, NovaRegiaoFrete, NovoVeiculo, RegiaoFrete, Veiculo } from '../lib/types';
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 export default function Logistica() {

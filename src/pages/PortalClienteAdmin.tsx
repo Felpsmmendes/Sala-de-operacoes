@@ -11,11 +11,12 @@ import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { RotuloCampo } from '../components/ui/RotuloCampo';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarData } from '../lib/status';
 import type { ContratoComLead, PortalCliente } from '../lib/types';
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 /** Visão do GESTOR sobre os portais de cliente (ver quem já homologou,
@@ -72,8 +73,8 @@ export default function PortalClienteAdmin() {
     if (!linkPortal) return;
     navigator.clipboard
       .writeText(linkPortal)
-      .then(() => window.alert('Link do portal copiado — manda pro cliente.'))
-      .catch(() => window.alert('Não foi possível copiar automaticamente. Link: ' + linkPortal));
+      .then(() => toast.sucesso('Link do portal copiado — manda pro cliente.'))
+      .catch(() => toast.aviso('Não foi possível copiar automaticamente. Link: ' + linkPortal));
   }
 
   async function aoSalvarMoldura() {

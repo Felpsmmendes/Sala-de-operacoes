@@ -30,7 +30,9 @@ import { ModalMovimento } from '../components/estoque/ModalMovimento';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarData, formatarMoeda } from '../lib/status';
+import { useConfirmDialog } from '../lib/useConfirmDialog';
 import type { ContratoComLead } from '../lib/types';
 
 function ehCritico(item: ItemEstoque) {
@@ -47,7 +49,7 @@ type Aba = 'checklists' | 'avancado' | 'avarias' | 'vinculos';
     ser excluído) vira uma rejeição de promise não capturada, silenciosa
     pro usuário. */
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 export default function Estoque() {
@@ -70,6 +72,22 @@ export default function Estoque() {
   const [convidadosCalc, setConvidadosCalc] = useState('');
   const [naoVinculados, setNaoVinculados] = useState<string[]>([]);
   const [vinculando, setVinculando] = useState<string | null>(null);
+  const confirmar = useConfirmDialog();
+
+  /** Achado de UX (2026-09-13) — excluir item de estoque não tinha
+      NENHUMA confirmação, um clique errado apagava o cadastro na hora
+      (histórico de movimentos que dependem dele fica órfão). Mesmo
+      padrão dos outros "excluir definitivo" do sistema. */
+  async function aoExcluirItem(item: ItemEstoque) {
+    const ok = await confirmar.pedir({
+      titulo: 'Excluir item do estoque',
+      mensagem: `Excluir "${item.nome}" do galpão? O histórico de movimentos já registrado com este item é mantido, mas o item some do cadastro.`,
+      textoConfirmar: 'Excluir',
+      perigo: true,
+    });
+    if (!ok) return;
+    excluirItem(item.id).then(carregar).catch(aoFalhar);
+  }
 
   async function carregar() {
     setCarregando(true);
@@ -110,7 +128,7 @@ export default function Estoque() {
       await criarItem(dados);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setSalvandoItem(false);
     }
@@ -123,7 +141,7 @@ export default function Estoque() {
       setMovimentoAberto(null);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     }
   }
 
@@ -134,7 +152,7 @@ export default function Estoque() {
       setCompraAberta(null);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     }
   }
 
@@ -275,7 +293,7 @@ export default function Estoque() {
                             Gerar compra
                           </button>
                         )}
-                        <button type="button" onClick={() => excluirItem(item.id).then(carregar).catch(aoFalhar)} className="text-[11.5px] font-medium text-danger hover:underline">
+                        <button type="button" onClick={() => aoExcluirItem(item)} className="text-[11.5px] font-medium text-danger hover:underline">
                           Excluir
                         </button>
                       </div>
@@ -345,6 +363,7 @@ export default function Estoque() {
 
       {movimentoAberto && <ModalMovimento item={movimentoAberto} onFechar={() => setMovimentoAberto(null)} onConfirmar={aoConfirmarMovimento} />}
       {compraAberta && <ModalCompra item={compraAberta} onFechar={() => setCompraAberta(null)} onConfirmar={aoConfirmarCompra} />}
+      {confirmar.dialogo}
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { buscarPresencaDoEvento, registrarChegada } from '../lib/api/ponto';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { FUNCAO_EQUIPE_ROTULO, formatarData } from '../lib/status';
 import type { EscalaPresenca } from '../lib/types';
 
@@ -50,7 +51,7 @@ export default function PontoPublico() {
       setConfirmado({ nome: membroNome, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setRegistrando(null);
     }

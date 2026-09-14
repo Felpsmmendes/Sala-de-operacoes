@@ -4,6 +4,7 @@ import { atualizarAtivoFluxo, buscarFluxoCompleto, criarFluxo, excluirFluxo, lis
 import { SkeletonLinhas } from '../Skeleton';
 import { EstadoVazio } from '../ui/EmptyState';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
+import { toast } from '../../lib/toast';
 import type { FluxoAutomacao, FluxoCompleto, FunilLead } from '../../lib/types';
 import { Input } from '../ui/Input';
 import { Toggle } from '../ui/Toggle';
@@ -68,7 +69,7 @@ export function AutomacoesCrm({ funis }: { funis: FunilLead[] }) {
     try {
       await atualizarAtivoFluxo(f.id, !f.ativo);
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
       carregar();
     }
   }
@@ -79,7 +80,7 @@ export function AutomacoesCrm({ funis }: { funis: FunilLead[] }) {
       await excluirFluxo(id);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     }
   }
 

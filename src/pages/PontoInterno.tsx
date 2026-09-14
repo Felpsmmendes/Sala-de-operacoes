@@ -6,6 +6,7 @@ import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input, InputMoeda } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarMoeda } from '../lib/status';
 import { supabasePontoInterno } from '../lib/supabasePontoInterno';
 import type { FuncionarioInterno, PontoInternoRegistro, TipoPontoInterno } from '../lib/types';
@@ -309,7 +310,7 @@ export default function PontoInterno() {
       setEquipe(await listarFuncionariosInternos());
       setConfigurandoId(null);
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setSalvandoJornada(false);
     }
@@ -351,7 +352,7 @@ export default function PontoInterno() {
       setConfirmacao({ tipo: proximoTipo, horario: atualizados[atualizados.length - 1].horario });
       agendarSaida();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setBatendo(false);
     }

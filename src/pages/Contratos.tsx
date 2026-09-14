@@ -20,6 +20,7 @@ import { ModalPix } from '../components/contratos/ModalPix';
 import { Checkbox } from '../components/ui/Checkbox';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { CATEGORIA_BLOQUEIO_ROTULO, formatarData, formatarMoeda } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import type { BloqueioAgenda, ContratoComLead, FormaPagamento, Lead, OrcamentoCompleto, StatusSaldo } from '../lib/types';
@@ -100,7 +101,7 @@ export default function Contratos() {
       mensagem: `Cancelar o contrato de ${c.lead?.nome}? O evento correspondente na Agenda também é marcado como cancelado. O histórico (escala, lançamentos) é mantido — isso não apaga nada.`,
       textoConfirmar: 'Cancelar contrato',
     });
-    if (ok) cancelarContrato(c.id).then(carregar).catch((e) => window.alert(mensagemDeErro(e)));
+    if (ok) cancelarContrato(c.id).then(carregar).catch((e) => toast.erro(mensagemDeErro(e)));
   }
 
   async function aoExcluirDefinitivo(c: ContratoComLead) {
@@ -112,7 +113,7 @@ export default function Contratos() {
       perigo: true,
       digitarParaConfirmar: nomeCliente || undefined,
     });
-    if (ok) excluirContrato(c.id).then(carregar).catch((e) => window.alert(mensagemDeErro(e)));
+    if (ok) excluirContrato(c.id).then(carregar).catch((e) => toast.erro(mensagemDeErro(e)));
   }
 
   /** Aviso (nunca bloqueio) de data reservada por outro motivo — pedido
@@ -138,7 +139,7 @@ export default function Contratos() {
 
   async function aoGerarContrato(orcamento: OrcamentoCompleto) {
     if (!orcamento.data_evento) {
-      window.alert('Este orçamento não tem data do evento definida — edite o orçamento antes de gerar o contrato.');
+      toast.aviso('Este orçamento não tem data do evento definida — edite o orçamento antes de gerar o contrato.');
       return;
     }
     if (!(await podeProsseguirNaData(orcamento.data_evento))) return;
@@ -155,7 +156,7 @@ export default function Contratos() {
       });
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setGerando(null);
     }
@@ -177,7 +178,7 @@ export default function Contratos() {
       setCriandoAberto(false);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setCriandoContrato(false);
     }
@@ -191,7 +192,7 @@ export default function Contratos() {
       setEditando(null);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setSalvandoEdicao(false);
     }

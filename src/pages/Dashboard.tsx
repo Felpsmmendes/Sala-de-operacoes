@@ -26,6 +26,7 @@ import { EstadoVazio } from '../components/ui/EmptyState';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Reveal } from '../components/ui/Reveal';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
 import { STATUS_EVENTO_INFO, corFunilPorIndice, formatarData, formatarMoeda } from '../lib/status';
 import type { AuditoriaPosEvento, ContratoComLead, CueSheetItem, DreMes, EscalaPresenca, EventoComLead, FunilLead, Lead } from '../lib/types';
@@ -247,8 +248,8 @@ export default function Dashboard() {
     const link = `${window.location.origin}/drinks/${eventoId}`;
     navigator.clipboard
       .writeText(link)
-      .then(() => window.alert('Link do contador de drinks copiado — manda pro celular de quem vai tocar no posto.'))
-      .catch(() => window.alert('Não foi possível copiar automaticamente. Link: ' + link));
+      .then(() => toast.sucesso('Link do contador de drinks copiado — manda pro celular de quem vai tocar no posto.'))
+      .catch(() => toast.aviso('Não foi possível copiar automaticamente. Link: ' + link));
   }
 
   // "Financeiro do mês": mesmo recorte de contratos do mês do card de

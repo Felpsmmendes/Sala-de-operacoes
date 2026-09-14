@@ -10,6 +10,7 @@ import {
 import { SkeletonLinhas } from '../Skeleton';
 import { EstadoVazio } from '../ui/EmptyState';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
+import { toast } from '../../lib/toast';
 import { formatarData } from '../../lib/status';
 import type { ChecklistExtraItem, ContratoComLead } from '../../lib/types';
 
@@ -50,7 +51,7 @@ export function ChecklistEvento({ contrato }: { contrato: ContratoComLead }) {
   function aoMudarQuantidade(item: ChecklistExtraItem, quantidade: number) {
     if (quantidade <= 0) return;
     setExtras((atual) => (atual ? atual.map((i) => (i.id === item.id ? { ...i, quantidade } : i)) : atual));
-    atualizarQuantidadeChecklistExtra(item.id, quantidade).catch((e) => window.alert(mensagemDeErro(e)));
+    atualizarQuantidadeChecklistExtra(item.id, quantidade).catch((e) => toast.erro(mensagemDeErro(e)));
   }
 
   const carregando = padrao === null || extras === null;

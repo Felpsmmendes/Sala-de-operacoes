@@ -1,4 +1,4 @@
-import { Banknote, TrendingUp } from 'lucide-react';
+import { Banknote, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { calcularFaturamentoPorMes, listarContratos, type FaturamentoMes } from '../lib/api/contratos';
 import { Cabecalho, Conteudo } from '../components/Layout';
@@ -39,6 +39,21 @@ export default function Fechamento() {
   const mesAnterior = meses[meses.length - 2];
   const variacao = mesAnterior && mesAnterior.valor > 0 ? ((mesAtual.valor - mesAnterior.valor) / mesAnterior.valor) * 100 : null;
 
+  // ticket médio + clientes recorrentes do mês atual (2026-09-13) — mesmo
+  // recorte de "fechado" que o resto da tela usa (não cancelado).
+  const contratosDoMes = useMemo(() => contratos.filter((c) => c.status !== 'cancelado' && mesAtual && c.data_evento.slice(0, 7) === mesAtual.mes.slice(0, 7)), [contratos, mesAtual]);
+  const ticketMedio = contratosDoMes.length > 0 ? contratosDoMes.reduce((s, c) => s + c.valor_total, 0) / contratosDoMes.length : 0;
+  // "recorrente" olha o HISTÓRICO inteiro (não só o mês) — é sobre o
+  // lead já ter fechado mais de uma vez com a Em Cena, não só neste mês.
+  const clientesRecorrentes = useMemo(() => {
+    const porLead = new Map<string, number>();
+    for (const c of contratos) {
+      if (c.status === 'cancelado' || !c.lead_id) continue;
+      porLead.set(c.lead_id, (porLead.get(c.lead_id) ?? 0) + 1);
+    }
+    return [...porLead.values()].filter((v) => v > 1).length;
+  }, [contratos]);
+
   return (
     <>
       <Cabecalho titulo="Fechamento Mensal" subtitulo="Histórico de vendas por mês — quanto foi fechado em contrato, mês a mês." />
@@ -52,6 +67,8 @@ export default function Fechamento() {
             legenda={mesAnterior ? formatarMoeda(mesAnterior.valor) + ' no mês anterior' : 'Sem mês anterior pra comparar'}
             categoria="dinheiro"
           />
+          <MetricCard Icone={TrendingUp} rotulo="Ticket médio do mês" valor={formatarMoeda(ticketMedio)} legenda={`${contratosDoMes.length} contrato(s) neste mês`} categoria="dinheiro" />
+          <MetricCard Icone={Users} rotulo="Clientes recorrentes" valor={String(clientesRecorrentes)} legenda="Leads com mais de 1 contrato" categoria="pessoas" />
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}

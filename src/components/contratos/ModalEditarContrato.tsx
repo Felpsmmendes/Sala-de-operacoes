@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { atualizarHorarioAtracao, listarItensParaHorario, type ItemParaHorario } from '../../lib/api/orcamentos';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
+import { toast } from '../../lib/toast';
 import { Input } from '../ui/Input';
 import { RotuloCampo } from '../ui/RotuloCampo';
 import { Select } from '../ui/Select';
@@ -67,7 +68,7 @@ export function ModalEditarContrato({ contrato, onFechar, onSalvar, salvando }: 
 
   function aoMudarHorarioAtracao(itemId: string, valor: string) {
     setHorariosAtracao((m) => new Map(m).set(itemId, valor));
-    atualizarHorarioAtracao(itemId, valor || null).catch((e) => window.alert(mensagemDeErro(e)));
+    atualizarHorarioAtracao(itemId, valor || null).catch((e) => toast.erro(mensagemDeErro(e)));
   }
 
   const valido = local.trim().length > 0;

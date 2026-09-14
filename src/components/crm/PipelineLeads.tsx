@@ -2,6 +2,7 @@ import { GripVertical, Plus, Settings2, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FunilLead, Lead } from '../../lib/types';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
+import { toast } from '../../lib/toast';
 import { formatarMoeda } from '../../lib/status';
 import { useArrastarRolagem } from '../../lib/useArrastarRolagem';
 import { useConfirmDialog } from '../../lib/useConfirmDialog';
@@ -15,7 +16,7 @@ const CORES: { valor: FunilLead['cor']; rotulo: string; classe: string; variavel
 ];
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 /** Kanban de verdade: arrastar lead entre colunas com o mouse, e — no

@@ -12,11 +12,12 @@ import { Checkbox } from '../components/ui/Checkbox';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarData } from '../lib/status';
 import type { CueSheetItem, EventoComLead } from '../lib/types';
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 function toMinutos(horario: string): number {

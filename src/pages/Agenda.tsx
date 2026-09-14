@@ -16,11 +16,12 @@ import { ModalBloqueioNovo } from '../components/agenda/ModalBloqueioNovo';
 import { ModalTarefaNova } from '../components/agenda/ModalTarefaNova';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { CATEGORIA_BLOQUEIO_ROTULO, STATUS_EVENTO_INFO, STATUS_EVENTO_ORDEM, formatarData } from '../lib/status';
 import type { BloqueioAgenda, EventoComLead, Lead, NovaTarefaAgenda, NovoBloqueioAgenda, StatusEvento, TarefaComLead } from '../lib/types';
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 export default function Agenda() {

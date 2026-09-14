@@ -17,6 +17,7 @@ import { TabelaLeads } from '../components/crm/TabelaLeads';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { corFunilPorIndice, formatarMoeda } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import type { FunilLead, Lead, StatusLead } from '../lib/types';
@@ -36,7 +37,7 @@ const ABAS: { id: Aba; rotulo: string; Icone: typeof Users }[] = [
     de qualquer jeito. */
 function avisarResultadoAutomacoes(resultado: { aplicadas: string[]; falhas: { nome: string; motivo: string }[] }) {
   if (resultado.falhas.length === 0) return;
-  window.alert(`Automação(ões) com problema:\n${resultado.falhas.map((f) => `• ${f.nome}: ${f.motivo}`).join('\n')}`);
+  toast.aviso(`Automação(ões) com problema:\n${resultado.falhas.map((f) => `• ${f.nome}: ${f.motivo}`).join('\n')}`);
 }
 
 export default function Crm() {
@@ -102,7 +103,7 @@ export default function Crm() {
       const lead = await criarLead(dados);
       setFormKey((k) => k + 1);
       carregar();
-      aplicarAutomacoesEvento('lead_criado', lead).then(avisarResultadoAutomacoes).catch((e) => window.alert(mensagemDeErro(e)));
+      aplicarAutomacoesEvento('lead_criado', lead).then(avisarResultadoAutomacoes).catch((e) => toast.erro(mensagemDeErro(e)));
     } catch (e) {
       setNovoErro(mensagemDeErro(e));
     } finally {
@@ -146,9 +147,9 @@ export default function Crm() {
     if (leadDetalhe?.id === leadId) setLeadDetalhe((prev) => (prev ? { ...prev, status: funilId } : prev));
     try {
       await atualizarLead(leadId, { status: funilId });
-      aplicarAutomacoesEvento('mudanca_funil', { ...lead, status: funilId }, { funilNovoId: funilId }).then(avisarResultadoAutomacoes).catch((e) => window.alert(mensagemDeErro(e)));
+      aplicarAutomacoesEvento('mudanca_funil', { ...lead, status: funilId }, { funilNovoId: funilId }).then(avisarResultadoAutomacoes).catch((e) => toast.erro(mensagemDeErro(e)));
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
       carregar();
     }
   }
@@ -158,7 +159,7 @@ export default function Crm() {
     try {
       await reordenarFunis(idsNaOrdem);
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
       carregar();
     }
   }

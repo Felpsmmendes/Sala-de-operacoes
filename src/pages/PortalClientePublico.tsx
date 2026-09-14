@@ -6,6 +6,7 @@ import { aprovarMoldura, aprovarVideo, assinarContrato, assinarHomologacao, busc
 import { SkeletonLinhas } from '../components/Skeleton';
 import { Input } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarData } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import type { PortalPublico } from '../lib/types';
@@ -55,7 +56,7 @@ export default function PortalClientePublico() {
       await aprovarMoldura(token);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setProcessando(false);
     }
@@ -68,7 +69,7 @@ export default function PortalClientePublico() {
       await aprovarVideo(token);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setProcessando(false);
     }
@@ -107,7 +108,7 @@ export default function PortalClientePublico() {
       await assinarHomologacao(token, portal, nome, cpf);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setProcessando(false);
     }
@@ -147,7 +148,7 @@ export default function PortalClientePublico() {
       await assinarContrato(token, portal, nomeContrato, cpfContrato);
       await carregar();
     } catch (e) {
-      window.alert(mensagemDeErro(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setAssinandoContrato(false);
     }

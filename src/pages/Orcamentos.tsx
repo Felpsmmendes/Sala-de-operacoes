@@ -17,6 +17,7 @@ import { montarMensagemOrcamento, type ItemSelecionado } from '../lib/mensagemOr
 import { calcularFrete } from '../lib/freteConfig';
 import { gerarPdfProposta } from '../lib/pdfProposta';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarMoeda, formatarData } from '../lib/status';
 import type { Lead, OrcamentoCompleto, RegiaoFrete, Servico, Veiculo } from '../lib/types';
 
@@ -497,7 +498,7 @@ export default function Orcamentos() {
                       navigator.clipboard
                         .writeText(mensagem)
                         .then(() => setCopiado(true))
-                        .catch(() => window.alert('Não foi possível copiar automaticamente — selecione e copie o texto manualmente.'));
+                        .catch(() => toast.aviso('Não foi possível copiar automaticamente — selecione e copie o texto manualmente.'));
                     }}
                     className="flex items-center gap-2 rounded-sm border border-line px-4 py-2 text-sm font-medium text-text-dim hover:bg-raised hover:text-text"
                   >

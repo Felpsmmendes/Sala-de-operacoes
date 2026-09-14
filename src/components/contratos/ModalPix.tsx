@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { montarPayloadPix } from '../../lib/pixBrCode';
 import { formatarMoeda } from '../../lib/status';
+import { toast } from '../../lib/toast';
 import type { ConfigPixDados } from './ConfigPix';
 
 export function ModalPix({
@@ -56,7 +57,7 @@ export function ModalPix({
                 navigator.clipboard
                   .writeText(payload)
                   .then(() => setCopiado(true))
-                  .catch(() => window.alert('Não foi possível copiar automaticamente — selecione e copie o código manualmente.'));
+                  .catch(() => toast.aviso('Não foi possível copiar automaticamente — selecione e copie o código manualmente.'));
               }}
               className="flex w-full items-center justify-center gap-2 rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong"
             >

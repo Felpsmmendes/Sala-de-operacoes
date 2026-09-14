@@ -17,6 +17,7 @@ import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { gerarRelatorioExecutivoPdf } from '../lib/pdfRelatorioExecutivo';
 import { formatarData, formatarMoeda } from '../lib/status';
 import type { DreMes, Lancamento, NovoLancamento } from '../lib/types';
@@ -28,7 +29,7 @@ function formatarMes(mes: string): string {
 }
 
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 export default function Financeiro() {

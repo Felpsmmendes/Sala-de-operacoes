@@ -19,10 +19,11 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTema } from '../lib/useTema';
+import { Skeleton } from './Skeleton';
 import { CommandPalette } from './ui/CommandPalette';
 import { DotLive } from './ui/DotLive';
 
@@ -207,7 +208,15 @@ export default function Layout() {
 
       {/* -- conteúdo -- */}
       <div className={`flex-1 pb-20 transition-[margin] duration-200 lg:pb-0 ${colapsada ? 'lg:ml-16' : 'lg:ml-[210px]'}`}>
-        <Outlet />
+        {/* Suspense PRÓPRIO daqui (2026-09-13), não só o de cima em
+            App.tsx — sem isso, trocar de página (cada rota é um chunk
+            lazy próprio, ver App.tsx) suspendia até o Suspense mais
+            próximo na árvore, que ficava ACIMA do Layout inteiro — a
+            sidebar inteira sumia e reaparecia a cada navegação. Com este
+            aqui, só o conteúdo pisca; sidebar/topbar continuam montados. */}
+        <Suspense fallback={<CarregandoConteudo />}>
+          <Outlet />
+        </Suspense>
       </div>
 
       {/* -- barra inferior (mobile, <960px) -- */}
@@ -285,4 +294,25 @@ function RelogioStatus() {
 /** Container padrão pra conteúdo de página (largura máxima + respiro). */
 export function Conteudo({ children }: { children: ReactNode }) {
   return <main className="mx-auto max-w-[1680px] px-5 py-6 lg:px-8">{children}</main>;
+}
+
+/** Fallback do Suspense do conteúdo (ver comentário acima do `<Outlet/>`)
+    — formato aproximado do que quase toda tela interna tem (título +
+    métricas), só pra não ser uma troca abrupta/em branco enquanto o
+    chunk da próxima rota baixa. */
+function CarregandoConteudo() {
+  return (
+    <Conteudo>
+      <div className="flex flex-col gap-4">
+        <Skeleton w="220px" h="13px" />
+        <Skeleton w="320px" h="26px" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} h="96px" className="rounded-md" />
+          ))}
+        </div>
+        <Skeleton h="240px" className="rounded-md" />
+      </div>
+    </Conteudo>
+  );
 }

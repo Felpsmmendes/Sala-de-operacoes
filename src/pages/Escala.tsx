@@ -20,13 +20,14 @@ import { montarMensagemConvocacao } from '../lib/mensagemConvocacao';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
 import { enviarConvocacaoEmLote, enviarConvocacaoWhatsapp } from '../lib/api/whatsapp';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { FUNCAO_EQUIPE_ROTULO, STATUS_ESCALA_INFO, formatarData } from '../lib/status';
 import type { EscalaComMembro, EventoComLead, MembroEquipe, NovoMembroEquipe, StatusEscala } from '../lib/types';
 
 /** Sem `.catch` toda ação vira rejeição de promise silenciosa quando o
     banco rejeita (ver lição documentada no Estoque). */
 function aoFalhar(e: unknown) {
-  window.alert(mensagemDeErro(e));
+  toast.erro(mensagemDeErro(e));
 }
 
 export default function Escala() {
@@ -111,7 +112,7 @@ export default function Escala() {
     setEnviandoEscalaId(esc.id);
     try {
       await enviarConvocacaoWhatsapp(esc, evento);
-      window.alert(`Convocação enviada pro WhatsApp de ${esc.membro?.nome ?? 'membro'}.`);
+      toast.sucesso(`Convocação enviada pro WhatsApp de ${esc.membro?.nome ?? 'membro'}.`);
     } catch (e) {
       aoFalhar(e);
     } finally {
@@ -130,7 +131,9 @@ export default function Escala() {
       const partes = [];
       if (resultado.enviados.length > 0) partes.push(`Enviado pra: ${resultado.enviados.join(', ')}.`);
       if (resultado.falhas.length > 0) partes.push(`Falhou pra: ${resultado.falhas.map((f) => `${f.nome} (${f.motivo})`).join(', ')}.`);
-      window.alert(partes.join('\n\n') || 'Nenhum escalado pra enviar.');
+      const mensagem = partes.join('\n\n') || 'Nenhum escalado pra enviar.';
+      if (resultado.falhas.length > 0) toast.aviso(mensagem);
+      else toast.sucesso(mensagem);
     } finally {
       setEnviandoLoteEventoId(null);
     }
@@ -307,8 +310,8 @@ export default function Escala() {
                                 .join('\n\n---\n\n');
                               navigator.clipboard
                                 .writeText(mensagens)
-                                .then(() => window.alert(`${desteEvento.length} convocação(ões) copiada(s) — cole no grupo do WhatsApp.`))
-                                .catch(() => window.alert('Não foi possível copiar. Copie individualmente.'));
+                                .then(() => toast.sucesso(`${desteEvento.length} convocação(ões) copiada(s) — cole no grupo do WhatsApp.`))
+                                .catch(() => toast.aviso('Não foi possível copiar. Copie individualmente.'));
                             }}
                             className="rounded-sm border border-line px-3 py-1.5 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text"
                             title="Copia a convocação de todo mundo escalado neste evento, separadas por linha — útil enquanto o envio automático não está disponível pra alguém."
@@ -380,8 +383,8 @@ export default function Escala() {
                                       diaria: esc.diaria,
                                     })
                                   )
-                                  .then(() => window.alert('Mensagem copiada — cole no WhatsApp.'))
-                                  .catch(() => window.alert('Não foi possível copiar automaticamente.'))
+                                  .then(() => toast.sucesso('Mensagem copiada — cole no WhatsApp.'))
+                                  .catch(() => toast.aviso('Não foi possível copiar automaticamente.'))
                               }
                               className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text"
                             >
