@@ -1,7 +1,8 @@
-import { AlertTriangle, Calculator, MapPin, PackageCheck, Truck } from 'lucide-react';
+import { AlertTriangle, Calculator, MapPin, PackageCheck, Plus, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { cancelarCompra, definirDataChegadaCompra, listarCompras, receberCompra, type CompraComItem } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
+import { criarLancamento } from '../lib/api/financeiro';
 import { criarRegiaoFrete, excluirRegiaoFrete, listarRegioesFrete } from '../lib/api/regioesFrete';
 import { criarVeiculo, excluirVeiculo, listarVeiculos } from '../lib/api/veiculos';
 import { Badge } from '../components/Badge';
@@ -48,6 +49,12 @@ export default function Logistica() {
   const [pedagios, setPedagios] = useState('0');
   const [pedagiosBarmen, setPedagiosBarmen] = useState('0');
   const [valorLalamove, setValorLalamove] = useState('0');
+  // vínculo opcional do cálculo a um evento, só pra registrar a despesa em
+  // Finanças (2026-09-14) — a calculadora em si continua sem vínculo por
+  // padrão (decisão do usuário, 2026-09-09: só estima, não grava nada);
+  // isso aqui é opt-in, nunca obrigatório.
+  const [eventoFreteId, setEventoFreteId] = useState('');
+  const [registrandoDespesaFrete, setRegistrandoDespesaFrete] = useState(false);
 
   async function carregar() {
     setCarregando(true);
@@ -285,23 +292,77 @@ export default function Logistica() {
               </div>
 
               {resultadoFrete && (
-                <div className="rounded-sm border border-line bg-input p-3 text-[12.5px]">
-                  <p className="flex justify-between text-text-dim">
-                    <span>Km considerado (ida+volta)</span> <span className="font-mono text-text">{((regiao?.km_aproximado ?? 0) * 2).toFixed(1)} km</span>
-                  </p>
-                  <p className="flex justify-between text-text-dim">
-                    <span>Combustível</span> <span className="font-mono text-text">{formatarMoeda(resultadoFrete.custoCombustivel)}</span>
-                  </p>
-                  <p className="flex justify-between text-text-dim">
-                    <span>Ajuda de custo barmen + pedágios</span> <span className="font-mono text-text">{formatarMoeda(resultadoFrete.custoBarmen)}</span>
-                  </p>
-                  <p className="flex justify-between text-text-dim">
-                    <span>Custo real</span> <span className="font-mono text-text">{formatarMoeda(resultadoFrete.custoReal)}</span>
-                  </p>
-                  <p className="mt-1.5 flex justify-between border-t border-line pt-1.5 text-text">
-                    <strong>Valor do frete (30% margem{resultadoFrete.freteMinimoUsado ? ', mínimo aplicado' : ''})</strong>
-                    <strong className="font-mono text-pending">{formatarMoeda(resultadoFrete.valorFrete)}</strong>
-                  </p>
+                <div className="flex flex-col gap-3">
+                  <div className="rounded-sm border border-line bg-input p-3 text-[12.5px]">
+                    <p className="flex justify-between text-text-dim">
+                      <span>Km considerado (ida+volta)</span> <span className="font-mono text-text">{((regiao?.km_aproximado ?? 0) * 2).toFixed(1)} km</span>
+                    </p>
+                    <p className="flex justify-between text-text-dim">
+                      <span>Combustível</span> <span className="font-mono text-text">{formatarMoeda(resultadoFrete.custoCombustivel)}</span>
+                    </p>
+                    <p className="flex justify-between text-text-dim">
+                      <span>Ajuda de custo barmen + pedágios</span> <span className="font-mono text-text">{formatarMoeda(resultadoFrete.custoBarmen)}</span>
+                    </p>
+                    <p className="flex justify-between text-text-dim">
+                      <span>Custo real</span> <span className="font-mono text-text">{formatarMoeda(resultadoFrete.custoReal)}</span>
+                    </p>
+                    <p className="mt-1.5 flex justify-between border-t border-line pt-1.5 text-text">
+                      <strong>Valor do frete (30% margem{resultadoFrete.freteMinimoUsado ? ', mínimo aplicado' : ''})</strong>
+                      <strong className="font-mono text-pending">{formatarMoeda(resultadoFrete.valorFrete)}</strong>
+                    </p>
+                  </div>
+
+                  {/* Registrar em Finanças (2026-09-14) — opt-in: vincular a um
+                      evento é opcional, a calculadora em si continua livre. */}
+                  <div>
+                    <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Vincular a um evento (opcional — pra registrar no Financeiro)</p>
+                    <Select categoria="operacao" value={eventoFreteId} onChange={(e) => setEventoFreteId(e.target.value)}>
+                      <option value="">— Sem vínculo com evento</option>
+                      {[...eventos]
+                        .sort((a, b) => a.data_evento.localeCompare(b.data_evento))
+                        .map((ev) => (
+                          <option key={ev.id} value={ev.id}>
+                            {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? 'Evento sem nome'}
+                          </option>
+                        ))}
+                    </Select>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={registrandoDespesaFrete}
+                    onClick={async () => {
+                      setRegistrandoDespesaFrete(true);
+                      try {
+                        await criarLancamento({
+                          tipo: 'despesa',
+                          eventoId: eventoFreteId || null,
+                          descricao: `Frete — ${regiao?.nome ?? 'região'} (${veiculo?.nome ?? 'veículo'})`,
+                          valor: resultadoFrete.custoReal,
+                          vencimento: null,
+                          categoria: 'Frete',
+                          observacoes: [
+                            `Km ida+volta: ${((regiao?.km_aproximado ?? 0) * 2).toFixed(1)} km`,
+                            `Combustível: ${formatarMoeda(resultadoFrete.custoCombustivel)}`,
+                            `Ajuda de custo barmen: ${formatarMoeda(resultadoFrete.custoBarmen)}`,
+                            `Custo real: ${formatarMoeda(resultadoFrete.custoReal)}`,
+                            `Frete cobrado do cliente: ${formatarMoeda(resultadoFrete.valorFrete)}`,
+                          ].join(' · '),
+                        });
+                        toast.sucesso('Despesa de frete registrada em Finanças.');
+                        setEventoFreteId('');
+                      } catch (e) {
+                        toast.erro(mensagemDeErro(e));
+                      } finally {
+                        setRegistrandoDespesaFrete(false);
+                      }
+                    }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-sm border border-line px-3 py-2.5 text-[12.5px] font-medium text-text-dim transition-colors hover:bg-raised hover:text-text disabled:opacity-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                    {registrandoDespesaFrete ? 'Registrando…' : 'Registrar custo real como despesa em Finanças'}
+                    {eventoFreteId && <span className="ml-1 text-[11px] text-text-faint">(vinculado ao evento)</span>}
+                  </button>
                 </div>
               )}
             </>

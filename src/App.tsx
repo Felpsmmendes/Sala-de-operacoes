@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import { Skeleton } from './components/Skeleton';
 import { AuthProvider } from './lib/AuthContext';
 import { _registrarToast, ToastProvider, useToast } from './lib/toast';
 
@@ -35,8 +36,22 @@ const PortalClienteAdmin = lazy(() => import('./pages/PortalClienteAdmin'));
 const PortalClientePublico = lazy(() => import('./pages/PortalClientePublico'));
 const RedefinirSenha = lazy(() => import('./pages/RedefinirSenha'));
 
+/** Fallback do Suspense mais externo — pega o carregamento do chunk de
+    QUALQUER rota de primeiro nível (2026-09-14, trocando o "Carregando…"
+    em texto puro que ainda restava aqui). Nunca desenha sidebar: a maior
+    parte do que cai aqui são as telas PÚBLICAS (Login, Portal, Ponto…),
+    que não têm sidebar nenhuma — um esqueleto de sidebar piscando antes
+    de uma tela sem sidebar seria pior que o texto simples. Pras rotas
+    internas, isso só aparece no 1º carregamento de verdade: depois que
+    `Layout` monta, o `Suspense` PRÓPRIO dele (`CarregandoConteudo`, ver
+    Layout.tsx) já cobre a troca de página sem isso aparecer de novo. */
 function CarregandoTela() {
-  return <div className="flex min-h-screen items-center justify-center bg-bg text-text-dim">Carregando…</div>;
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg">
+      <Skeleton w="40px" h="40px" className="rounded-[12px]" />
+      <Skeleton w="140px" h="10px" />
+    </div>
+  );
 }
 
 /** Liga o atalho `toast.erro(...)`/`toast.sucesso(...)` (chamável de

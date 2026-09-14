@@ -2,6 +2,7 @@ import { LogOut, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { Panel, PanelHeader } from '../components/Panel';
+import { Skeleton } from '../components/Skeleton';
 import { Input } from '../components/ui/Input';
 import { useAuth } from '../lib/AuthContext';
 import { listarGestores } from '../lib/api/gestores';
@@ -121,7 +122,11 @@ export default function Configuracoes() {
             {erroGestores ? (
               <p className="text-[12.5px] text-text-dim">Ainda não disponível — rode a migração mais recente no Supabase (migration_030_multiplos_gestores.sql).</p>
             ) : !gestores ? (
-              <p className="text-[12.5px] text-text-dim">Carregando…</p>
+              <div className="flex flex-col gap-2">
+                {[1, 2].map((i) => (
+                  <Skeleton key={i} h="38px" className="rounded-sm" />
+                ))}
+              </div>
             ) : (
               <div className="flex flex-col gap-2">
                 {gestores.map((g) => (

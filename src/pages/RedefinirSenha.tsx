@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthButton, AuthInput, AuthLabel } from '../components/auth/AuthShared';
+import { SkeletonLinhas } from '../components/Skeleton';
 import { useAuth } from '../lib/AuthContext';
 
 /** Segunda metade do fluxo "Esqueci minha senha" (ver LoginForm.tsx) —
@@ -48,7 +49,7 @@ export default function RedefinirSenha() {
         <p className="mb-5 text-[12px] text-text-faint">Escolha uma senha nova pra sua conta.</p>
 
         {carregando ? (
-          <p className="text-sm text-text-dim">Carregando…</p>
+          <SkeletonLinhas linhas={2} />
         ) : !session ? (
           // link expirado, já usado, ou a pessoa abriu a URL direto sem
           // vir do e-mail — nunca deixa a tela de senha aparecer sem uma
