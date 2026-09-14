@@ -293,8 +293,10 @@ export default function Contratos() {
                 style={c.saldo_status === 'quitado' ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : undefined}
               >
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <strong className="text-[15px] text-text">{c.lead?.nome ?? '—'}</strong>
+                  <div className="min-w-0">
+                    <strong className="block truncate text-[15px] text-text" title={c.lead?.nome ?? undefined}>
+                      {c.lead?.nome ?? '—'}
+                    </strong>
                     <p className="text-[12.5px] text-text-dim">
                       {formatarData(c.data_evento)} · {c.local || <span className="text-pending">local não informado</span>} · {formatarMoeda(c.valor_total)}
                       {c.forma_pagamento && <span className="ml-1">· {FORMA_PAGAMENTO_ROTULO[c.forma_pagamento]}</span>}

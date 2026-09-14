@@ -91,10 +91,23 @@ export function MetricCard({
         <IconBox Icone={Icone} cor={cor} corIcone={corIcone} />
       </div>
       <div className="flex items-end justify-between gap-2">
-        <div className="flex items-baseline gap-2">
+        <div className="flex min-w-0 items-baseline gap-2">
           {/* valor grande sempre branco, nunca na cor da categoria — é o
-              número KPI, banido da lista de "onde a cor de núcleo aparece". */}
-          <strong className="font-mono text-[26px] font-bold leading-none tracking-tight tabular-nums text-text">{valorExibido}</strong>
+              número KPI, banido da lista de "onde a cor de núcleo aparece".
+              2 camadas de defesa contra dado longo (achado do usuário,
+              2026-09-14, com endereço/valor real preenchendo o sistema):
+              1) `clamp()` encolhe a fonte pra valor comprido (nunca esconde
+              dígito de um número); 2) `truncate` + `title` é o último
+              recurso pra texto livre (ex.: endereço em MetricCard de
+              "Local") que nem encolhendo cabe numa linha — nunca estoura o
+              card, mostra o valor inteiro no hover/toque longo. */}
+          <strong
+            className="min-w-0 truncate font-mono font-bold leading-none tracking-tight tabular-nums text-text"
+            style={{ fontSize: valorExibido.length > 10 ? 'clamp(16px, 3vw, 22px)' : valorExibido.length > 7 ? 'clamp(18px, 3.5vw, 24px)' : '26px' }}
+            title={valorExibido.length > 7 ? valorExibido : undefined}
+          >
+            {valorExibido}
+          </strong>
           {tendencia && (
             <span
               className={`flex flex-shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold ${

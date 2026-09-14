@@ -583,9 +583,11 @@ export default function Dashboard() {
                   return (
                     <article key={ev.id} className="rounded-lg border border-line bg-input p-4">
                       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <strong className="text-[15px] text-text">{ev.contrato?.lead?.nome ?? 'Evento sem nome'}</strong>
-                          <p className="text-[12.5px] text-text-dim">{ev.local || 'local não informado'}</p>
+                        <div className="min-w-0 flex-1">
+                          <strong className="block truncate text-[15px] text-text">{ev.contrato?.lead?.nome ?? 'Evento sem nome'}</strong>
+                          <p className="truncate text-[12.5px] text-text-dim" title={ev.local || 'local não informado'}>
+                            {ev.local || 'local não informado'}
+                          </p>
                         </div>
                         <Badge tom={STATUS_EVENTO_INFO[ev.status].tom} texto={STATUS_EVENTO_INFO[ev.status].rotulo} />
                       </div>

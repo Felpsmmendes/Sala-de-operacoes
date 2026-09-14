@@ -98,7 +98,7 @@ function ToastLinha({ toast: t, aoRemover }: { toast: ToastItem; aoRemover: (id:
       className={`flex items-start gap-2.5 rounded-sm border px-3.5 py-3 shadow-lg ${CLASSES[t.tipo]}`}
     >
       <Icone className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} />
-      <p className="flex-1 whitespace-pre-line text-[13px] leading-snug text-text">{t.mensagem}</p>
+      <p className="min-w-0 flex-1 whitespace-pre-line break-words text-[13px] leading-snug text-text">{t.mensagem}</p>
       <button type="button" onClick={() => aoRemover(t.id)} className="mt-0.5 flex-shrink-0 text-text-faint hover:text-text">
         <X className="h-3.5 w-3.5" strokeWidth={2} />
       </button>

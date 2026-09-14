@@ -62,6 +62,17 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-line-strong);
 }
+/* Tema claro (achado do usuário, 2026-09-14): `--color-raised`/
+   `--color-line-strong` no claro são cinza bem claro contra um fundo já
+   quase branco — a thumb ficava praticamente invisível. Tom mais escuro
+   só aqui, no mesmo espírito das bordas em `rgba(15,23,42,…)` que o
+   tema claro já usa em design-tokens.css. */
+:root[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18);
+}
+:root[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.32);
+}
 
 /* Realce em toda borda do sistema — desde a v2 os tokens `--color-line*`
    já SÃO a cor da borda (rgba translúcido), então basta a classe
@@ -112,6 +123,13 @@ body {
   background: color-mix(in srgb, var(--color-accent) 7%, transparent);
   border-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
   color: var(--color-accent);
+}
+/* Tema claro (achado do usuário, 2026-09-14): o hover em branco a 3%
+   fica invisível contra a sidebar já branca (`--color-sidebar: #fff`
+   no claro) — o item ativo não precisa de override (o color-mix já usa
+   o âmbar, que continua visível em qualquer fundo). */
+:root[data-theme='light'] .nav-item:hover {
+  background: rgba(15, 23, 42, 0.045);
 }
 .nav-item .nav-icon {
   color: currentColor;
@@ -168,6 +186,12 @@ body {
 }
 .linha-tabela-tinta:hover {
   background: color-mix(in srgb, var(--row-color) 5%, transparent);
+}
+/* mesmo problema do `.nav-item:hover` acima, achado ao revisar o tema
+   claro (2026-09-14): branco a 2% também é invisível sobre linha de
+   tabela já clara. */
+:root[data-theme='light'] .linha-tabela:hover {
+  background: rgba(15, 23, 42, 0.035);
 }
 
 /* Campo de formulário (`Input`/`Select`/`Textarea`, `ui/`) — foco na cor
@@ -300,6 +324,15 @@ select option {
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.6s ease-in-out infinite;
   border-radius: 6px;
+}
+/* Tema claro (achado do usuário, 2026-09-14): `--color-raised` já é
+   quase branco no claro, e a mancha do meio (mix com `--color-line-strong`,
+   um tom escuro translúcido) fica sutil demais — o brilho corrido quase
+   não aparece. Cinzas com contraste real só nesse tema, sem tocar no
+   escuro. */
+:root[data-theme='light'] .skeleton {
+  background: linear-gradient(90deg, #e8eaed 25%, #f4f5f7 50%, #e8eaed 75%);
+  background-size: 200% 100%;
 }
 
 /* -- 4. Indicador "ao vivo" pulsante (`DotLive`) — só em métrica/status

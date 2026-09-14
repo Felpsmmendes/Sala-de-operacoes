@@ -232,7 +232,9 @@ export function PipelineLeads({
                       editandoFunis ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
                     } ${lead.id === selecionadoId ? 'border-people' : 'border-line'}`}
                   >
-                    <strong className="text-[13px] font-semibold text-text">{lead.nome}</strong>
+                    <strong className="block truncate text-[13px] font-semibold text-text" title={lead.nome}>
+                      {lead.nome}
+                    </strong>
                     {lead.telefone && <span className="text-[11.5px] text-text-dim">{lead.telefone}</span>}
                     {lead.valor_estimado != null && <span className="font-mono text-[11.5px] text-pending">{formatarMoeda(lead.valor_estimado)}</span>}
                   </button>

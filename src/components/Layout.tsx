@@ -118,6 +118,13 @@ export default function Layout() {
   const location = useLocation();
   const email = session?.user?.email ?? '';
   const nomePerfil = (session?.user?.user_metadata as { nome?: string } | undefined)?.nome || email || 'Gestor';
+  // Alternador de tema (2026-09-14, achado do usuário via prompt de
+  // polish): morava dentro de `RelogioStatus`, que cada `Cabecalho` de
+  // página monta do zero — ou seja, o botão reaparecia (e remontava) no
+  // topo de TODA tela ao navegar. Movido pra cá, na sidebar persistente
+  // (nunca desmonta entre rotas — ver Suspense só em volta do `Outlet`
+  // logo abaixo), pra existir uma vez só.
+  const { tema, alternar } = useTema();
   const [colapsada, setColapsada] = useState(() => {
     try {
       return localStorage.getItem(CHAVE_SIDEBAR_COLAPSADA) === '1';
@@ -249,6 +256,15 @@ export default function Layout() {
               Operação Normal
             </div>
           )}
+          <button
+            type="button"
+            onClick={alternar}
+            title={tema === 'escuro' ? 'Mudar pro modo claro' : 'Mudar pro modo escuro'}
+            className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-text-faint transition-colors hover:bg-raised hover:text-text ${colapsada ? 'justify-center' : ''}`}
+          >
+            {tema === 'escuro' ? <Sun className="h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} /> : <Moon className="h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />}
+            {!colapsada && <span>{tema === 'escuro' ? 'Modo claro' : 'Modo escuro'}</span>}
+          </button>
           <NavLink
             to="/configuracoes"
             title={colapsada ? 'Configurações' : undefined}
@@ -302,12 +318,12 @@ export default function Layout() {
   );
 }
 
-/** Cabeçalho padrão de cada tela — faixa de status (TopBar) + título +
-    subtítulo. TopBar v2 (prompt master, seção 2.1): label mono
-    ultra-muted + relógio à esquerda, alternador de tema à direita — é o
-    único elemento do sistema, além do card, que ainda leva um traço de
-    vidro (`.topbar-glass`, blur médio), porque fica fixo no topo e
-    precisa se destacar do conteúdo passando por baixo dele ao rolar. */
+/** Cabeçalho padrão de cada tela — faixa de status + título + subtítulo.
+    Label mono ultra-muted + relógio + atalho de busca (⌘K). O alternador
+    de tema NÃO mora mais aqui (2026-09-14, achado do usuário): morava
+    nesta faixa, só que ela é remontada por CADA página — o botão
+    reaparecia (e "piscava") no topo de toda tela ao navegar. Agora vive
+    uma vez só, na sidebar persistente (ver `Layout`). */
 export function Cabecalho({ titulo, subtitulo }: { titulo: string; subtitulo: string }) {
   return (
     <header className="border-b border-line px-5 pt-3.5 lg:px-8">
@@ -322,7 +338,6 @@ export function Cabecalho({ titulo, subtitulo }: { titulo: string; subtitulo: st
 
 function RelogioStatus() {
   const [hora, setHora] = useState(() => new Date().toLocaleTimeString('pt-BR'));
-  const { tema, alternar } = useTema();
   useEffect(() => {
     const id = setInterval(() => setHora(new Date().toLocaleTimeString('pt-BR')), 1000);
     return () => clearInterval(id);
@@ -339,14 +354,6 @@ function RelogioStatus() {
         className="hidden items-center gap-1 rounded-sm border border-line bg-raised px-1.5 py-0.5 font-mono text-[9.5px] text-text-faint transition-colors hover:text-text sm:flex"
       >
         <Search className="h-2.5 w-2.5" strokeWidth={2} /> ⌘K
-      </button>
-      <button
-        type="button"
-        onClick={alternar}
-        title={tema === 'escuro' ? 'Mudar pro modo claro' : 'Mudar pro modo escuro'}
-        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm text-text-faint transition-colors hover:bg-raised hover:text-text"
-      >
-        {tema === 'escuro' ? <Sun className="h-3.5 w-3.5" strokeWidth={2} /> : <Moon className="h-3.5 w-3.5" strokeWidth={2} />}
       </button>
     </div>
   );
