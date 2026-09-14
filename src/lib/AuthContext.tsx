@@ -31,7 +31,7 @@ type AuthState = {
       supabase-js) e deixa trocar a senha sem precisar da antiga. */
   recuperarSenha: (email: string) => Promise<{ erro: string | null }>;
   sair: () => Promise<void>;
-  atualizarNome: (nome: string) => Promise<{ erro: string | null }>;
+  atualizarNome: (nome: string, cargo?: string) => Promise<{ erro: string | null }>;
   atualizarSenha: (novaSenha: string) => Promise<{ erro: string | null }>;
 };
 
@@ -104,10 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
-  /** Nome de exibição — não tem tabela de perfil (sistema de 1 usuário
-      só), guardado direto no `user_metadata` do próprio Supabase Auth. */
-  async function atualizarNome(nome: string) {
-    const { data, error } = await supabase.auth.updateUser({ data: { nome } });
+  /** Nome de exibição (e cargo/função, opcional) — não tem tabela de
+      perfil (sistema de 1 usuário só), guardado direto no `user_metadata`
+      do próprio Supabase Auth. */
+  async function atualizarNome(nome: string, cargo?: string) {
+    const { data, error } = await supabase.auth.updateUser({ data: { nome, cargo: cargo?.trim() || undefined } });
     if (!error && data.user) setSession((atual) => (atual ? { ...atual, user: data.user } : atual));
     return { erro: error ? error.message : null };
   }

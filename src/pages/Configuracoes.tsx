@@ -13,6 +13,7 @@ export default function Configuracoes() {
   const { session, sair, atualizarNome, atualizarSenha } = useAuth();
   const email = session?.user?.email ?? '—';
   const nomeAtual = (session?.user?.user_metadata as { nome?: string } | undefined)?.nome ?? '';
+  const cargoAtual = (session?.user?.user_metadata as { cargo?: string } | undefined)?.cargo ?? '';
 
   const [gestores, setGestores] = useState<Gestor[] | null>(null);
   const [erroGestores, setErroGestores] = useState<string | null>(null);
@@ -23,6 +24,7 @@ export default function Configuracoes() {
   }, []);
 
   const [nome, setNome] = useState(nomeAtual);
+  const [cargo, setCargo] = useState(cargoAtual);
   const [salvandoNome, setSalvandoNome] = useState(false);
   const [msgNome, setMsgNome] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
@@ -34,8 +36,8 @@ export default function Configuracoes() {
   async function aoSalvarNome() {
     setSalvandoNome(true);
     setMsgNome(null);
-    const { erro } = await atualizarNome(nome.trim());
-    setMsgNome(erro ? { tipo: 'erro', texto: erro } : { tipo: 'ok', texto: 'Nome atualizado.' });
+    const { erro } = await atualizarNome(nome.trim(), cargo.trim());
+    setMsgNome(erro ? { tipo: 'erro', texto: erro } : { tipo: 'ok', texto: 'Perfil atualizado.' });
     setSalvandoNome(false);
   }
 
@@ -71,11 +73,17 @@ export default function Configuracoes() {
             <div className="flex flex-col gap-4">
               <Input rotulo="E-mail (login)" value={email} disabled />
               <Input rotulo="Nome de exibição" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Felipe" />
+              <Input
+                rotulo="Cargo / função"
+                value={cargo}
+                onChange={(e) => setCargo(e.target.value)}
+                placeholder="Ex: Coordenador Geral, Sócio-Diretor…"
+              />
               {msgNome && <p className={`text-[12.5px] ${msgNome.tipo === 'erro' ? 'text-danger' : 'text-success'}`}>{msgNome.texto}</p>}
               <button
                 type="button"
                 onClick={aoSalvarNome}
-                disabled={salvandoNome || nome.trim() === nomeAtual}
+                disabled={salvandoNome || (nome.trim() === nomeAtual && cargo.trim() === cargoAtual)}
                 className="self-start rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"
               >
                 {salvandoNome ? 'Salvando…' : 'Salvar perfil'}

@@ -118,6 +118,7 @@ export default function Layout() {
   const location = useLocation();
   const email = session?.user?.email ?? '';
   const nomePerfil = (session?.user?.user_metadata as { nome?: string } | undefined)?.nome || email || 'Gestor';
+  const cargoPerfil = (session?.user?.user_metadata as { cargo?: string } | undefined)?.cargo || 'Coordenador Geral';
   // Alternador de tema (2026-09-14, achado do usuário via prompt de
   // polish): morava dentro de `RelogioStatus`, que cada `Cabecalho` de
   // página monta do zero — ou seja, o botão reaparecia (e remontava) no
@@ -276,7 +277,7 @@ export default function Layout() {
             {!colapsada && (
               <div className="min-w-0 flex-1 text-left">
                 <p className="truncate text-[12.5px] font-medium">{nomePerfil}</p>
-                <p className="text-[10.5px] text-text-ultra">Configurações</p>
+                <p className="truncate text-[10.5px] text-text-ultra">{cargoPerfil}</p>
               </div>
             )}
           </NavLink>

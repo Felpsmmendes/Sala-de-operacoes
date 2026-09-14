@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar, CheckCircle2, Copy, Users } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle2, Copy, GlassWater, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
@@ -77,6 +77,15 @@ export default function Ponto() {
       .catch(() => toast.aviso('Não foi possível copiar automaticamente. Link: ' + link));
   }
 
+  function copiarLinkDrinks() {
+    if (!eventoId) return;
+    const link = `${window.location.origin}/drinks/${eventoId}`;
+    navigator.clipboard
+      .writeText(link)
+      .then(() => toast.sucesso('Link de drinks copiado — envie para o bartender responsável.'))
+      .catch(() => toast.aviso('Não foi possível copiar automaticamente. Link: ' + link));
+  }
+
   const resumoPorEvento = useMemo(() => {
     const mapa = new Map<string, { confirmados: number; total: number; chegaram: number }>();
     for (const ev of eventos) mapa.set(ev.id, { confirmados: 0, total: 0, chegaram: 0 });
@@ -116,7 +125,7 @@ export default function Ponto() {
             titulo="Presença do evento"
             desc="Selecione o evento e copie o link de confirmação de chegada pra mandar pra equipe."
             acao={
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="w-64">
                   <Select categoria="pessoas" value={eventoId} onChange={(e) => setEventoId(e.target.value)}>
                     {eventos.length === 0 && <option value="">Nenhum evento</option>}
@@ -129,6 +138,14 @@ export default function Ponto() {
                 </div>
                 <button type="button" onClick={copiarLink} disabled={!eventoId} className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
                   <Copy className="h-3.5 w-3.5" /> Copiar link
+                </button>
+                <button
+                  type="button"
+                  onClick={copiarLinkDrinks}
+                  disabled={!eventoId}
+                  className="inline-flex items-center gap-1.5 rounded-sm border border-line px-3 py-2 text-[12.5px] text-text-dim hover:bg-raised hover:text-text transition-colors disabled:opacity-50"
+                >
+                  <GlassWater className="h-3.5 w-3.5" strokeWidth={2} /> Copiar link de drinks
                 </button>
               </div>
             }
