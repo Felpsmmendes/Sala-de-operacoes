@@ -20,6 +20,14 @@ export function GraficoDonut({ fatias, centroRotulo, formatarValor = (v) => Stri
   // os 14 (35% do raio) de antes.
   const espessura = raio * 0.09;
   const perimetro = 2 * Math.PI * raio;
+  // Respiro entre fatias (2026-09-14, achado do usuário: cores próximas
+  // ficavam impossíveis de diferenciar sem uma divisão física) — corta um
+  // pedaço fixo do FIM de cada fatia (nunca do início, que é onde a
+  // rotação já posiciona certinho), deixando um vão antes da próxima
+  // começar. `strokeLinecap="butt"` (não "round") de propósito: a ponta
+  // reta é o que faz o vão ler como um corte limpo, não como um respiro
+  // arredondado partindo a fatia ao meio.
+  const gap = espessura * 0.9;
   // soma acumulada de cada fatia ANTES dela — onde no círculo ela começa.
   const offsets: number[] = [];
   fatias.reduce((acumulado, f) => {
@@ -41,6 +49,9 @@ export function GraficoDonut({ fatias, centroRotulo, formatarValor = (v) => Stri
             {fatias.map((f, i) => {
               const fracao = f.valor / total;
               const comprimento = fracao * perimetro;
+              // nunca deixa o vão "comer" uma fatia pequena inteira — no
+              // mínimo sobra 15% do comprimento original dela.
+              const comprimentoVisivel = Math.max(comprimento * 0.15, comprimento - gap);
               const offsetInicial = offsets[i];
               // glow sutil (DESIGN.md > Charts, 2026-09-09) — mesma lógica
               // de destaque discreto do resto do sistema, só na fatia
@@ -60,7 +71,7 @@ export function GraficoDonut({ fatias, centroRotulo, formatarValor = (v) => Stri
                   style={{
                     opacity: hover != null && hover !== i ? 0.35 : 1,
                     strokeDasharray: `${perimetro}`,
-                    strokeDashoffset: entrou ? perimetro - comprimento : perimetro,
+                    strokeDashoffset: entrou ? perimetro - comprimentoVisivel : perimetro,
                     transform: `rotate(${(offsetInicial / perimetro) * 360}deg)`,
                     transformOrigin: '50% 50%',
                     filter: emGlow ? 'drop-shadow(0 0 3.5px currentColor)' : undefined,
