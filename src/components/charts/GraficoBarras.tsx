@@ -73,7 +73,7 @@ export function GraficoBarras({
             key={d.rotulo}
             onMouseEnter={() => setHover(i)}
             onMouseLeave={() => setHover(null)}
-            className={`flex-1 cursor-default truncate px-0.5 text-[10.5px] ${hover === i ? 'font-semibold text-text' : 'text-text-faint'}`}
+            className={`min-w-0 flex-1 cursor-default truncate px-0.5 text-[10.5px] ${hover === i ? 'font-semibold text-text' : 'text-text-faint'}`}
             title={d.rotulo}
           >
             {d.rotulo}

@@ -38,6 +38,13 @@ body {
   font-size: 14px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  /* Rede de segurança contra qualquer filho que estoure a largura da tela
+     (achado do usuário, 2026-09-14: a barra inferior mobile fazia isso —
+     ver Layout.tsx) — nunca deveria acontecer, mas sem isso um único
+     elemento largo demais empurra a página inteira e abre uma faixa em
+     branco do lado, sobre o fundo já claro do tema claro. Tabelas/áreas
+     que precisam de scroll próprio usam `overflow-x-auto` no container. */
+  overflow-x: hidden;
 }
 
 .font-mono,

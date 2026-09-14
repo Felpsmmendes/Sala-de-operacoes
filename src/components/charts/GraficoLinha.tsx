@@ -233,7 +233,19 @@ export function GraficoLinha({ categorias, series, formatarValor = (v: number) =
 
           <div className="mt-1.5 flex text-center">
             {categorias.map((c, i) => (
-              <span key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className={`flex-1 cursor-default text-[10.5px] ${hover === i ? 'font-semibold text-text' : 'text-text-faint'}`}>
+              // `min-w-0` + `truncate`: sem isso um filho `flex-1` nunca
+              // encolhe além da largura do próprio texto — com várias
+              // categorias de rótulo comprido (ex. "Set/2026") a soma
+              // passa da largura da tela e estoura a página inteira pro
+              // lado (achado do usuário, 2026-09-14, mesmo bug da barra
+              // inferior mobile em Layout.tsx).
+              <span
+                key={i}
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+                className={`min-w-0 flex-1 truncate cursor-default text-[10.5px] ${hover === i ? 'font-semibold text-text' : 'text-text-faint'}`}
+                title={c}
+              >
                 {c}
               </span>
             ))}

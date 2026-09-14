@@ -259,7 +259,13 @@ export function GraficoDRE({ meses, formatarMes, formatarValor }: { meses: DreMe
 
           <div className="mt-1.5 flex text-center">
             {meses.map((m, i) => (
-              <span key={m.mes} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className={`flex-1 cursor-default text-[10.5px] ${hover === i ? 'font-semibold text-text' : 'text-text-faint'}`}>
+              <span
+                key={m.mes}
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+                className={`min-w-0 flex-1 truncate cursor-default text-[10.5px] ${hover === i ? 'font-semibold text-text' : 'text-text-faint'}`}
+                title={formatarMes(m.mes)}
+              >
                 {formatarMes(m.mes)}
               </span>
             ))}

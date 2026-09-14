@@ -305,11 +305,17 @@ export default function Layout() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              ['flex flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1 text-[9.5px] font-semibold transition-colors', isActive ? 'text-accent' : 'text-text-faint'].join(' ')
+              // `min-w-0` é o que faz o `truncate` do rótulo funcionar de
+              // verdade: um filho `flex-1` sem isso nunca encolhe além do
+              // tamanho do próprio conteúdo (mínimo = largura do texto),
+              // e com 7 itens nessa barra soma mais largura que cabe em
+              // qualquer celular — estourava a página inteira pro lado
+              // (scroll horizontal fantasma, achado do usuário 2026-09-14).
+              ['flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1 text-[9.5px] font-semibold transition-colors', isActive ? 'text-accent' : 'text-text-faint'].join(' ')
             }
           >
-            <item.Icone className="h-[19px] w-[19px]" strokeWidth={1.75} />
-            <span className="truncate">{item.rotulo}</span>
+            <item.Icone className="h-[19px] w-[19px] flex-shrink-0" strokeWidth={1.75} />
+            <span className="w-full truncate text-center">{item.rotulo}</span>
           </NavLink>
         ))}
       </nav>
