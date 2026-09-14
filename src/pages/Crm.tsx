@@ -1,5 +1,6 @@
-import { CheckCircle2, Filter, MessageCircle, Snowflake, UserPlus, Users, Zap } from 'lucide-react';
+import { CheckCircle2, Filter, MessageCircle, Smartphone, Snowflake, UserPlus, Users, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { aplicarAutomacoesEvento } from '../lib/api/automacoes';
 import { atualizarLead, buscarUltimoContatoPorLead, criarLead, excluirLead, listarLeads, obterLead } from '../lib/api/leads';
 import { atualizarFunil, criarFunil, excluirFunil, listarFunis, reordenarFunis } from '../lib/api/funis';
@@ -9,6 +10,7 @@ import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader, Segmented } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { AutomacoesCrm } from '../components/crm/AutomacoesCrm';
+import { ConectarWhatsapp } from '../components/crm/ConectarWhatsapp';
 import { Conversas } from '../components/crm/Conversas';
 import { DetalheLead } from '../components/crm/DetalheLead';
 import { LeadForm } from '../components/crm/LeadForm';
@@ -22,12 +24,13 @@ import { corFunilPorIndice, formatarMoeda } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import type { FunilLead, Lead, StatusLead } from '../lib/types';
 
-type Aba = 'leads' | 'conversas' | 'novo' | 'automacoes';
+type Aba = 'leads' | 'conversas' | 'novo' | 'automacoes' | 'whatsapp';
 const ABAS: { id: Aba; rotulo: string; Icone: typeof Users }[] = [
   { id: 'leads', rotulo: 'Leads', Icone: Users },
   { id: 'conversas', rotulo: 'Conversas', Icone: MessageCircle },
   { id: 'novo', rotulo: 'Adicionar Lead', Icone: UserPlus },
   { id: 'automacoes', rotulo: 'Automações', Icone: Zap },
+  { id: 'whatsapp', rotulo: 'Conectar WhatsApp', Icone: Smartphone },
 ];
 
 /** Reporta o resultado de `aplicarAutomacoesEvento` (Fase D+, 2026-09-11)
@@ -57,12 +60,23 @@ export default function Crm() {
   const [novoSalvando, setNovoSalvando] = useState(false);
   const [formKey, setFormKey] = useState(0);
 
+  const [searchParams] = useSearchParams();
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [leadDetalhe, setLeadDetalhe] = useState<Lead | null>(null);
   const [detalheErro, setDetalheErro] = useState<string | null>(null);
   const [detalheSalvando, setDetalheSalvando] = useState(false);
 
   const confirmar = useConfirmDialog();
+
+  // link direto pra um lead específico (ex.: "Ver lead" do orçamento
+  // salvo, 2026-09-14) — mesmo padrão de `?evento=` já usado em Escala/
+  // Auditoria/Roteiro. Só uma vez no mount; obterLead(id) abaixo já trata
+  // um id inválido/apagado como erro amigável, sem travar a tela.
+  useEffect(() => {
+    const doLink = searchParams.get('lead');
+    if (doLink) setSelecionadoId(doLink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -363,6 +377,13 @@ export default function Crm() {
               desc="Regras “se X então Y” que rodam sozinhas — sem contato move de funil, lead novo já dispara uma ação, ou entra num funil e algo acontece."
             />
             <AutomacoesCrm funis={funis} />
+          </Panel>
+        )}
+
+        {aba === 'whatsapp' && (
+          <Panel>
+            <PanelHeader titulo="Conectar WhatsApp" desc="Status da conexão oficial (Meta Business Cloud API) usada pelas convocações de equipe e pelas automações do CRM." />
+            <ConectarWhatsapp />
           </Panel>
         )}
       </Conteudo>

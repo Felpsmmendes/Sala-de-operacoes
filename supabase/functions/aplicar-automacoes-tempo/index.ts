@@ -84,9 +84,13 @@ async function executarAcaoNo(supabase: SupabaseClient, dados: NoDados, lead: Le
       if (!dados.acao_whatsapp_template) throw new Error('sem template de WhatsApp configurado');
       const numero = normalizarTelefoneBR(lead.telefone);
       if (!numero) throw new Error(`telefone "${lead.telefone}" inválido`);
-      const token = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
-      const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
-      if (!token || !phoneNumberId) throw new Error('WhatsApp não configurado (WHATSAPP_ACCESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID)');
+      // `supabase` aqui já é a service role (ver Deno.serve abaixo) — lê
+      // direto de `integracao_whatsapp` (ver migration_031), não mais
+      // secret fixo (2026-09-14: gestor conecta/desconecta pela tela).
+      const { data: credenciais } = await supabase.from('integracao_whatsapp').select('phone_number_id, access_token').eq('id', 'atual').maybeSingle();
+      if (!credenciais) throw new Error('WhatsApp não conectado — configure em CRM > Conectar WhatsApp');
+      const token = credenciais.access_token;
+      const phoneNumberId = credenciais.phone_number_id;
       const resposta = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

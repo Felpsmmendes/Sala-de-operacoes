@@ -2,15 +2,9 @@ import { Check, ChevronDown, Plus, Search } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { criarLead } from '../../lib/api/leads';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
+import { normalizarTexto } from '../../lib/status';
 import { Input } from '../ui/Input';
 import type { Lead } from '../../lib/types';
-
-function normalizarTexto(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
-}
 
 function apenasDigitos(s: string): string {
   return s.replace(/\D/g, '');

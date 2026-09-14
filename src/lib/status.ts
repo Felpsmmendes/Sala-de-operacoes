@@ -77,3 +77,13 @@ export function formatarData(dataIso: string | null | undefined): string {
   const [ano, mes, dia] = dataIso.slice(0, 10).split('-');
   return `${dia}/${mes}/${ano}`;
 }
+
+/** Compara texto ignorando maiúscula/minúscula e acento — pra busca de
+    nome não falhar por "joão" vs "Joao" (extraída daqui, 2026-09-14: já
+    existia igual, sem exportar, dentro de SeletorCliente.tsx). */
+export function normalizarTexto(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+}

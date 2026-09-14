@@ -481,9 +481,9 @@ export type Database = {
         Relationships: [];
       };
       escalas: {
-        Row: { id: string; evento_id: string; membro_id: string; diaria: number; status: string; confirmado_em: string | null; traje_ok: boolean; epi_ok: boolean };
-        Insert: { id?: string; evento_id: string; membro_id: string; diaria: number; status?: string; confirmado_em?: string | null; traje_ok?: boolean; epi_ok?: boolean };
-        Update: { id?: string; evento_id?: string; membro_id?: string; diaria?: number; status?: string; confirmado_em?: string | null; traje_ok?: boolean; epi_ok?: boolean };
+        Row: { id: string; evento_id: string; membro_id: string; diaria: number; status: string; confirmado_em: string | null; traje_ok: boolean; epi_ok: boolean; token: string };
+        Insert: { id?: string; evento_id: string; membro_id: string; diaria: number; status?: string; confirmado_em?: string | null; traje_ok?: boolean; epi_ok?: boolean; token?: string };
+        Update: { id?: string; evento_id?: string; membro_id?: string; diaria?: number; status?: string; confirmado_em?: string | null; traje_ok?: boolean; epi_ok?: boolean; token?: string };
         Relationships: [];
       };
       cue_sheet_itens: {
@@ -680,6 +680,12 @@ export type Database = {
         };
         Relationships: [];
       };
+      integracao_whatsapp: {
+        Row: { id: string; phone_number_id: string; access_token: string; conectado_em: string };
+        Insert: { id?: string; phone_number_id: string; access_token: string; conectado_em?: string };
+        Update: { id?: string; phone_number_id?: string; access_token?: string; conectado_em?: string };
+        Relationships: [];
+      };
       gestores: {
         Row: { id: string; nome: string | null; criado_em: string };
         Insert: { id: string; nome?: string | null; criado_em?: string };
@@ -798,6 +804,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      vw_confirmacao_escala: {
+        Row: {
+          escala_id: string;
+          token: string;
+          evento_id: string;
+          membro_id: string;
+          membro_nome: string;
+          membro_funcao: string;
+          diaria: number;
+          status: string;
+          confirmado_em: string | null;
+          data_evento: string;
+          hora_inicio: string | null;
+          local: string | null;
+          cliente_nome: string;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       eh_gestor: { Args: Record<string, never>; Returns: boolean };
@@ -808,6 +832,8 @@ export type Database = {
       portal_assinar_contrato: { Args: { p_token: string; p_nome: string; p_cpf: string; p_hash: string }; Returns: undefined };
       ponto_obter_presenca: { Args: { p_evento_id: string }; Returns: Database['public']['Views']['vw_escala_presenca']['Row'][] };
       ponto_registrar_chegada: { Args: { p_evento_id: string; p_membro_id: string }; Returns: undefined };
+      confirmacao_obter: { Args: { p_token: string }; Returns: Database['public']['Views']['vw_confirmacao_escala']['Row'][] };
+      confirmacao_responder: { Args: { p_token: string; p_confirmar: boolean }; Returns: undefined };
       contar_drinks_evento: { Args: { p_evento_id: string }; Returns: number };
       /** ver supabase/migration_009_estoque_atomico.sql */
       estoque_registrar_movimento: {

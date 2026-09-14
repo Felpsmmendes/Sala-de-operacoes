@@ -28,7 +28,7 @@ export type NovoOrcamento = {
 export async function listarOrcamentos(): Promise<OrcamentoCompleto[]> {
   const { data, error } = await supabase
     .from('orcamentos')
-    .select('*, lead:leads(id,nome,telefone), itens:orcamento_itens(*, servico:servicos(*))')
+    .select('*, lead:leads(id,nome,telefone,email), itens:orcamento_itens(*, servico:servicos(*))')
     .order('criado_em', { ascending: false });
   if (error) throw new Error(error.message);
   return data as unknown as OrcamentoCompleto[];

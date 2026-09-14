@@ -108,7 +108,7 @@ export type OrcamentoItem = {
   horario_inicio_atracao: string | null;
 };
 
-export type OrcamentoComLead = Orcamento & { lead: Pick<Lead, 'id' | 'nome' | 'telefone'> | null };
+export type OrcamentoComLead = Orcamento & { lead: Pick<Lead, 'id' | 'nome' | 'telefone' | 'email'> | null };
 export type OrcamentoCompleto = OrcamentoComLead & { itens: (OrcamentoItem & { servico: Servico })[] };
 
 export type StatusSaldo = 'pendente' | 'parcial' | 'quitado';
@@ -218,6 +218,10 @@ export type Escala = {
   confirmado_em: string | null;
   traje_ok: boolean;
   epi_ok: boolean;
+  /** Token aleatório pro link público de confirmação (2026-09-14, ver
+      migration_032) — 1 por linha de escala, ou seja, 1 por pessoa por
+      evento/contrato. Nunca muda depois de gerado. */
+  token: string;
 };
 
 export type EscalaComMembro = Escala & { membro: MembroEquipe | null };
@@ -301,6 +305,27 @@ export type EscalaPresenca = {
   data_evento: string;
   local: string | null;
   chegada_em: string | null;
+};
+
+/** Linha da view `vw_confirmacao_escala` (2026-09-14, ver migration_032)
+    — usada pela tela pública `/confirmar/:token`. Ao contrário de
+    `EscalaPresenca`, inclui a diária: só quem tem o token de UMA linha
+    específica enxerga essa linha (nunca lista geral), então mostrar o
+    valor pro próprio freelancer decidir é seguro aqui. */
+export type ConfirmacaoEscala = {
+  escala_id: string;
+  token: string;
+  evento_id: string;
+  membro_id: string;
+  membro_nome: string;
+  membro_funcao: FuncaoEquipe;
+  diaria: number;
+  status: StatusEscala;
+  confirmado_em: string | null;
+  data_evento: string;
+  hora_inicio: string | null;
+  local: string | null;
+  cliente_nome: string;
 };
 
 /* -------------------- Núcleo 4: Encerramento & Auditoria -------------------- */

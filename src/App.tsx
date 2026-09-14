@@ -14,6 +14,7 @@ import { _registrarToast, ToastProvider, useToast } from './lib/toast';
 const Agenda = lazy(() => import('./pages/Agenda'));
 const Auditoria = lazy(() => import('./pages/Auditoria'));
 const Configuracoes = lazy(() => import('./pages/Configuracoes'));
+const ConfirmarEscala = lazy(() => import('./pages/ConfirmarEscala'));
 const Contratos = lazy(() => import('./pages/Contratos'));
 const Crm = lazy(() => import('./pages/Crm'));
 const CueSheet = lazy(() => import('./pages/CueSheet'));
@@ -63,6 +64,11 @@ export default function App() {
               <Route path="/portal/:token" element={<PortalClientePublico />} />
               {/* pública — freelancer confirma chegada sem login (decisão do usuário, ver README) */}
               <Route path="/ponto/:eventoId" element={<PontoPublico />} />
+              {/* pública — freelancer confirma (ou recusa) presença numa convocação
+                  específica por um token único, sem login (pedido do usuário, 2026-09-14,
+                  ver migration_032) — diferente do /ponto acima, que é check-in de
+                  chegada NO DIA do evento; este é a resposta à convocação, dias antes. */}
+              <Route path="/confirmar/:token" element={<ConfirmarEscala />} />
               {/* pública — contador de drinks em tempo real, sem login (Fase C do roadmap, 2026-09-11) */}
               <Route path="/drinks/:eventoId" element={<DrinksPublico />} />
               {/* Ponto Eletrônico de verdade, só funcionário interno (login próprio) —

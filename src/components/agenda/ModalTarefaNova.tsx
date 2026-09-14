@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { Lead, NovaTarefaAgenda } from '../../lib/types';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { Textarea } from '../ui/Textarea';
 
 /** "+ Tarefa" no topo da Agenda (pedido do usuário, 2026-09-09) — acesso
     direto sem precisar clicar num dia primeiro (o formulário inline por
@@ -12,6 +13,7 @@ export function ModalTarefaNova({ leads, onFechar, onCriar, criando }: { leads: 
   const [titulo, setTitulo] = useState('');
   const [horario, setHorario] = useState('');
   const [leadId, setLeadId] = useState('');
+  const [observacoes, setObservacoes] = useState('');
 
   const valido = data && titulo.trim();
 
@@ -39,12 +41,13 @@ export function ModalTarefaNova({ leads, onFechar, onCriar, criando }: { leads: 
               </option>
             ))}
           </Select>
+          <Textarea rotulo="Observações (opcional)" categoria="agenda" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Detalhes extras, o que precisa ser levado, quem precisa ser avisado…" />
         </div>
 
         <button
           type="button"
           disabled={!valido || criando}
-          onClick={() => onCriar({ titulo: titulo.trim(), data, horario: horario || null, observacoes: null, leadId: leadId || null })}
+          onClick={() => onCriar({ titulo: titulo.trim(), data, horario: horario || null, observacoes: observacoes.trim() || null, leadId: leadId || null })}
           className="w-full rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"
         >
           {criando ? 'Salvando…' : 'Adicionar tarefa'}

@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Calendar,
+  ChevronDown,
   ClipboardCheck,
   Clock,
   Filter,
@@ -20,7 +21,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Suspense, useEffect, useState, type ReactNode } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTema } from '../lib/useTema';
 import { Skeleton } from './Skeleton';
@@ -103,8 +104,18 @@ function classesLink({ isActive }: { isActive: boolean }) {
   return ['nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium', isActive ? 'is-active' : ''].join(' ');
 }
 
+const CHAVE_NUCLEOS_ABERTOS = 'emcena_nucleos_abertos';
+
+/** Núcleo dono da rota atual — usado só pra garantir que ele já abre
+    sozinho ao navegar pra dentro dele (ver efeito abaixo), nunca pra
+    fechar os outros que o gestor tenha aberto na mão. */
+function nucleoDaRota(pathname: string): string | null {
+  return NUCLEOS.find((n) => n.itens.some((i) => i.to === pathname))?.titulo ?? null;
+}
+
 export default function Layout() {
   const { session } = useAuth();
+  const location = useLocation();
   const email = session?.user?.email ?? '';
   const nomePerfil = (session?.user?.user_metadata as { nome?: string } | undefined)?.nome || email || 'Gestor';
   const [colapsada, setColapsada] = useState(() => {
@@ -114,6 +125,40 @@ export default function Layout() {
       return false;
     }
   });
+
+  /** Sidebar em accordion por núcleo (pedido do usuário, 2026-09-13 —
+      14 itens sempre visíveis ficava pesado). Cada núcleo abre/fecha
+      independente (não é "só 1 aberto por vez") e o núcleo da página
+      atual sempre acaba aberto, mesmo se o gestor tinha fechado — sem
+      isso dava pra "perder" a tela ativa atrás de um grupo recolhido. */
+  const [nucleosAbertos, setNucleosAbertos] = useState<Set<string>>(() => {
+    const ativo = nucleoDaRota(location.pathname);
+    try {
+      const salvos = JSON.parse(localStorage.getItem(CHAVE_NUCLEOS_ABERTOS) ?? '[]') as string[];
+      return new Set(ativo ? [...salvos, ativo] : salvos);
+    } catch {
+      return new Set(ativo ? [ativo] : []);
+    }
+  });
+
+  useEffect(() => {
+    const ativo = nucleoDaRota(location.pathname);
+    if (ativo) setNucleosAbertos((atual) => (atual.has(ativo) ? atual : new Set(atual).add(ativo)));
+  }, [location.pathname]);
+
+  function alternarNucleo(titulo: string) {
+    setNucleosAbertos((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(titulo)) novo.delete(titulo);
+      else novo.add(titulo);
+      try {
+        localStorage.setItem(CHAVE_NUCLEOS_ABERTOS, JSON.stringify([...novo]));
+      } catch {
+        /* localStorage indisponível (aba privada etc.) — só não persiste entre sessões */
+      }
+      return novo;
+    });
+  }
 
   function alternarColapso() {
     setColapsada((atual) => {
@@ -165,17 +210,33 @@ export default function Layout() {
               {!colapsada && <span className="truncate">{PAINEL.rotulo}</span>}
             </NavLink>
           </div>
-          {NUCLEOS.map((nucleo) => (
-            <div key={nucleo.titulo} className="flex flex-col gap-1">
-              {!colapsada && <p className="px-3 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-text-ultra">{nucleo.titulo}</p>}
-              {nucleo.itens.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.to === '/'} title={colapsada ? item.rotulo : undefined} className={classesLink}>
-                  <item.Icone className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
-                  {!colapsada && <span className="truncate">{item.rotulo}</span>}
-                </NavLink>
-              ))}
-            </div>
-          ))}
+          {NUCLEOS.map((nucleo) => {
+            // colapsada (modo só-ícone) ignora o accordion de propósito —
+            // já é a forma mais compacta, empilhar as duas reduções em
+            // cima uma da outra só confundiria.
+            const aberto = colapsada || nucleosAbertos.has(nucleo.titulo);
+            return (
+              <div key={nucleo.titulo} className="flex flex-col gap-1">
+                {!colapsada && (
+                  <button
+                    type="button"
+                    onClick={() => alternarNucleo(nucleo.titulo)}
+                    className="flex items-center justify-between px-3 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-text-ultra transition-colors hover:text-text-faint"
+                  >
+                    {nucleo.titulo}
+                    <ChevronDown className={`h-3 w-3 flex-shrink-0 transition-transform ${aberto ? '' : '-rotate-90'}`} strokeWidth={2} />
+                  </button>
+                )}
+                {aberto &&
+                  nucleo.itens.map((item) => (
+                    <NavLink key={item.to} to={item.to} end={item.to === '/'} title={colapsada ? item.rotulo : undefined} className={classesLink}>
+                      <item.Icone className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
+                      {!colapsada && <span className="truncate">{item.rotulo}</span>}
+                    </NavLink>
+                  ))}
+              </div>
+            );
+          })}
         </nav>
 
         {/* rodapé — status operacional (prompt master, seção 2.1) +

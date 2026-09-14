@@ -11,6 +11,7 @@ export function montarMensagemConvocacao({
   local,
   horaInicio,
   diaria,
+  linkConfirmacao,
 }: {
   membro: MembroEquipe;
   clienteNome: string;
@@ -18,6 +19,11 @@ export function montarMensagemConvocacao({
   local: string | null;
   horaInicio: string | null;
   diaria: number;
+  /** Link único de confirmação (2026-09-14, ver migration_032) — quando
+      informado, substitui o antigo "responde com Confirmado" por um
+      clique direto, sem precisar do gestor atualizar o status na mão
+      depois de ler a resposta. */
+  linkConfirmacao?: string | null;
 }): string {
   const linhas = [
     `Oi, ${membro.nome}! Tudo bem? 😊`,
@@ -32,7 +38,9 @@ export function montarMensagemConvocacao({
       .filter(Boolean)
       .join('\n'),
     'Lembrete: traje All Black completo + EPIs (avental, bota de proteção, crachá).',
-    'Pode confirmar presença? Responde só com "Confirmado" ou me avisa se não puder. 🥂',
+    linkConfirmacao
+      ? `✅ Confirme (ou avise que não pode) direto por aqui: ${linkConfirmacao}`
+      : 'Pode confirmar presença? Responde só com "Confirmado" ou me avisa se não puder. 🥂',
   ];
   return linhas.join('\n\n');
 }

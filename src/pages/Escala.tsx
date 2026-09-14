@@ -16,6 +16,7 @@ import { SkeletonLinhas } from '../components/Skeleton';
 import { Checkbox } from '../components/ui/Checkbox';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Select } from '../components/ui/Select';
+import { montarLinkConfirmacao } from '../lib/api/confirmacaoEscala';
 import { montarMensagemConvocacao } from '../lib/mensagemConvocacao';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
 import { enviarConvocacaoEmLote, enviarConvocacaoWhatsapp } from '../lib/api/whatsapp';
@@ -305,6 +306,7 @@ export default function Escala() {
                                     local: evento.local,
                                     horaInicio: evento.hora_inicio,
                                     diaria: esc.diaria,
+                                    linkConfirmacao: montarLinkConfirmacao(esc.token),
                                   })
                                 )
                                 .join('\n\n---\n\n');
@@ -381,6 +383,7 @@ export default function Escala() {
                                       local: evento.local,
                                       horaInicio: evento.hora_inicio,
                                       diaria: esc.diaria,
+                                      linkConfirmacao: montarLinkConfirmacao(esc.token),
                                     })
                                   )
                                   .then(() => toast.sucesso('Mensagem copiada — cole no WhatsApp.'))
@@ -397,6 +400,19 @@ export default function Escala() {
                               className="rounded-sm border border-people/40 bg-people/10 px-2.5 py-1 text-[11.5px] font-semibold text-people hover:bg-people/20 disabled:opacity-50"
                             >
                               {enviandoEscalaId === esc.id ? 'Enviando…' : 'Enviar via WhatsApp'}
+                            </button>
+                            <button
+                              type="button"
+                              title="Copia o link único de confirmação desta pessoa — dá pra mandar por qualquer canal (WhatsApp, SMS, etc.), não muda depois de gerado."
+                              onClick={() =>
+                                navigator.clipboard
+                                  .writeText(montarLinkConfirmacao(esc.token))
+                                  .then(() => toast.sucesso('Link de confirmação copiado.'))
+                                  .catch(() => toast.aviso('Não foi possível copiar automaticamente.'))
+                              }
+                              className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text"
+                            >
+                              Copiar link de confirmação
                             </button>
                             <button type="button" onClick={() => setHoraExtraAberta({ escala: esc, evento })} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
                               Hora extra

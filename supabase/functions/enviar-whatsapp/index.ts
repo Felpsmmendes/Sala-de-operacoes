@@ -7,12 +7,16 @@
 //
 // Deploy:
 //   supabase functions deploy enviar-whatsapp
-//   supabase secrets set WHATSAPP_ACCESS_TOKEN=xxx WHATSAPP_PHONE_NUMBER_ID=xxx
+//
+// Credencial vem de `integracao_whatsapp` (ver migration_031 +
+// _shared/whatsapp.ts) — o gestor conecta/desconecta pela aba "CRM >
+// Conectar WhatsApp", não é mais secret fixo de Edge Function.
 //
 // Chamada esperada (body JSON): { telefone, template, parametros: string[] }
 // — `template` é o nome exato aprovado na Meta (ver templates em
 // docs/ROADMAP.md, Fase B), `parametros` preenche {{1}}, {{2}}... na ordem.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { buscarCredenciaisWhatsapp } from '../_shared/whatsapp.ts';
 
 /** Telefone livre (qualquer formato que o cadastro de equipe aceitar) pro
     formato E.164 que a API da Meta exige (só dígitos, com DDI). Assume
@@ -30,7 +34,8 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
-  if (!supabaseUrl || !anonKey) return new Response(JSON.stringify({ erro: 'SUPABASE_URL/SUPABASE_ANON_KEY ausentes.' }), { status: 500 });
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) return new Response(JSON.stringify({ erro: 'Variáveis de ambiente ausentes.' }), { status: 500 });
 
   // repassa o Authorization de quem chamou — supabase.functions.invoke()
   // no frontend já manda o JWT da sessão atual sozinho.
@@ -40,9 +45,9 @@ Deno.serve(async (req) => {
   const { data: ehGestor, error: erroRpc } = await supabase.rpc('eh_gestor');
   if (erroRpc || !ehGestor) return new Response(JSON.stringify({ erro: 'Só o gestor pode enviar mensagem em nome da empresa.' }), { status: 403 });
 
-  const token = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
-  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
-  if (!token || !phoneNumberId) return new Response(JSON.stringify({ erro: 'WHATSAPP_ACCESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID não configurado — rode "supabase secrets set".' }), { status: 500 });
+  const credenciais = await buscarCredenciaisWhatsapp(supabaseUrl, serviceRoleKey);
+  if (!credenciais) return new Response(JSON.stringify({ erro: 'WhatsApp não conectado — configure em CRM > Conectar WhatsApp.' }), { status: 500 });
+  const { accessToken: token, phoneNumberId } = credenciais;
 
   let corpo: { telefone?: string; template?: string; parametros?: string[] };
   try {

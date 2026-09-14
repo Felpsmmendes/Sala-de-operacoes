@@ -1,5 +1,6 @@
-import { Copy, FileDown, MessageSquare, Pencil, Receipt, X } from 'lucide-react';
+import { Copy, ExternalLink, FileDown, Mail, MessageSquare, Pencil, Phone, Receipt, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { atualizarOrcamento, criarOrcamento, calcularValorHoraAdicional, calcularValorServico, listarOrcamentos } from '../lib/api/orcamentos';
 import { listarLeads, registrarInteracao } from '../lib/api/leads';
 import { listarRegioesFrete } from '../lib/api/regioesFrete';
@@ -18,7 +19,7 @@ import { calcularFrete } from '../lib/freteConfig';
 import { gerarPdfProposta } from '../lib/pdfProposta';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
-import { formatarMoeda, formatarData } from '../lib/status';
+import { formatarMoeda, formatarData, normalizarTexto } from '../lib/status';
 import type { Lead, OrcamentoCompleto, RegiaoFrete, Servico, Veiculo } from '../lib/types';
 
 const CATEGORIAS: { chave: Servico['categoria']; titulo: string }[] = [
@@ -52,6 +53,7 @@ export default function Orcamentos() {
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [buscaOrcamentos, setBuscaOrcamentos] = useState('');
 
   useEffect(() => {
     Promise.all([listarLeads(), listarServicos(), listarOrcamentos(), listarRegioesFrete(), listarVeiculos()])
@@ -106,6 +108,15 @@ export default function Orcamentos() {
 
   const valorFreteCobrado = resultadoFrete?.valorFrete ?? 0;
   const valorFreteCusto = resultadoFrete?.custoReal ?? 0;
+
+  // busca nos orçamentos salvos (pedido do usuário, 2026-09-14) — só por
+  // nome do cliente, que é o que dá pra reconhecer de cabeça; normaliza
+  // acento/maiúscula pra "joao" achar "João".
+  const orcamentosFiltrados = useMemo(() => {
+    const termo = normalizarTexto(buscaOrcamentos.trim());
+    if (!termo) return orcamentos;
+    return orcamentos.filter((o) => normalizarTexto(o.lead?.nome ?? '').includes(termo));
+  }, [orcamentos, buscaOrcamentos]);
 
   const totalServicos = itens.reduce((soma, i) => soma + i.valor + i.horasAdicionais * i.valorHoraAdicional, 0);
   const total = totalServicos + valorFreteCobrado;
@@ -340,19 +351,56 @@ export default function Orcamentos() {
               })}
 
               <Panel>
-                <PanelHeader titulo="Orçamentos salvos" desc={`${orcamentos.length} orçamento(s)`} />
+                <PanelHeader
+                  titulo="Orçamentos salvos"
+                  desc={buscaOrcamentos ? `${orcamentosFiltrados.length} de ${orcamentos.length} orçamento(s)` : `${orcamentos.length} orçamento(s)`}
+                  acao={
+                    orcamentos.length > 0 && (
+                      <div className="relative w-48">
+                        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" strokeWidth={2} />
+                        <Input value={buscaOrcamentos} onChange={(e) => setBuscaOrcamentos(e.target.value)} placeholder="Buscar cliente…" className="pl-8" />
+                      </div>
+                    )
+                  }
+                />
                 {orcamentos.length === 0 ? (
                   <EstadoVazio Icone={Receipt} titulo="Nenhum orçamento salvo ainda" />
+                ) : orcamentosFiltrados.length === 0 ? (
+                  <EstadoVazio Icone={Search} titulo="Nenhum orçamento encontrado" descricao={`Nenhum cliente bate com "${buscaOrcamentos}".`} />
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {orcamentos.map((o) => (
-                      <div key={o.id} className={`flex items-center justify-between gap-3 rounded-sm border px-3 py-2.5 text-sm ${o.id === editandoId ? 'border-money bg-raised' : 'border-line bg-input'}`}>
+                    {orcamentosFiltrados.map((o) => (
+                      <div key={o.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-sm border px-3 py-2.5 text-sm ${o.id === editandoId ? 'border-money bg-raised' : 'border-line bg-input'}`}>
                         <div className="min-w-0">
                           <strong className="block truncate text-text">{o.lead?.nome ?? '—'}</strong>
-                          <span className="text-[11.5px] text-text-dim">{formatarData(o.data_evento)} · {o.itens.length} serviço(s)</span>
+                          <span className="text-[11.5px] text-text-dim">
+                            {formatarData(o.data_evento)} · {o.itens.length} serviço(s)
+                          </span>
+                          {/* contato do lead (pedido do usuário, 2026-09-14) — só o
+                              que tiver cadastrado, nunca inventa um "—" pros dois. */}
+                          {(o.lead?.telefone || o.lead?.email) && (
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-text-faint">
+                              {o.lead?.telefone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3 flex-shrink-0" strokeWidth={2} /> {o.lead.telefone}
+                                </span>
+                              )}
+                              {o.lead?.email && (
+                                <span className="flex min-w-0 items-center gap-1">
+                                  <Mail className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
+                                  <span className="truncate">{o.lead.email}</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-shrink-0 items-center gap-3">
                           <span className="font-mono text-text">{formatarMoeda(o.valor_total)}</span>
+                          {o.lead?.id && (
+                            <Link to={`/crm?lead=${o.lead.id}`} title="Ver lead no CRM" className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-panel hover:text-people">
+                              <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
+                            </Link>
+                          )}
                           <button type="button" onClick={() => aoEditar(o)} title="Editar orçamento" className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-panel hover:text-money">
                             <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
                           </button>

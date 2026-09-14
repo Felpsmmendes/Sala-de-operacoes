@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { CATEGORIA_BLOQUEIO_ROTULO, STATUS_EVENTO_INFO, formatarData } from '../../lib/status';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { Textarea } from '../ui/Textarea';
 import type { BloqueioAgenda, EventoComLead, Lead, NovaTarefaAgenda, TarefaComLead } from '../../lib/types';
 
 const NOME_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -202,19 +203,22 @@ export function CalendarioMensal({
                 </div>
               ))}
               {tarefasDoDia.map((t) => (
-                <div key={t.id} className="flex items-center justify-between gap-2 rounded-sm border border-line bg-input p-2.5">
-                  <label className="flex min-w-0 items-center gap-2">
-                    <input type="checkbox" checked={t.concluida} onChange={() => onAlternarTarefa(t.id, !t.concluida)} className="h-3.5 w-3.5 accent-schedule" />
-                    <span className={`min-w-0 truncate text-[13px] ${t.concluida ? 'text-text-faint line-through' : 'text-text'}`}>
-                      {t.horario && <span className="font-mono">{t.horario.slice(0, 5)} · </span>}
-                      {t.titulo}
-                    </span>
-                    {t.lead && (
-                      <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-schedule/10 px-1.5 py-0.5 text-[10.5px] text-schedule">
-                        <User className="h-2.5 w-2.5" strokeWidth={2.5} />
-                        {t.lead.nome}
+                <div key={t.id} className="flex items-start justify-between gap-2 rounded-sm border border-line bg-input p-2.5">
+                  <label className="flex min-w-0 items-start gap-2">
+                    <input type="checkbox" checked={t.concluida} onChange={() => onAlternarTarefa(t.id, !t.concluida)} className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 accent-schedule" />
+                    <span className="min-w-0">
+                      <span className={`flex flex-wrap items-center gap-1.5 text-[13px] ${t.concluida ? 'text-text-faint line-through' : 'text-text'}`}>
+                        {t.horario && <span className="font-mono">{t.horario.slice(0, 5)} · </span>}
+                        {t.titulo}
+                        {t.lead && (
+                          <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-schedule/10 px-1.5 py-0.5 text-[10.5px] font-normal text-schedule">
+                            <User className="h-2.5 w-2.5" strokeWidth={2.5} />
+                            {t.lead.nome}
+                          </span>
+                        )}
                       </span>
-                    )}
+                      {t.observacoes && <span className="mt-0.5 block text-[11.5px] text-text-dim">{t.observacoes}</span>}
+                    </span>
                   </label>
                   <button type="button" onClick={() => onExcluirTarefa(t.id)} title="Excluir tarefa" className="flex-shrink-0 text-text-faint hover:text-danger">
                     <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
@@ -244,6 +248,7 @@ function FormNovaTarefa({ data, leads, onCriar, criando }: { data: string; leads
   const [titulo, setTitulo] = useState('');
   const [horario, setHorario] = useState('');
   const [leadId, setLeadId] = useState('');
+  const [observacoes, setObservacoes] = useState('');
 
   if (!aberto) {
     return (
@@ -265,15 +270,17 @@ function FormNovaTarefa({ data, leads, onCriar, criando }: { data: string; leads
           </option>
         ))}
       </Select>
+      <Textarea categoria="agenda" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Observações (opcional): detalhes extras, o que precisa ser levado…" className="min-h-[60px]" />
       <div className="flex gap-2">
         <button
           type="button"
           disabled={criando || !titulo.trim()}
           onClick={() => {
-            onCriar({ titulo: titulo.trim(), data, horario: horario || null, observacoes: null, leadId: leadId || null });
+            onCriar({ titulo: titulo.trim(), data, horario: horario || null, observacoes: observacoes.trim() || null, leadId: leadId || null });
             setTitulo('');
             setHorario('');
             setLeadId('');
+            setObservacoes('');
             setAberto(false);
           }}
           className="flex-1 rounded-sm bg-accent px-2.5 py-1.5 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"

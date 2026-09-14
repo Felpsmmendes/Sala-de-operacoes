@@ -1,4 +1,4 @@
-import { Calendar, CheckCircle2, Clock, Hammer, Lock, ListChecks } from 'lucide-react';
+import { Calendar, Lock, ListChecks } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { criarBloqueio, excluirBloqueio, listarBloqueios } from '../lib/api/bloqueiosAgenda';
@@ -7,7 +7,6 @@ import { listarLeads } from '../lib/api/leads';
 import { criarTarefa, excluirTarefa, listarTarefas, marcarTarefaConcluida } from '../lib/api/tarefasAgenda';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
-import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
@@ -147,43 +146,37 @@ export default function Agenda() {
   const proximos = eventos.filter((ev) => ev.data_evento >= hoje && ev.status !== 'cancelado').slice(0, 8);
   const proximosBloqueios = bloqueios.filter((b) => b.data_fim >= hoje).slice(0, 6);
 
-  const contar = (...status: StatusEvento[]) => eventos.filter((ev) => status.includes(ev.status)).length;
-
   return (
     <>
       <Cabecalho titulo="Agenda Operacional" subtitulo="Calendário mensal com datas reservadas, tarefas livres, bloqueios e status de montagem de cada evento." />
       <Conteudo>
-        <MetricGrid>
-          <MetricCard Icone={Calendar} rotulo="Total de eventos" valor={String(eventos.length)} legenda="Todos os contratos" categoria="agenda" />
-          <MetricCard Icone={Clock} rotulo="Agendados" valor={String(contar('agendado'))} legenda="Ainda não começaram a montagem" categoria="agenda" />
-          <MetricCard Icone={Hammer} rotulo="Em montagem/execução" valor={String(contar('em_montagem', 'em_execucao'))} legenda="Operação em andamento" categoria="agenda" />
-          <MetricCard Icone={CheckCircle2} rotulo="Encerrados" valor={String(contar('encerrado'))} legenda="Já aconteceram" categoria="agenda" />
-        </MetricGrid>
-
-        {/* botões sempre visíveis (pedido do usuário, 2026-09-09) — "+ Evento"
-            leva pra onde um evento de verdade nasce (todo evento vem de um
-            contrato, nunca é criado solto aqui). */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          <Link to="/contratos" className="flex items-center gap-1.5 rounded-sm bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
-            <Calendar className="h-3.5 w-3.5" strokeWidth={2} /> + Evento
-          </Link>
-          <button type="button" onClick={() => setTarefaModalAberto(true)} className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-2 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text">
-            <ListChecks className="h-3.5 w-3.5" strokeWidth={2} /> + Tarefa
-          </button>
-          <button type="button" onClick={() => setBloqueioModalAberto(true)} className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-2 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text">
-            <Lock className="h-3.5 w-3.5" strokeWidth={2} /> + Bloqueio
-          </button>
-        </div>
-
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
         {carregando ? (
           <SkeletonLinhas />
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px] lg:items-start">
             <Panel>
               <PanelHeader
                 titulo="Calendário"
                 desc="Clique num dia pra ver os detalhes ou adicionar uma tarefa — eventos vêm de um contrato, tarefa é livre, bloqueio só avisa."
+                acao={
+                  // botões sempre visíveis (pedido do usuário, 2026-09-09),
+                  // movidos pro cabeçalho do calendário (2026-09-14) — a
+                  // fileira de métricas + botões em cima empurrava o
+                  // calendário pra baixo, sobrando pouca altura pra ver o
+                  // mês inteiro sem rolar.
+                  <div className="flex flex-wrap gap-2">
+                    <Link to="/contratos" className="flex items-center gap-1.5 rounded-sm bg-accent px-3 py-1.5 text-[12px] font-semibold text-accent-ink hover:bg-accent-strong">
+                      <Calendar className="h-3.5 w-3.5" strokeWidth={2} /> + Evento
+                    </Link>
+                    <button type="button" onClick={() => setTarefaModalAberto(true)} className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-1.5 text-[12px] font-medium text-text-dim hover:bg-raised hover:text-text">
+                      <ListChecks className="h-3.5 w-3.5" strokeWidth={2} /> + Tarefa
+                    </button>
+                    <button type="button" onClick={() => setBloqueioModalAberto(true)} className="flex items-center gap-1.5 rounded-sm border border-line px-3 py-1.5 text-[12px] font-medium text-text-dim hover:bg-raised hover:text-text">
+                      <Lock className="h-3.5 w-3.5" strokeWidth={2} /> + Bloqueio
+                    </button>
+                  </div>
+                }
               />
               <CalendarioMensal
                 eventos={eventos}
@@ -204,7 +197,12 @@ export default function Agenda() {
               />
             </Panel>
 
-            <div className="flex flex-col gap-4">
+            {/* lateral fixa (pedido do usuário, 2026-09-14): "Próximos
+                eventos"/"Bloqueios ativos" ficam grudados ao lado do
+                calendário e continuam visíveis ao rolar a página, em vez
+                de sumir lá embaixo — mesmo padrão `lg:sticky lg:top-4` já
+                usado no "Resumo do orçamento" de Orcamentos.tsx. */}
+            <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
               <Panel>
                 <PanelHeader titulo="Próximos eventos" desc={`${proximos.length} nos próximos meses`} />
                 {proximos.length === 0 ? (

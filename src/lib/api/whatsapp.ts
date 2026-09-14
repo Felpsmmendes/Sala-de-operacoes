@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { montarLinkConfirmacao } from './confirmacaoEscala';
 import { FUNCAO_EQUIPE_ROTULO, formatarData, formatarMoeda } from '../status';
 import type { EscalaComMembro, EventoComLead } from '../types';
 
@@ -19,6 +20,7 @@ export async function enviarConvocacaoWhatsapp(escala: EscalaComMembro, evento: 
     evento.local ? `📍 Local: ${evento.local}` : null,
     `🎉 Evento: ${evento.contrato?.lead?.nome ?? 'evento'}`,
     `💰 Diária: ${formatarMoeda(escala.diaria)}`,
+    `✅ Confirme (ou avise que não pode) direto por aqui: ${montarLinkConfirmacao(escala.token)}`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -32,6 +34,40 @@ export async function enviarConvocacaoWhatsapp(escala: EscalaComMembro, evento: 
   });
   if (error) throw error;
   if (data?.erro) throw new Error(typeof data.erro === 'string' ? data.erro : JSON.stringify(data.erro));
+}
+
+export type StatusWhatsapp = {
+  configurado: boolean;
+  valido: boolean;
+  numero?: string | null;
+  nomeVerificado?: string | null;
+  qualidade?: string | null;
+  erro?: string;
+};
+
+/** Status da conexão oficial (Meta) — nunca vê o token, só pergunta pra
+    Edge Function `whatsapp-status` (ver lá) se está configurado e ainda
+    válido junto à Meta. Usado pela aba "Conectar WhatsApp" do CRM. */
+export async function verificarStatusWhatsapp(): Promise<StatusWhatsapp> {
+  const { data, error } = await supabase.functions.invoke('whatsapp-status');
+  if (error) throw error;
+  return data as StatusWhatsapp;
+}
+
+/** Conecta (ou troca) o número do WhatsApp — grava em `integracao_whatsapp`
+    (ver migration_031, 2026-09-14: antes disso só dava pra configurar
+    via `supabase secrets set`; agora o gestor conecta/desconecta pela
+    própria tela, útil quando a empresa trocar de número). O token nunca
+    é lido de volta por aqui — só as Edge Functions leem, com a service
+    role. */
+export async function conectarWhatsapp(phoneNumberId: string, accessToken: string): Promise<void> {
+  const { error } = await supabase.from('integracao_whatsapp').upsert({ id: 'atual', phone_number_id: phoneNumberId, access_token: accessToken, conectado_em: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+
+export async function desconectarWhatsapp(): Promise<void> {
+  const { error } = await supabase.from('integracao_whatsapp').delete().eq('id', 'atual');
+  if (error) throw new Error(error.message);
 }
 
 export type ResultadoConvocacaoLote = {
