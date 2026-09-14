@@ -397,6 +397,17 @@ export type PortalPublico = Omit<PortalCliente, 'assinatura_ip' | 'assinatura_ha
    verdade, criada manualmente pelo gestor no Supabase — self-signup
    continua desligado). Ver supabase/migration_010_ponto_interno.sql. */
 
+/** Allowlist de contas com acesso total (2026-09-13, ver migration_030 —
+    Fase E do roadmap, resiliência: antes disso era 1 UUID travado direto
+    no SQL, sem tabela nenhuma). Gerenciar quem entra aqui continua
+    manual pelo SQL Editor de propósito (ver comentário na migration) —
+    esta tela só LÊ, pra dar visibilidade de quem tem acesso hoje. */
+export type Gestor = {
+  id: string;
+  nome: string | null;
+  criado_em: string;
+};
+
 export type TipoPontoInterno = 'entrada' | 'saida';
 
 export type FuncionarioInterno = {

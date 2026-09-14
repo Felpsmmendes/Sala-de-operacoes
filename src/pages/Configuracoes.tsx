@@ -1,14 +1,26 @@
-import { LogOut } from 'lucide-react';
-import { useState } from 'react';
+import { LogOut, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Input } from '../components/ui/Input';
 import { useAuth } from '../lib/AuthContext';
+import { listarGestores } from '../lib/api/gestores';
+import { mensagemDeErro } from '../lib/erroAmigavel';
+import { formatarData } from '../lib/status';
+import type { Gestor } from '../lib/types';
 
 export default function Configuracoes() {
   const { session, sair, atualizarNome, atualizarSenha } = useAuth();
   const email = session?.user?.email ?? '—';
   const nomeAtual = (session?.user?.user_metadata as { nome?: string } | undefined)?.nome ?? '';
+
+  const [gestores, setGestores] = useState<Gestor[] | null>(null);
+  const [erroGestores, setErroGestores] = useState<string | null>(null);
+  useEffect(() => {
+    listarGestores()
+      .then(setGestores)
+      .catch((e) => setErroGestores(mensagemDeErro(e)));
+  }, []);
 
   const [nome, setNome] = useState(nomeAtual);
   const [salvandoNome, setSalvandoNome] = useState(false);
@@ -94,6 +106,28 @@ export default function Configuracoes() {
               <LogOut className="h-4 w-4" strokeWidth={2} />
               Sair da conta
             </button>
+          </Panel>
+
+          <Panel>
+            <PanelHeader titulo="Quem tem acesso" desc="Contas com acesso total ao sistema — adicionar uma nova é manual pelo SQL Editor do Supabase (ver migration_030), de propósito." />
+            {erroGestores ? (
+              <p className="text-[12.5px] text-text-dim">Ainda não disponível — rode a migração mais recente no Supabase (migration_030_multiplos_gestores.sql).</p>
+            ) : !gestores ? (
+              <p className="text-[12.5px] text-text-dim">Carregando…</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {gestores.map((g) => (
+                  <div key={g.id} className="flex items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2 text-[12.5px]">
+                    <span className="flex items-center gap-1.5 text-text">
+                      <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-success" strokeWidth={2} />
+                      {g.nome || g.id}
+                    </span>
+                    <span className="text-text-faint">desde {formatarData(g.criado_em)}</span>
+                  </div>
+                ))}
+                {gestores.length <= 1 && <p className="mt-1 text-[11.5px] text-pending">Só 1 conta com acesso — se ela travar, ninguém mais administra o sistema. Vale criar uma 2ª.</p>}
+              </div>
+            )}
           </Panel>
         </div>
       </Conteudo>
