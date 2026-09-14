@@ -1,5 +1,5 @@
 import { ArrowDownCircle, ArrowUpCircle, BarChart3, ChevronLeft, ChevronRight, Download, FileDown, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { listarAuditorias } from '../lib/api/auditoria';
 import { diasAteEvento, listarContratos } from '../lib/api/contratos';
 import { listarEscalasDosEventos } from '../lib/api/escalas';

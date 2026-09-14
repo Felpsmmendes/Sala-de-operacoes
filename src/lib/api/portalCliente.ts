@@ -48,7 +48,14 @@ export async function buscarPortalPorToken(token: string): Promise<PortalPublico
     propósito: uma falha aqui é só a métrica que não atualiza, nunca deve
     impedir o cliente de ver o portal. */
 export async function registrarVisualizacao(token: string): Promise<void> {
-  await supabase.rpc('portal_registrar_visualizacao', { p_token: token }).catch(() => {});
+  // `error` vem no retorno (não lança), então precisa checar explicitamente
+  // pra engolir de verdade — um `.catch()` sozinho não pegaria isso.
+  try {
+    const { error } = await supabase.rpc('portal_registrar_visualizacao', { p_token: token });
+    if (error) throw error;
+  } catch {
+    // silencioso de propósito — ver comentário acima.
+  }
 }
 
 export async function aprovarMoldura(token: string): Promise<void> {
