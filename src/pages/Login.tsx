@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Fingerprint } from 'lucide-react';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { LoginForm } from '../components/auth/LoginForm';
 import { TealPanel } from '../components/auth/TealPanel';
@@ -57,8 +58,15 @@ export default function Login() {
         </div>
 
         {/* Form de login */}
-        <div className="flex flex-1 items-center justify-center p-9">
+        <div className="flex flex-1 flex-col items-center justify-center gap-5 p-9">
           <LoginForm />
+          {/* Link pro Ponto Eletrônico interno (2026-09-13) — equipe fixa
+              (estagiários/funcionários) tem login próprio, separado deste,
+              direto em /ponto-interno (ver comentário lá). Sem link em
+              lugar nenhum, só quem já soubesse a URL de cor chegava lá. */}
+          <Link to="/ponto-interno" className="flex items-center gap-1.5 text-[11.5px] text-text-faint hover:text-text-dim">
+            <Fingerprint className="h-3 w-3" strokeWidth={2} /> Sou da equipe interna — bater ponto
+          </Link>
         </div>
       </div>
     </div>

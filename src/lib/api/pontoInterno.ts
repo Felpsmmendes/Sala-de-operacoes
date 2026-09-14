@@ -58,6 +58,16 @@ export async function definirAtivoFuncionario(id: string, ativo: boolean): Promi
   if (error) throw new Error(error.message);
 }
 
+/** Jornada esperada + valor/hora (2026-09-13) — sem isso configurado, o
+    relatório de horas não tem como calcular atraso/hora extra/quanto
+    pagar pra essa pessoa (fica "jornada não configurada"). */
+export type ConfigJornada = { horario_entrada_padrao: string | null; horario_saida_padrao: string | null; valor_hora: number | null; valor_hora_extra: number | null };
+
+export async function atualizarJornadaFuncionario(id: string, dados: ConfigJornada): Promise<void> {
+  const { error } = await supabase.from('funcionarios_internos').update(dados).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 /** Registros de hoje de todo mundo, pro gestor acompanhar quem já bateu
     ponto — mesmo princípio de `listarMeusRegistrosHoje`, sem o filtro por
     funcionário (RLS `gestor_tudo` libera ver todo mundo pra essa conta). */
@@ -65,6 +75,15 @@ export async function listarRegistrosDeHoje(): Promise<PontoInternoRegistro[]> {
   const inicioHoje = new Date();
   inicioHoje.setHours(0, 0, 0, 0);
   const { data, error } = await supabase.from('ponto_interno_registros').select('*').gte('horario', inicioHoje.toISOString()).order('horario', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data as PontoInternoRegistro[];
+}
+
+/** Todos os registros de um período — pro relatório de horas do gestor
+    (2026-09-13). `inicio`/`fim` são datas 'YYYY-MM-DD'; `fim` inclui o
+    dia inteiro (até 23:59:59). */
+export async function listarRegistrosPorPeriodo(inicio: string, fim: string): Promise<PontoInternoRegistro[]> {
+  const { data, error } = await supabase.from('ponto_interno_registros').select('*').gte('horario', `${inicio}T00:00:00`).lte('horario', `${fim}T23:59:59`).order('horario', { ascending: true });
   if (error) throw new Error(error.message);
   return data as PontoInternoRegistro[];
 }

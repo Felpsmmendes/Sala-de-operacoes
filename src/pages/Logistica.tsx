@@ -32,6 +32,10 @@ export default function Logistica() {
   const [erro, setErro] = useState<string | null>(null);
   const [salvandoVeiculo, setSalvandoVeiculo] = useState(false);
   const [salvandoRegiao, setSalvandoRegiao] = useState(false);
+  // status da frota (2026-09-13) — de propósito só em memória, não grava
+  // no banco: é informação operacional do MOMENTO (dia do evento), não
+  // histórico. Some ao recarregar a página, comportamento esperado.
+  const [statusFrota, setStatusFrota] = useState<Record<string, string>>({});
 
   // calculadora de frete — sem vínculo com evento/romaneio (decisão do
   // usuário, 2026-09-09): só estima, não grava nada. Reaproveita a MESMA
@@ -115,6 +119,11 @@ export default function Logistica() {
     });
   }, [veiculo, regiao, pedagios, qtdBarmenCarro, pedagiosBarmen, valorLalamove]);
 
+  const eventosHoje = useMemo(() => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    return eventos.filter((e) => e.data_evento === hoje);
+  }, [eventos]);
+
   const comprasPendentes = useMemo(
     () => [...compras.filter((c) => c.status === 'pendente')].sort((a, b) => (a.data_chegada_prevista ?? '9999-99-99').localeCompare(b.data_chegada_prevista ?? '9999-99-99')),
     [compras]
@@ -156,6 +165,53 @@ export default function Logistica() {
               ))}
             </ul>
           </div>
+        )}
+
+        {eventosHoje.length > 0 && (
+          <Panel className="mb-4">
+            <PanelHeader titulo="Frota hoje" desc={`${eventosHoje.length} evento(s) hoje — acompanhe o status de saída das vans (não fica gravado, é só do dia)`} />
+            <div className="flex flex-col gap-3">
+              {eventosHoje.map((ev) => {
+                const status = statusFrota[ev.id];
+                return (
+                  <div key={ev.id} className="rounded-sm border border-line bg-input px-3 py-3">
+                    <div className="mb-2">
+                      <strong className="text-[13px] text-text">{ev.contrato?.lead?.nome ?? '—'}</strong>
+                      <span className="ml-2 text-[12px] text-text-faint">
+                        {ev.local ?? 'local não informado'}
+                        {ev.hora_inicio ? ` · ${ev.hora_inicio.slice(0, 5)}` : ''}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Aguardando', 'Em preparação', 'Van carregada', 'Em trânsito', 'Chegou'].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setStatusFrota((prev) => ({ ...prev, [ev.id]: s }))}
+                          className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                            status === s
+                              ? s === 'Chegou'
+                                ? 'border-success/40 bg-success/15 text-success'
+                                : s === 'Em trânsito' || s === 'Van carregada'
+                                  ? 'border-pending/40 bg-pending/15 text-pending'
+                                  : 'border-neutral/40 bg-neutral/15 text-neutral'
+                              : 'border-line bg-panel text-text-dim hover:bg-raised'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    {status && status !== 'Aguardando' && (
+                      <p className="mt-2 text-[11px] text-text-faint">
+                        Status atual: <strong className="text-text">{status}</strong> · atualizado às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
         )}
 
         <Panel className="mb-4">

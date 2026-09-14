@@ -681,9 +681,27 @@ export type Database = {
         Relationships: [];
       };
       funcionarios_internos: {
-        Row: { id: string; nome: string; ativo: boolean; criado_em: string };
-        Insert: { id: string; nome: string; ativo?: boolean; criado_em?: string };
-        Update: { id?: string; nome?: string; ativo?: boolean; criado_em?: string };
+        Row: { id: string; nome: string; ativo: boolean; criado_em: string; horario_entrada_padrao: string | null; horario_saida_padrao: string | null; valor_hora: number | null; valor_hora_extra: number | null };
+        Insert: {
+          id: string;
+          nome: string;
+          ativo?: boolean;
+          criado_em?: string;
+          horario_entrada_padrao?: string | null;
+          horario_saida_padrao?: string | null;
+          valor_hora?: number | null;
+          valor_hora_extra?: number | null;
+        };
+        Update: {
+          id?: string;
+          nome?: string;
+          ativo?: boolean;
+          criado_em?: string;
+          horario_entrada_padrao?: string | null;
+          horario_saida_padrao?: string | null;
+          valor_hora?: number | null;
+          valor_hora_extra?: number | null;
+        };
         Relationships: [];
       };
       ponto_interno_registros: {

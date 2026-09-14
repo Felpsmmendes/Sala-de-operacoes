@@ -1,4 +1,4 @@
-import { CheckCircle2, ListChecks } from 'lucide-react';
+import { CheckCircle2, Clock3, ListChecks } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
@@ -19,6 +19,81 @@ function aoFalhar(e: unknown) {
   window.alert(mensagemDeErro(e));
 }
 
+function toMinutos(horario: string): number {
+  const [h, m] = horario.slice(0, 5).split(':').map(Number);
+  return h * 60 + m;
+}
+
+/** Timeline horizontal dos cues (pedido do usuário, 2026-09-13) — mesma
+    lista, só posicionada no tempo em vez de empilhada. Assume `cues` já
+    vem ordenado por horário (como a lista sempre mostrou). Duração de
+    cada bloco é estimada até o próximo cue (ou 30min pro último) — não
+    existe campo de duração no banco, só horário de início. */
+function TimelineCues({ cues }: { cues: CueSheetItem[] }) {
+  if (cues.length === 0) return null;
+
+  const minInicio = toMinutos(cues[0].horario);
+  const minFim = toMinutos(cues[cues.length - 1].horario) + 60;
+  const duracaoTotal = minFim - minInicio || 60;
+
+  return (
+    <div className="overflow-x-auto pb-2">
+      <div className="relative min-w-[600px]" style={{ height: `${cues.length * 52 + 32}px` }}>
+        {/* régua de horários */}
+        <div className="absolute left-0 right-0 top-0 border-b border-line pb-1">
+          {Array.from({ length: Math.ceil(duracaoTotal / 60) + 1 }).map((_, i) => {
+            const min = minInicio + i * 60;
+            const h = Math.floor(min / 60) % 24;
+            const m = min % 60;
+            const pos = ((min - minInicio) / duracaoTotal) * 100;
+            return (
+              <div key={i} className="absolute" style={{ left: `${pos}%` }}>
+                <div className="h-2 w-px bg-line" />
+                <span className="font-mono text-[10px] text-text-faint">
+                  {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* blocos dos cues */}
+        {cues.map((c, i) => {
+          const pos = ((toMinutos(c.horario) - minInicio) / duracaoTotal) * 100;
+          const proxMin = cues[i + 1] ? toMinutos(cues[i + 1].horario) : toMinutos(c.horario) + 30;
+          const largura = Math.max(4, ((proxMin - toMinutos(c.horario)) / duracaoTotal) * 100);
+          return (
+            <div key={c.id} className="absolute flex items-center" style={{ top: `${i * 52 + 32}px`, left: `${pos}%`, width: `${largura}%` }}>
+              <div
+                className={`flex h-9 w-full min-w-[90px] items-center gap-2 truncate rounded-sm border px-2 text-[11.5px] ${
+                  c.concluido ? 'border-success/30 bg-success/10 text-success' : c.origem === 'automatico' ? 'border-schedule/25 bg-schedule/10 text-schedule' : 'border-line bg-input text-text'
+                }`}
+              >
+                {c.concluido && <CheckCircle2 className="h-3 w-3 flex-shrink-0" strokeWidth={2} />}
+                <span className="flex-shrink-0 font-mono text-[10px] text-text-faint">{c.horario.slice(0, 5)}</span>
+                <span className="truncate font-medium">{c.titulo}</span>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* linha do "agora", só se o momento cair dentro da janela do roteiro */}
+        {(() => {
+          const agora = new Date();
+          const minAgora = agora.getHours() * 60 + agora.getMinutes();
+          if (minAgora < minInicio || minAgora > minFim) return null;
+          const posAgora = ((minAgora - minInicio) / duracaoTotal) * 100;
+          return (
+            <div className="absolute bottom-0 top-0 w-px bg-danger/60" style={{ left: `${posAgora}%` }}>
+              <span className="absolute left-1 top-1 whitespace-nowrap font-mono text-[9px] text-danger">agora</span>
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}
+
 export default function CueSheet() {
   const [searchParams] = useSearchParams();
   const [eventos, setEventos] = useState<EventoComLead[]>([]);
@@ -27,6 +102,7 @@ export default function CueSheet() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [viewCue, setViewCue] = useState<'lista' | 'timeline'>('lista');
 
   async function carregarBase() {
     setCarregando(true);
@@ -137,9 +213,33 @@ export default function CueSheet() {
 
         {eventoAtual && (
           <Panel>
-            <PanelHeader titulo="Cronograma" desc={cues.length === 0 ? undefined : `${concluidos} de ${cues.length} concluídos`} />
+            <PanelHeader
+              titulo="Cronograma"
+              desc={cues.length === 0 ? undefined : `${concluidos} de ${cues.length} concluídos`}
+              acao={
+                cues.length > 0 && (
+                  <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
+                    {(['lista', 'timeline'] as const).map((v) => (
+                      <button key={v} type="button" onClick={() => setViewCue(v)} className={`flex items-center gap-1.5 rounded-[5px] px-3 py-1.5 text-[12px] font-medium transition-colors ${viewCue === v ? 'bg-raised text-schedule' : 'text-text-dim hover:text-text'}`}>
+                        {v === 'lista' ? (
+                          <>
+                            <ListChecks className="h-3 w-3" strokeWidth={2} /> Lista
+                          </>
+                        ) : (
+                          <>
+                            <Clock3 className="h-3 w-3" strokeWidth={2} /> Timeline
+                          </>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )
+              }
+            />
             {cues.length === 0 ? (
               <EstadoVazio Icone={ListChecks} titulo="Nenhum cue cadastrado ainda pra este evento" />
+            ) : viewCue === 'timeline' ? (
+              <TimelineCues cues={cues} />
             ) : (
               <ol className="flex flex-col gap-2">
                 {cues.map((c) => (

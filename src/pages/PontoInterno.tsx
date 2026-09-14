@@ -1,11 +1,12 @@
 import type { Session } from '@supabase/supabase-js';
-import { Check, Clock, LogIn, LogOut, ShieldOff, Users } from 'lucide-react';
+import { Check, Clock, LogIn, LogOut, Settings, ShieldOff, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { baterPonto, cadastrarMeuNome, definirAtivoFuncionario, listarFuncionariosInternos, listarMeusRegistrosHoje, listarRegistrosDeHoje, obterMeuFuncionario } from '../lib/api/pontoInterno';
+import { atualizarJornadaFuncionario, baterPonto, cadastrarMeuNome, definirAtivoFuncionario, listarFuncionariosInternos, listarMeusRegistrosHoje, listarRegistrosDeHoje, listarRegistrosPorPeriodo, obterMeuFuncionario } from '../lib/api/pontoInterno';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
-import { Input } from '../components/ui/Input';
+import { Input, InputMoeda } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { formatarMoeda } from '../lib/status';
 import { supabasePontoInterno } from '../lib/supabasePontoInterno';
 import type { FuncionarioInterno, PontoInternoRegistro, TipoPontoInterno } from '../lib/types';
 
@@ -13,6 +14,105 @@ const SEGUNDOS_ATE_SAIR = 8;
 
 function horaCurta(iso: string) {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function horaParaMinutos(hora: string): number {
+  const [h, m] = hora.slice(0, 5).split(':').map(Number);
+  return h * 60 + m;
+}
+
+/** Data LOCAL (não UTC) de um timestamp — agrupar por `.slice(0,10)` do
+    ISO cru mistura dias errado pra quem bate ponto perto da meia-noite
+    em UTC-3 (ex.: 21h de Brasília já é dia seguinte em UTC). */
+function dataLocal(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatarMinutos(min: number): string {
+  if (min <= 0) return '—';
+  return `${Math.floor(min / 60)}h${Math.round(min % 60) > 0 ? ` ${Math.round(min % 60)}min` : ''}`;
+}
+
+type ResumoJornada = {
+  funcionario: FuncionarioInterno;
+  minutosNormais: number;
+  minutosExtras: number;
+  atrasoMin: number;
+  diasTrabalhados: number;
+  registros: number;
+  jornadaConfigurada: boolean;
+  valorAPagar: number | null;
+};
+
+/** Agrupa por DIA (jornada/hora extra são um conceito diário — "8h hoje
+    + 10h ontem" não é "9h extra hoje"), soma pares entrada→saída de cada
+    dia (par quebrado, ex. jornada em andamento, simplesmente não soma
+    esse dia — não trava o resto), e compara contra a jornada esperada do
+    funcionário pra separar normal de extra. Sem jornada configurada,
+    tudo conta como "normal" (não dá pra saber o que seria extra) e
+    "valorAPagar" fica null. Sem tolerância (decisão do usuário): 1
+    minuto além do horário já conta. */
+function calcularResumoJornada(registros: PontoInternoRegistro[], funcionarios: FuncionarioInterno[]): ResumoJornada[] {
+  return funcionarios.map((f) => {
+    const regs = registros.filter((r) => r.funcionario_id === f.id).sort((a, b) => a.horario.localeCompare(b.horario));
+
+    const porDia = new Map<string, PontoInternoRegistro[]>();
+    for (const r of regs) {
+      const dia = dataLocal(r.horario);
+      if (!porDia.has(dia)) porDia.set(dia, []);
+      porDia.get(dia)!.push(r);
+    }
+
+    const entradaPadraoMin = f.horario_entrada_padrao ? horaParaMinutos(f.horario_entrada_padrao) : null;
+    const saidaPadraoMin = f.horario_saida_padrao ? horaParaMinutos(f.horario_saida_padrao) : null;
+    const minutosEsperadosDia = entradaPadraoMin != null && saidaPadraoMin != null ? saidaPadraoMin - entradaPadraoMin : null;
+    // jornada virada (saída "antes" da entrada, ex. turno noturno cruzando
+    // meia-noite) não é suportada ainda — trata como não configurada em
+    // vez de gerar hora extra negativa sem sentido.
+    const jornadaConfigurada = minutosEsperadosDia != null && minutosEsperadosDia > 0;
+
+    let minutosNormais = 0;
+    let minutosExtras = 0;
+    let atrasoMin = 0;
+    let diasTrabalhados = 0;
+
+    for (const regsDoDia of porDia.values()) {
+      const ordenados = regsDoDia.slice().sort((a, b) => a.horario.localeCompare(b.horario));
+      let minutosDoDia = 0;
+      let i = 0;
+      while (i < ordenados.length - 1) {
+        if (ordenados[i].tipo === 'entrada' && ordenados[i + 1].tipo === 'saida') {
+          minutosDoDia += (new Date(ordenados[i + 1].horario).getTime() - new Date(ordenados[i].horario).getTime()) / 60_000;
+          i += 2;
+        } else {
+          i++;
+        }
+      }
+      if (minutosDoDia <= 0) continue;
+      diasTrabalhados++;
+
+      if (jornadaConfigurada) {
+        minutosNormais += Math.min(minutosDoDia, minutosEsperadosDia!);
+        minutosExtras += Math.max(0, minutosDoDia - minutosEsperadosDia!);
+      } else {
+        minutosNormais += minutosDoDia;
+      }
+
+      if (entradaPadraoMin != null) {
+        const primeiraEntrada = ordenados.find((r) => r.tipo === 'entrada');
+        if (primeiraEntrada) {
+          const d = new Date(primeiraEntrada.horario);
+          const minEntrada = d.getHours() * 60 + d.getMinutes();
+          if (minEntrada > entradaPadraoMin) atrasoMin += minEntrada - entradaPadraoMin;
+        }
+      }
+    }
+
+    const valorAPagar = f.valor_hora != null ? (minutosNormais / 60) * f.valor_hora + (minutosExtras / 60) * (f.valor_hora_extra ?? f.valor_hora) : null;
+
+    return { funcionario: f, minutosNormais, minutosExtras, atrasoMin, diasTrabalhados, registros: regs.length, jornadaConfigurada, valorAPagar };
+  });
 }
 
 /**
@@ -106,6 +206,14 @@ export default function PontoInterno() {
 
   const [equipe, setEquipe] = useState<FuncionarioInterno[] | null>(null);
   const [registrosEquipe, setRegistrosEquipe] = useState<PontoInternoRegistro[]>([]);
+  const [periodoRelatorio, setPeriodoRelatorio] = useState<'semana' | 'mes'>('semana');
+  const [registrosPeriodo, setRegistrosPeriodo] = useState<PontoInternoRegistro[]>([]);
+  const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
+  const [configurandoId, setConfigurandoId] = useState<string | null>(null);
+  // formulário sempre em string (inclusive os valores) — os campos viram
+  // number|null só na hora de salvar (ver aoSalvarJornada).
+  const [formJornada, setFormJornada] = useState({ horario_entrada_padrao: '', horario_saida_padrao: '', valor_hora: '', valor_hora_extra: '' });
+  const [salvandoJornada, setSalvandoJornada] = useState(false);
 
   function pararContagem() {
     if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
@@ -162,6 +270,50 @@ export default function PontoInterno() {
       })
       .catch(() => {});
   }, [ehGestor, session, confirmacao]);
+
+  /** Relatório de horas (2026-09-13) — período separado do "hoje" acima,
+      só recarrega quando o gestor troca semana/mês, não a cada ponto
+      batido. */
+  useEffect(() => {
+    if (!ehGestor || !session) return;
+    setCarregandoRelatorio(true);
+    const fim = new Date().toISOString().slice(0, 10);
+    const inicio = new Date();
+    if (periodoRelatorio === 'semana') inicio.setDate(inicio.getDate() - 7);
+    else inicio.setDate(1);
+    listarRegistrosPorPeriodo(inicio.toISOString().slice(0, 10), fim)
+      .then(setRegistrosPeriodo)
+      .catch(() => setRegistrosPeriodo([]))
+      .finally(() => setCarregandoRelatorio(false));
+  }, [ehGestor, session, periodoRelatorio]);
+
+  function aoAbrirConfigJornada(f: FuncionarioInterno) {
+    setConfigurandoId(f.id);
+    setFormJornada({
+      horario_entrada_padrao: f.horario_entrada_padrao?.slice(0, 5) ?? '',
+      horario_saida_padrao: f.horario_saida_padrao?.slice(0, 5) ?? '',
+      valor_hora: f.valor_hora != null ? String(f.valor_hora) : '',
+      valor_hora_extra: f.valor_hora_extra != null ? String(f.valor_hora_extra) : '',
+    });
+  }
+
+  async function aoSalvarJornada(id: string) {
+    setSalvandoJornada(true);
+    try {
+      await atualizarJornadaFuncionario(id, {
+        horario_entrada_padrao: formJornada.horario_entrada_padrao || null,
+        horario_saida_padrao: formJornada.horario_saida_padrao || null,
+        valor_hora: formJornada.valor_hora ? Number(formJornada.valor_hora) : null,
+        valor_hora_extra: formJornada.valor_hora_extra ? Number(formJornada.valor_hora_extra) : null,
+      });
+      setEquipe(await listarFuncionariosInternos());
+      setConfigurandoId(null);
+    } catch (e) {
+      window.alert(mensagemDeErro(e));
+    } finally {
+      setSalvandoJornada(false);
+    }
+  }
 
   async function aoEntrar(ev: FormEvent) {
     ev.preventDefault();
@@ -331,23 +483,123 @@ export default function PontoInterno() {
                   const registros = registrosEquipe.filter((r) => r.funcionario_id === f.id);
                   const ultimo = registros[registros.length - 1];
                   const status = !ultimo ? 'Não bateu ponto hoje' : ultimo.tipo === 'entrada' ? `Entrada às ${horaCurta(ultimo.horario)}` : `Saiu às ${horaCurta(ultimo.horario)}`;
+                  const jornadaConfigurada = f.horario_entrada_padrao && f.horario_saida_padrao;
                   return (
-                    <div key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-line bg-input px-3 py-2 text-[12.5px]">
-                      <div>
-                        <strong className={f.ativo ? 'text-text' : 'text-text-faint line-through'}>{f.nome}</strong>
-                        <span className="ml-2 text-text-faint">{status}</span>
+                    <div key={f.id} className="rounded-sm border border-line bg-input px-3 py-2 text-[12.5px]">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <strong className={f.ativo ? 'text-text' : 'text-text-faint line-through'}>{f.nome}</strong>
+                          <span className="ml-2 text-text-faint">{status}</span>
+                          {jornadaConfigurada ? (
+                            <span className="ml-2 font-mono text-[11px] text-text-faint">
+                              ({f.horario_entrada_padrao!.slice(0, 5)}–{f.horario_saida_padrao!.slice(0, 5)})
+                            </span>
+                          ) : (
+                            <span className="ml-2 text-[11px] text-pending">jornada não configurada</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button type="button" onClick={() => aoAbrirConfigJornada(f)} className="flex items-center gap-1 text-[11.5px] font-medium text-text-dim hover:underline">
+                            <Settings className="h-3 w-3" strokeWidth={2} /> Configurar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => definirAtivoFuncionario(f.id, !f.ativo).then(() => listarFuncionariosInternos().then(setEquipe))}
+                            className="text-[11.5px] font-medium text-text-dim hover:underline"
+                          >
+                            {f.ativo ? 'Desativar' : 'Reativar'}
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => definirAtivoFuncionario(f.id, !f.ativo).then(() => listarFuncionariosInternos().then(setEquipe))}
-                        className="text-[11.5px] font-medium text-text-dim hover:underline"
-                      >
-                        {f.ativo ? 'Desativar' : 'Reativar'}
-                      </button>
+
+                      {configurandoId === f.id && (
+                        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 sm:grid-cols-4">
+                          <Input rotulo="Entrada padrão" type="time" value={formJornada.horario_entrada_padrao} onChange={(e) => setFormJornada((v) => ({ ...v, horario_entrada_padrao: e.target.value }))} />
+                          <Input rotulo="Saída padrão" type="time" value={formJornada.horario_saida_padrao} onChange={(e) => setFormJornada((v) => ({ ...v, horario_saida_padrao: e.target.value }))} />
+                          <InputMoeda rotulo="Valor/hora normal" value={formJornada.valor_hora} onChange={(e) => setFormJornada((v) => ({ ...v, valor_hora: e.target.value }))} />
+                          <InputMoeda rotulo="Valor/hora extra" value={formJornada.valor_hora_extra} onChange={(e) => setFormJornada((v) => ({ ...v, valor_hora_extra: e.target.value }))} />
+                          <div className="col-span-2 flex items-center gap-2 sm:col-span-4">
+                            <button type="button" disabled={salvandoJornada} onClick={() => aoSalvarJornada(f.id)} className="rounded-sm bg-accent px-3 py-1.5 text-[12px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
+                              {salvandoJornada ? 'Salvando…' : 'Salvar jornada'}
+                            </button>
+                            <button type="button" onClick={() => setConfigurandoId(null)} className="text-[11.5px] text-text-faint hover:text-text-dim">
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* relatório de horas por período (2026-09-13) — separado do
+            "hoje" acima: soma pares entrada/saída dentro da janela
+            escolhida, não trava se alguém esqueceu de bater a saída. */}
+        {ehGestor && equipe && (
+          <div className="mt-4 rounded-lg border border-line bg-panel p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[13px] font-semibold text-text">Horas trabalhadas</p>
+              <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
+                {(['semana', 'mes'] as const).map((p) => (
+                  <button key={p} type="button" onClick={() => setPeriodoRelatorio(p)} className={`rounded-[5px] px-3 py-1 text-[12px] font-medium transition-colors ${periodoRelatorio === p ? 'bg-raised text-text' : 'text-text-dim hover:text-text'}`}>
+                    {p === 'semana' ? 'Últimos 7 dias' : 'Este mês'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {carregandoRelatorio ? (
+              <SkeletonLinhas />
+            ) : equipe.length === 0 ? (
+              <p className="text-[12.5px] text-text-dim">Nenhum funcionário ainda.</p>
+            ) : (
+              (() => {
+                const resumos = calcularResumoJornada(registrosPeriodo, equipe);
+                const totalAPagar = resumos.reduce((s, r) => s + (r.valorAPagar ?? 0), 0);
+                return (
+                  <div className="flex flex-col gap-2">
+                    {resumos.map((r) => (
+                      <div key={r.funcionario.id} className="rounded-sm border border-line bg-input px-3 py-2.5 text-[12.5px]">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className={r.funcionario.ativo ? 'font-medium text-text' : 'text-text-faint line-through'}>{r.funcionario.nome}</span>
+                          <span className="text-[11px] text-text-faint">
+                            {r.diasTrabalhados} dia(s) · {r.registros} registro(s)
+                          </span>
+                        </div>
+                        <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wide text-text-faint">Normais</p>
+                            <p className="font-mono text-text">{formatarMinutos(r.minutosNormais)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wide text-text-faint">Extras</p>
+                            <p className={`font-mono ${r.minutosExtras > 0 ? 'font-semibold text-pending' : 'text-text-faint'}`}>{formatarMinutos(r.minutosExtras)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wide text-text-faint">Atraso acumulado</p>
+                            <p className={`font-mono ${r.atrasoMin > 0 ? 'font-semibold text-danger' : 'text-text-faint'}`}>{formatarMinutos(r.atrasoMin)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wide text-text-faint">A pagar</p>
+                            <p className="font-mono font-semibold text-success">{r.valorAPagar != null ? formatarMoeda(r.valorAPagar) : '—'}</p>
+                          </div>
+                        </div>
+                        {!r.jornadaConfigurada && <p className="mt-1.5 text-[11px] text-pending">Jornada/valor-hora não configurado — clique em "Configurar" acima pra separar hora extra e calcular pagamento.</p>}
+                      </div>
+                    ))}
+                    {totalAPagar > 0 && (
+                      <div className="flex items-center justify-between rounded-sm border border-success/25 bg-success/10 px-3 py-2.5 text-[12.5px]">
+                        <strong className="text-text">Total a pagar no período</strong>
+                        <strong className="font-mono text-success">{formatarMoeda(totalAPagar)}</strong>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
             )}
           </div>
         )}

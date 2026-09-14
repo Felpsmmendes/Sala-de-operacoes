@@ -404,6 +404,14 @@ export type FuncionarioInterno = {
   nome: string;
   ativo: boolean;
   criado_em: string;
+  /* -------------------- Jornada + valor/hora (2026-09-13) --------------------
+     Config opcional pro relatório de horas calcular atraso/hora extra e
+     quanto pagar — null em qualquer campo = "ainda não configurado pra
+     esta pessoa", nunca um valor inventado (ver migration_029). */
+  horario_entrada_padrao: string | null;
+  horario_saida_padrao: string | null;
+  valor_hora: number | null;
+  valor_hora_extra: number | null;
 };
 
 export type PontoInternoRegistro = {

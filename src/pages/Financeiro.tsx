@@ -40,6 +40,7 @@ export default function Financeiro() {
   const [filtro, setFiltro] = useState<'todos' | 'pendentes' | 'pagos'>('pendentes');
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
   const [mesDre, setMesDre] = useState(() => new Date().toISOString().slice(0, 7));
+  const [mesLancamentos, setMesLancamentos] = useState<string | 'todos'>('todos');
 
   async function carregar() {
     setCarregando(true);
@@ -87,7 +88,23 @@ export default function Financeiro() {
   const receitaMes = lancamentos.filter((l) => l.tipo === 'receita' && l.status === 'pago' && (l.data_pagamento ?? '').slice(0, 7) === mesAtual).reduce((s, l) => s + l.valor, 0);
   const despesaMes = lancamentos.filter((l) => l.tipo === 'despesa' && l.status === 'pago' && (l.data_pagamento ?? '').slice(0, 7) === mesAtual).reduce((s, l) => s + l.valor, 0);
 
-  const visiveis = lancamentos.filter((l) => filtro === 'todos' || (filtro === 'pendentes' ? l.status === 'pendente' : l.status === 'pago'));
+  // filtro de mês (2026-09-13) — separado do filtro de status: pago usa
+  // `data_pagamento` (data real do dinheiro entrando/saindo), pendente
+  // usa `vencimento` (não tem data_pagamento ainda, por definição).
+  const visiveis = lancamentos.filter((l) => {
+    const passaStatus = filtro === 'todos' || (filtro === 'pendentes' ? l.status === 'pendente' : l.status === 'pago');
+    if (!passaStatus) return false;
+    if (mesLancamentos === 'todos') return true;
+    const dataRef = l.status === 'pago' ? l.data_pagamento : l.vencimento;
+    return (dataRef ?? '').slice(0, 7) === mesLancamentos;
+  });
+
+  function mesLancamentosDeslocado(deslocamento: number): string {
+    const base = mesLancamentos === 'todos' ? mesAtual : mesLancamentos;
+    const d = new Date(`${base}-01T00:00:00`);
+    d.setMonth(d.getMonth() + deslocamento);
+    return d.toISOString().slice(0, 7);
+  }
 
   // DRE completo (pedido do usuário, 2026-09-09) — mudou de tela (era o
   // Fechamento Mensal, que virou só histórico de vendas), lógica intacta:
@@ -202,12 +219,35 @@ export default function Financeiro() {
             titulo="Lançamentos"
             desc={carregando ? undefined : `${visiveis.length} de ${lancamentos.length}`}
             acao={
-              <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
-                {(['pendentes', 'pagos', 'todos'] as const).map((f) => (
-                  <button key={f} type="button" onClick={() => setFiltro(f)} className={`rounded-[5px] px-3 py-1.5 text-[12.5px] font-medium transition-colors ${filtro === f ? 'bg-raised text-money' : 'text-text-dim hover:text-text'}`}>
-                    {f === 'pendentes' ? 'Pendentes' : f === 'pagos' ? 'Pagos' : 'Todos'}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 rounded-sm border border-line">
+                  <button type="button" disabled={mesLancamentos === 'todos'} onClick={() => setMesLancamentos(mesLancamentosDeslocado(-1))} className="px-2 py-1.5 text-text-dim hover:bg-raised hover:text-text disabled:opacity-30" title="Mês anterior">
+                    <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setMesLancamentos((atual) => (atual === 'todos' ? mesAtual : 'todos'))}
+                    className="min-w-[92px] px-2 py-1.5 text-center font-mono text-[12px] font-semibold text-text hover:bg-raised"
+                  >
+                    {mesLancamentos === 'todos' ? 'Todos os meses' : formatarMes(mesLancamentos)}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={mesLancamentos === 'todos' || mesLancamentos >= mesAtual}
+                    onClick={() => setMesLancamentos(mesLancamentosDeslocado(1))}
+                    className="px-2 py-1.5 text-text-dim hover:bg-raised hover:text-text disabled:opacity-30"
+                    title="Próximo mês"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                </div>
+                <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
+                  {(['pendentes', 'pagos', 'todos'] as const).map((f) => (
+                    <button key={f} type="button" onClick={() => setFiltro(f)} className={`rounded-[5px] px-3 py-1.5 text-[12.5px] font-medium transition-colors ${filtro === f ? 'bg-raised text-money' : 'text-text-dim hover:text-text'}`}>
+                      {f === 'pendentes' ? 'Pendentes' : f === 'pagos' ? 'Pagos' : 'Todos'}
+                    </button>
+                  ))}
+                </div>
               </div>
             }
           />
