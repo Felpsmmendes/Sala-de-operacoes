@@ -137,6 +137,44 @@ export default function Auditoria() {
   }, [auditorias]);
   const totalAvarias = useMemo(() => auditorias.reduce((s, a) => s + (a.avarias_valor ?? 0), 0), [auditorias]);
 
+  // -------------------- Histórico de satisfação (2026-09-14) --------------------
+  // O MetricCard "NPS médio" acima é a média de TODA a base — útil como
+  // resumo geral, mas não distingue "melhorando" de "piorando" nem mostra
+  // ONDE está o problema. Este painel é um recorte mais acionável: janela
+  // recente (90 dias), distribuição promotor/neutro/detrator (a definição
+  // padrão de NPS) e os comentários negativos mais recentes pra ler direto.
+  const distribuicaoNps = useMemo(() => {
+    const comNota = auditorias.filter((a) => a.nps_nota != null);
+    return {
+      promotores: comNota.filter((a) => (a.nps_nota ?? 0) >= 9).length,
+      neutros: comNota.filter((a) => (a.nps_nota ?? 0) >= 7 && (a.nps_nota ?? 0) <= 8).length,
+      detratores: comNota.filter((a) => (a.nps_nota ?? 0) <= 6).length,
+      total: comNota.length,
+    };
+  }, [auditorias]);
+  const npsMedio90d = useMemo(() => {
+    const limite = new Date();
+    limite.setDate(limite.getDate() - 90);
+    const limiteStr = limite.toISOString().slice(0, 10);
+    const recentes = auditorias.filter((a) => a.nps_nota != null && a.criado_em >= limiteStr);
+    if (recentes.length === 0) return null;
+    const soma = recentes.reduce((s, a) => s + (a.nps_nota ?? 0), 0);
+    return Math.round((soma / recentes.length) * 10) / 10;
+  }, [auditorias]);
+  const taxaAvarias = useMemo(() => {
+    if (auditorias.length === 0) return null;
+    const comAvaria = auditorias.filter((a) => a.avarias_valor && a.avarias_valor > 0).length;
+    return Math.round((comAvaria / auditorias.length) * 100);
+  }, [auditorias]);
+  const feedbacksNegativos = useMemo(
+    () =>
+      auditorias
+        .filter((a) => a.nps_nota != null && a.nps_nota <= 6 && a.nps_comentario)
+        .sort((a, b) => b.criado_em.localeCompare(a.criado_em))
+        .slice(0, 2),
+    [auditorias]
+  );
+
   return (
     <>
       <Cabecalho titulo="Após o Evento" subtitulo="Reintegração de sobras, avarias, doca limpa e satisfação do cliente." />
@@ -149,6 +187,62 @@ export default function Auditoria() {
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
+
+        {auditorias.length >= 3 && (
+          <Panel className="mb-4">
+            <PanelHeader titulo="Histórico de satisfação" desc={`Baseado em ${distribuicaoNps.total} evento(s) com NPS registrado`} />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="flex flex-col items-center gap-1 rounded-sm border border-line bg-input p-3 text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">NPS médio</span>
+                <span className={`font-mono text-[28px] font-bold leading-none ${npsMedio90d == null ? 'text-text-faint' : npsMedio90d >= 9 ? 'text-success' : npsMedio90d >= 7 ? 'text-pending' : 'text-danger'}`}>
+                  {npsMedio90d != null ? npsMedio90d.toFixed(1) : '—'}
+                </span>
+                <span className="text-[10px] text-text-faint">últimos 90 dias</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-1 rounded-sm border border-success/20 bg-success/5 p-3 text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">Promotores</span>
+                <span className="font-mono text-[28px] font-bold leading-none text-success">{distribuicaoNps.promotores}</span>
+                <span className="text-[10px] text-text-faint">nota 9–10</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-1 rounded-sm border border-pending/20 bg-pending/5 p-3 text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">Neutros</span>
+                <span className="font-mono text-[28px] font-bold leading-none text-pending">{distribuicaoNps.neutros}</span>
+                <span className="text-[10px] text-text-faint">nota 7–8</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-1 rounded-sm border border-danger/20 bg-danger/5 p-3 text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">Detratores</span>
+                <span className="font-mono text-[28px] font-bold leading-none text-danger">{distribuicaoNps.detratores}</span>
+                <span className="text-[10px] text-text-faint">nota 0–6</span>
+              </div>
+            </div>
+
+            {taxaAvarias != null && (
+              <div className="mt-3 flex items-center justify-between rounded-sm border border-line bg-input px-3 py-2">
+                <span className="text-[12.5px] text-text-dim">Taxa de eventos com avarias</span>
+                <span className={`font-mono text-[13px] font-bold ${taxaAvarias === 0 ? 'text-success' : taxaAvarias <= 20 ? 'text-pending' : 'text-danger'}`}>{taxaAvarias}%</span>
+              </div>
+            )}
+
+            {feedbacksNegativos.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Últimos feedbacks negativos</p>
+                <div className="flex flex-col gap-2">
+                  {feedbacksNegativos.map((a) => (
+                    <div key={a.id} className="rounded-sm border border-danger/20 bg-danger/5 px-3 py-2">
+                      <p className="text-[12px] italic text-text-dim">"{a.nps_comentario}"</p>
+                      <p className="mt-1 text-[10.5px] text-text-faint">
+                        Nota {a.nps_nota} · {formatarData(a.criado_em)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Panel>
+        )}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
           <Panel>

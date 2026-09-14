@@ -1,7 +1,8 @@
-import { Copy, ExternalLink, FileDown, Mail, MessageSquare, Pencil, Phone, Receipt, Search, X } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, FileDown, Mail, MessageSquare, Pencil, Phone, Receipt, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { atualizarOrcamento, criarOrcamento, calcularValorHoraAdicional, calcularValorServico, listarOrcamentos } from '../lib/api/orcamentos';
+import { criarContrato, listarContratos } from '../lib/api/contratos';
 import { listarLeads, registrarInteracao } from '../lib/api/leads';
 import { listarRegioesFrete } from '../lib/api/regioesFrete';
 import { listarServicos } from '../lib/api/servicos';
@@ -19,8 +20,9 @@ import { calcularFrete } from '../lib/freteConfig';
 import { gerarPdfProposta } from '../lib/pdfProposta';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
+import { useConfirmDialog } from '../lib/useConfirmDialog';
 import { formatarMoeda, formatarData, normalizarTexto } from '../lib/status';
-import type { Lead, OrcamentoCompleto, RegiaoFrete, Servico, Veiculo } from '../lib/types';
+import type { ContratoComLead, Lead, OrcamentoCompleto, RegiaoFrete, Servico, Veiculo } from '../lib/types';
 
 const CATEGORIAS: { chave: Servico['categoria']; titulo: string }[] = [
   { chave: 'bar', titulo: 'Bar' },
@@ -36,6 +38,13 @@ export default function Orcamentos() {
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  // "Converter em contrato" (2026-09-14) — não precisa de coluna nova em
+  // orçamento: um orçamento "já virou contrato" quando existe um contrato
+  // com esse `orcamento_id`, então só carrega a lista de contratos junto
+  // pra saber quais ids já têm.
+  const [contratos, setContratos] = useState<ContratoComLead[]>([]);
+  const [convertendoId, setConvertendoId] = useState<string | null>(null);
+  const confirmarConversao = useConfirmDialog();
 
   const [leadId, setLeadId] = useState('');
   const [dataEvento, setDataEvento] = useState('');
@@ -56,17 +65,57 @@ export default function Orcamentos() {
   const [buscaOrcamentos, setBuscaOrcamentos] = useState('');
 
   useEffect(() => {
-    Promise.all([listarLeads(), listarServicos(), listarOrcamentos(), listarRegioesFrete(), listarVeiculos()])
-      .then(([l, s, o, rg, ve]) => {
+    Promise.all([listarLeads(), listarServicos(), listarOrcamentos(), listarRegioesFrete(), listarVeiculos(), listarContratos()])
+      .then(([l, s, o, rg, ve, c]) => {
         setLeads(l);
         setServicos(s);
         setOrcamentos(o);
         setRegioes(rg);
         setVeiculos(ve);
+        setContratos(c);
       })
       .catch((e) => setErro(mensagemDeErro(e)))
       .finally(() => setCarregando(false));
   }, []);
+
+  const orcamentoIdsComContrato = useMemo(() => new Set(contratos.map((c) => c.orcamento_id).filter((id): id is string => id != null)), [contratos]);
+
+  /** Cria um contrato já pré-preenchido com os dados do orçamento — poupa
+      redigitar cliente/data/convidados/valor na tela de Contratos. O custo
+      real do frete (se tinha) vira despesa automática (ver criarContrato);
+      sinal/saldo (20/80) são colunas geradas no banco a partir do valor
+      total, não se define aqui. */
+  async function aoConverterEmContrato(orc: OrcamentoCompleto) {
+    if (!orc.data_evento) {
+      toast.aviso('Este orçamento não tem data prevista — edite e defina uma data antes de converter em contrato.');
+      return;
+    }
+    const ok = await confirmarConversao.pedir({
+      titulo: 'Converter em contrato',
+      mensagem: `Criar um contrato para ${orc.lead?.nome ?? 'este lead'} com base neste orçamento? Os dados (cliente, data, convidados, valor) são copiados automaticamente.`,
+      textoConfirmar: 'Converter',
+    });
+    if (!ok) return;
+
+    setConvertendoId(orc.id);
+    try {
+      const contrato = await criarContrato({
+        orcamentoId: orc.id,
+        leadId: orc.lead_id,
+        dataEvento: orc.data_evento,
+        local: null,
+        convidados: orc.convidados,
+        valorTotal: orc.valor_total,
+        valorFreteCusto: orc.valor_frete_custo || undefined,
+      });
+      setContratos((prev) => [contrato, ...prev]);
+      toast.sucesso(`Contrato criado para ${orc.lead?.nome ?? 'lead'}! Acesse Contratos para finalizar.`);
+    } catch (e) {
+      toast.erro(mensagemDeErro(e));
+    } finally {
+      setConvertendoId(null);
+    }
+  }
 
   const convidadosNum = convidados ? Number(convidados) : null;
 
@@ -396,6 +445,25 @@ export default function Orcamentos() {
                         </div>
                         <div className="flex flex-shrink-0 items-center gap-3">
                           <span className="font-mono text-text">{formatarMoeda(o.valor_total)}</span>
+                          {/* "virou contrato" é derivado da lista de contratos (algum
+                              com orcamento_id === o.id), não uma coluna própria do
+                              orçamento — ver orcamentoIdsComContrato acima. */}
+                          {orcamentoIdsComContrato.has(o.id) ? (
+                            <span className="flex flex-shrink-0 items-center gap-1.5 text-[11px] font-semibold text-success">
+                              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} />
+                              Contrato criado
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => aoConverterEmContrato(o)}
+                              disabled={convertendoId === o.id}
+                              className="flex flex-shrink-0 items-center gap-1.5 rounded-sm border border-money/30 bg-money/8 px-2.5 py-1.5 text-[12px] font-semibold text-money transition-colors hover:bg-money/15 disabled:opacity-50"
+                            >
+                              <Receipt className="h-3.5 w-3.5" strokeWidth={2} />
+                              {convertendoId === o.id ? 'Convertendo…' : 'Converter em contrato'}
+                            </button>
+                          )}
                           {o.lead?.id && (
                             <Link to={`/crm?lead=${o.lead.id}`} title="Ver lead no CRM" className="rounded-sm border border-line p-1.5 text-text-dim hover:bg-panel hover:text-people">
                               <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
@@ -558,6 +626,7 @@ export default function Orcamentos() {
           </div>
         )}
       </Conteudo>
+      {confirmarConversao.dialogo}
     </>
   );
 }

@@ -7,6 +7,20 @@ const COR_ACCENT: [number, number, number] = [232, 161, 61]; // #e8a13d — mesm
 const COR_TEXTO: [number, number, number] = [30, 28, 25];
 const COR_DIM: [number, number, number] = [110, 105, 98];
 
+/** Dados da empresa — centralizados aqui (2026-09-14) porque apareciam
+    hardcoded no meio do desenho do cabeçalho, sem CNPJ/contato nenhum no
+    rodapé. Editar aqui atualiza todo PDF gerado daqui pra frente.
+    CNPJ é placeholder — substituir pelo real antes de enviar proposta
+    pra cliente de verdade. */
+const EMPRESA = {
+  nome: 'Em Cena Eventos',
+  cnpj: '00.000.000/0001-00', // ← substituir pelo CNPJ real
+  site: 'emcenaeventos.com.br',
+  email: 'contato@emcenaeventos.com.br',
+  telefone: '(11) 99999-9999',
+  cidade: 'São Paulo/SP',
+} as const;
+
 const X_ESQ = 14;
 const X_DIR = 196;
 const LARGURA_UTIL = X_DIR - X_ESQ;
@@ -60,7 +74,7 @@ export function gerarPdfProposta({
   doc.setFontSize(20);
   doc.setTextColor(...COR_TEXTO);
   doc.setFont('helvetica', 'bold');
-  doc.text('EM CENA EVENTOS', X_ESQ, 20);
+  doc.text(EMPRESA.nome.toUpperCase(), X_ESQ, 20);
 
   doc.setFontSize(11);
   doc.setTextColor(...COR_ACCENT);
@@ -194,14 +208,25 @@ export function gerarPdfProposta({
   doc.text('Proposta válida por 7 dias a partir da data de emissão. Valores sujeitos a confirmação de disponibilidade de agenda.', X_ESQ, y, { maxWidth: LARGURA_UTIL });
 
   // -------------------- rodapé em todas as páginas --------------------
+  // 2 linhas (nome+CNPJ+telefone / site+paginação) em vez de 1 só "Emitido
+  // em..." — CNPJ/contato não apareciam em lugar nenhum do PDF antes,
+  // achado do usuário (2026-09-14): proposta pra cliente sem dado de
+  // identificação da empresa.
   const totalPaginas = doc.getNumberOfPages();
   for (let p = 1; p <= totalPaginas; p++) {
     doc.setPage(p);
-    doc.setFontSize(8.5);
+
+    doc.setDrawColor(...COR_DIM);
+    doc.setLineWidth(0.3);
+    doc.line(X_ESQ, Y_RODAPE - 3, X_DIR, Y_RODAPE - 3);
+
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...COR_DIM);
-    doc.text(`Emitido em ${formatarData(new Date().toISOString())} — Em Cena Eventos`, X_ESQ, Y_RODAPE);
-    if (totalPaginas > 1) doc.text(`Página ${p}/${totalPaginas}`, X_DIR, Y_RODAPE, { align: 'right' });
+    doc.text(`${EMPRESA.nome}  ·  CNPJ ${EMPRESA.cnpj}  ·  ${EMPRESA.telefone}`, (X_ESQ + X_DIR) / 2, Y_RODAPE, { align: 'center' });
+
+    doc.text(`${EMPRESA.site}  ·  Emitido em ${formatarData(new Date().toISOString())}`, X_ESQ, Y_RODAPE + 4);
+    if (totalPaginas > 1) doc.text(`Página ${p}/${totalPaginas}`, X_DIR, Y_RODAPE + 4, { align: 'right' });
   }
 
   doc.save(`proposta-${lead.nome.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}.pdf`);

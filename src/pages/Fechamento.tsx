@@ -1,6 +1,7 @@
 import { Banknote, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { calcularFaturamentoPorMes, listarContratos, type FaturamentoMes } from '../lib/api/contratos';
+import { listarOrcamentos } from '../lib/api/orcamentos';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
@@ -8,7 +9,7 @@ import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { formatarMoeda } from '../lib/status';
-import type { ContratoComLead } from '../lib/types';
+import type { ContratoComLead, OrcamentoCompleto } from '../lib/types';
 
 function formatarMes(mes: string): string {
   const [ano, m] = mes.slice(0, 7).split('-');
@@ -24,12 +25,16 @@ function formatarMes(mes: string): string {
     duplicar o cálculo. */
 export default function Fechamento() {
   const [contratos, setContratos] = useState<ContratoComLead[]>([]);
+  const [orcamentos, setOrcamentos] = useState<OrcamentoCompleto[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    listarContratos()
-      .then(setContratos)
+    Promise.all([listarContratos(), listarOrcamentos()])
+      .then(([c, o]) => {
+        setContratos(c);
+        setOrcamentos(o);
+      })
       .catch((e) => setErro(mensagemDeErro(e)))
       .finally(() => setCarregando(false));
   }, []);
@@ -53,6 +58,25 @@ export default function Fechamento() {
     }
     return [...porLead.values()].filter((v) => v > 1).length;
   }, [contratos]);
+
+  // composição por categoria de serviço (2026-09-14) — o histórico acima
+  // só mostra o total do mês, sem dizer SE veio mais de bar ou de atração.
+  // Só dá pra saber isso puxando os itens do orçamento de origem de cada
+  // contrato do mês; contrato criado do zero (sem orçamento) não entra
+  // aqui — não tem como quebrar por categoria o que nunca teve item.
+  const breakdownServico = useMemo(() => {
+    const orcamentoIdsDoMes = new Set(contratosDoMes.filter((c) => c.orcamento_id).map((c) => c.orcamento_id as string));
+    const totais = { bar: 0, atracao: 0, adicional: 0 };
+    for (const orc of orcamentos) {
+      if (!orcamentoIdsDoMes.has(orc.id)) continue;
+      for (const item of orc.itens) {
+        const cat = item.servico.categoria as keyof typeof totais;
+        if (cat in totais) totais[cat] += item.valor_total ?? 0;
+      }
+    }
+    const total = totais.bar + totais.atracao + totais.adicional;
+    return { ...totais, total };
+  }, [orcamentos, contratosDoMes]);
 
   return (
     <>
@@ -101,6 +125,38 @@ export default function Fechamento() {
                 </div>
               </div>
             </Panel>
+
+            {breakdownServico.total > 0 && (
+              <Panel className="mt-4">
+                <PanelHeader titulo="Composição do faturamento" desc={`Baseado nos orçamentos vinculados aos contratos de ${mesAtual ? formatarMes(mesAtual.mes) : 'este mês'}`} />
+                <div className="flex flex-col gap-2">
+                  {[
+                    { rotulo: '🍸 Bar Service', valor: breakdownServico.bar, cor: 'bg-money' },
+                    { rotulo: '📸 Atrações fotográficas', valor: breakdownServico.atracao, cor: 'bg-schedule' },
+                    { rotulo: '➕ Serviços adicionais', valor: breakdownServico.adicional, cor: 'bg-neutral' },
+                  ]
+                    .filter(({ valor }) => valor > 0)
+                    .map(({ rotulo, valor, cor }) => {
+                      const pct = breakdownServico.total > 0 ? Math.round((valor / breakdownServico.total) * 100) : 0;
+                      return (
+                        <div key={rotulo}>
+                          <div className="mb-1.5 flex items-center justify-between text-[12.5px]">
+                            <span className="text-text-dim">{rotulo}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono text-[11px] text-text-faint">{pct}%</span>
+                              <span className="font-mono font-semibold text-text">{formatarMoeda(valor)}</span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-raised">
+                            <div className={`h-full rounded-full ${cor} opacity-70`} style={{ width: `${pct}%`, transition: 'width 0.4s ease' }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+                <p className="mt-3 text-[11px] text-text-faint">Contratos sem orçamento vinculado não entram no breakdown por categoria.</p>
+              </Panel>
+            )}
           </>
         )}
       </Conteudo>

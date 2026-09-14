@@ -181,6 +181,28 @@ export default function Estoque() {
           <MetricCard Icone={AlertTriangle} rotulo="Avarias registradas" valor={String(avarias.length)} legenda="Últimos 50 registros" categoria="operacao" />
         </MetricGrid>
 
+        {/* Banner consolidado (2026-09-14) — o card "Nível crítico" acima só
+            dá o número; sem entrar na aba "Avançado" não dava pra saber
+            QUAIS itens, e "Checklists" (a aba padrão) não mostra a lista de
+            itens nenhuma. Aparece em qualquer aba, sempre que há crítico. */}
+        {!carregando && itensCriticos.length > 0 && (
+          <div className="mb-4 flex items-start gap-3 rounded-sm border border-danger/30 bg-danger/8 px-4 py-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-danger" strokeWidth={2} />
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-danger">
+                {itensCriticos.length === 1 ? '1 item abaixo do mínimo' : `${itensCriticos.length} itens abaixo do mínimo`}
+              </p>
+              <p className="mt-0.5 text-[12px] text-text-dim">
+                {itensCriticos
+                  .slice(0, 3)
+                  .map((i) => i.nome)
+                  .join(', ')}
+                {itensCriticos.length > 3 ? ` e mais ${itensCriticos.length - 3}` : ''} — repor antes do próximo evento.
+              </p>
+            </div>
+          </div>
+        )}
+
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
         {/* submenu horizontal, sempre visível — mesmo padrão do CRM */}
@@ -275,7 +297,10 @@ export default function Estoque() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {itens.map((item) => (
-                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2.5 text-sm">
+                    <div
+                      key={item.id}
+                      className={`flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2.5 text-sm ${ehCritico(item) ? 'border-l-2 border-l-danger' : ''}`}
+                    >
                       <div className="min-w-0">
                         <strong className="text-text">{item.nome}</strong>
                         <span className="ml-2 text-[11.5px] uppercase tracking-wide text-text-faint">{item.categoria}</span>

@@ -238,6 +238,28 @@ export default function Dashboard() {
   // da própria tela (estoque crítico, contrato em risco, NPS baixo).
   const pontosDeAtencao = itensCriticos + contratosEmRisco + clientesInsatisfeitos.length;
 
+  // banner de risco operacional (2026-09-14) — "N pontos de atenção" acima
+  // já avisa que tem problema, mas não diz QUAL evento nem dá o caminho
+  // pra resolver. Aqui é o recorte acionável: só os próximos 7 dias (janela
+  // que ainda dá tempo de agir), por evento, com link direto pro módulo
+  // certo — saldo em aberto → Contratos, sem ninguém escalado → Escala.
+  const eventosComPendencia = useMemo(() => {
+    const em7dias = new Date();
+    em7dias.setDate(em7dias.getDate() + 7);
+    const limite = em7dias.toISOString().slice(0, 10);
+    return eventos
+      .filter((ev) => ev.status !== 'cancelado' && ev.data_evento >= hoje && ev.data_evento <= limite)
+      .map((ev) => {
+        const contrato = contratoPorId.get(ev.contrato_id);
+        const pendencias: string[] = [];
+        if (contrato && contrato.saldo_status !== 'quitado') pendencias.push('saldo em aberto');
+        if ((presencaPorEvento.get(ev.id) ?? []).length === 0) pendencias.push('sem equipe escalada');
+        return { ev, pendencias };
+      })
+      .filter(({ pendencias }) => pendencias.length > 0)
+      .sort((a, b) => a.ev.data_evento.localeCompare(b.ev.data_evento));
+  }, [eventos, contratoPorId, presencaPorEvento, hoje]);
+
   // Fase C do roadmap (2026-09-11) — dado REAL de consumo (contador de
   // drinks, ver DrinksPublico.tsx), no lugar do número fabricado que o
   // print original pedia. Ritmo só aparece com pelo menos 2 toques —
@@ -324,6 +346,44 @@ export default function Dashboard() {
               {eventosHoje.length} evento{eventosHoje.length > 1 ? 's' : ''} acontecendo agora
             </span>
             <span className="text-[12px] text-text-dim">— monitor ao vivo abaixo</span>
+          </div>
+        )}
+
+        {/* banner de risco operacional (2026-09-14) — pendências dos
+            próximos 7 dias, uma linha por evento, com link direto pro
+            módulo que resolve. Só aparece quando há algo de fato pendente
+            (nunca lista evento sem problema, mesmo padrão de "nunca
+            fabricar sinal" do resto do Dashboard). */}
+        {!carregando && eventosComPendencia.length > 0 && (
+          <div className="mb-4 overflow-hidden rounded-sm border border-danger/30 bg-danger/8">
+            <div className="flex items-center gap-3 border-b border-danger/20 px-4 py-2.5">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0 text-danger" strokeWidth={2} />
+              <p className="text-[13px] font-semibold text-danger">
+                {eventosComPendencia.length === 1 ? '1 evento nos próximos 7 dias com pendências' : `${eventosComPendencia.length} eventos nos próximos 7 dias com pendências`}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 px-4 py-2">
+              {eventosComPendencia.map(({ ev, pendencias }) => (
+                <div key={ev.id} className="flex flex-wrap items-center gap-2 py-1 text-[12.5px]">
+                  <span className="flex-shrink-0 font-mono text-text-faint">{formatarData(ev.data_evento)}</span>
+                  <span className="min-w-0 truncate font-medium text-text">{ev.contrato?.lead?.nome ?? 'Evento sem nome'}</span>
+                  <span className="flex-shrink-0 text-text-faint">—</span>
+                  <span className="min-w-0 truncate text-danger">{pendencias.join(', ')}</span>
+                  <div className="ml-auto flex flex-shrink-0 gap-2">
+                    {pendencias.includes('saldo em aberto') && (
+                      <Link to="/contratos" className="rounded-sm border border-line px-2 py-0.5 text-[11px] text-text-dim transition-colors hover:bg-raised hover:text-text">
+                        Contratos →
+                      </Link>
+                    )}
+                    {pendencias.includes('sem equipe escalada') && (
+                      <Link to="/escala" className="rounded-sm border border-line px-2 py-0.5 text-[11px] text-text-dim transition-colors hover:bg-raised hover:text-text">
+                        Escala →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

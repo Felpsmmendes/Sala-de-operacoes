@@ -337,7 +337,13 @@ export default function Crm() {
                         onExcluirFunil={aoExcluirFunil}
                       />
                     ) : (
-                      <TabelaLeads leads={leads} funis={funis} selecionadoId={selecionadoId} onSelecionar={(id) => setSelecionadoId(id === selecionadoId ? null : id)} />
+                      <TabelaLeads
+                        leads={leads}
+                        funis={funis}
+                        selecionadoId={selecionadoId}
+                        onSelecionar={(id) => setSelecionadoId(id === selecionadoId ? null : id)}
+                        ultimoContato={ultimoContatoPorLead}
+                      />
                     )}
                   </div>
                   <div className="rounded-md border border-line bg-raised p-4">
