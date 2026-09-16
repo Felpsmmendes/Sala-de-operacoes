@@ -10,6 +10,7 @@ import { listarLeads } from '../lib/api/leads';
 import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
+import { OrdenacaoColuna, type EstadoOrdenacao } from '../components/OrdenacaoColuna';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
 import { GraficoDRE } from '../components/charts/GraficoDRE';
 import { LancamentoForm } from '../components/financeiro/LancamentoForm';
@@ -21,7 +22,7 @@ import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { gerarRelatorioExecutivoPdf } from '../lib/pdfRelatorioExecutivo';
 import { exportarCsv } from '../lib/exportarCsv';
-import { formatarData, formatarMoeda } from '../lib/status';
+import { formatarData, formatarMoeda, normalizarTexto } from '../lib/status';
 import type { DreMes, Lancamento, NovoLancamento, TipoLancamento } from '../lib/types';
 
 function formatarMes(mes: string): string {
@@ -44,6 +45,10 @@ export default function Financeiro() {
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
   const [mesDre, setMesDre] = useState(() => new Date().toISOString().slice(0, 7));
   const [mesLancamentos, setMesLancamentos] = useState<string | 'todos'>('todos');
+  // Ordenação da lista de lançamentos (2026-09-16, direção "redesign
+  // SaaS" do usuário) — opcional; sem clicar em nenhuma coluna, a lista
+  // continua na ordem que já vinha (mais recente primeiro, ver `carregar`).
+  const [ordenacao, setOrdenacao] = useState<EstadoOrdenacao<'vencimento' | 'valor' | 'descricao'> | null>(null);
 
   async function carregar() {
     setCarregando(true);
@@ -101,6 +106,20 @@ export default function Financeiro() {
     const dataRef = l.status === 'pago' ? l.data_pagamento : l.vencimento;
     return (dataRef ?? '').slice(0, 7) === mesLancamentos;
   });
+
+  // Ordenação opcional por coluna (ver `ordenacao` acima) — CSV/métricas
+  // continuam sobre `visiveis` sem ordenar, só a lista na tela muda.
+  const visiveisOrdenados = !ordenacao
+    ? visiveis
+    : [...visiveis].sort((a, b) => {
+        const cmp =
+          ordenacao.campo === 'valor'
+            ? a.valor - b.valor
+            : ordenacao.campo === 'vencimento'
+              ? (a.vencimento ?? '').localeCompare(b.vencimento ?? '')
+              : normalizarTexto(a.descricao).localeCompare(normalizarTexto(b.descricao));
+        return ordenacao.direcao === 'asc' ? cmp : -cmp;
+      });
 
   function mesLancamentosDeslocado(deslocamento: number): string {
     const base = mesLancamentos === 'todos' ? mesAtual : mesLancamentos;
@@ -303,10 +322,17 @@ export default function Financeiro() {
             <EstadoVazio Icone={Wallet} titulo="Nenhum lançamento aqui" />
           ) : (
             <div className="flex flex-col gap-2">
+              {/* Cabeçalho ordenável (2026-09-16) — mesmas 3 colunas que já
+                  aparecem em cada mini-card abaixo. */}
+              <div className="flex items-center gap-4 px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                <OrdenacaoColuna campo="descricao" rotulo="Descrição" ordenacao={ordenacao} onMudar={setOrdenacao} />
+                <OrdenacaoColuna campo="valor" rotulo="Valor" ordenacao={ordenacao} onMudar={setOrdenacao} />
+                <OrdenacaoColuna campo="vencimento" rotulo="Vencimento" ordenacao={ordenacao} onMudar={setOrdenacao} />
+              </div>
               {/* Mini-card de vidro leve por lançamento (DESIGN.md > Tables &
                   Lists, 2026-09-09) — pago ganha um tom verde bem sutil
                   (é dinheiro, categoria da tela), pendente fica neutro. */}
-              {visiveis.map((l) => (
+              {visiveisOrdenados.map((l) => (
                 <div
                   key={l.id}
                   className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm ${l.status === 'pago' ? 'list-row-tint' : 'list-row'}`}
