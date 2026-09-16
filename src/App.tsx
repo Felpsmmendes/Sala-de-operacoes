@@ -4,7 +4,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Skeleton } from './components/Skeleton';
 import { AuthProvider } from './lib/AuthContext';
-import { _registrarToast, ToastProvider, useToast } from './lib/toast';
+import { _registrarRemocaoToast, _registrarToast, ToastProvider, useToast } from './lib/toast';
 
 // Import de cada tela vira `lazy` — sem isso, o build gerava 1 bundle só
 // (~1.1MB) com as 15 telas + jsPDF/jspdf-autotable/qrcode juntos, e as
@@ -60,10 +60,11 @@ function CarregandoTela() {
     funcionar, por isso é um componente próprio montado ali dentro, não
     lógica direto no `App`. */
 function ToastBridge() {
-  const { adicionar } = useToast();
+  const { adicionar, remover } = useToast();
   useEffect(() => {
     _registrarToast(adicionar);
-  }, [adicionar]);
+    _registrarRemocaoToast(remover);
+  }, [adicionar, remover]);
   return null;
 }
 

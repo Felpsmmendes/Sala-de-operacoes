@@ -235,6 +235,18 @@ body {
 .campo.campo-erro:focus-within {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 8%, transparent);
 }
+/* Validação positiva (2026-09-15, "melhorias de componentes UI" do
+   usuário) — mesmo padrão do `.campo-erro`, com `--color-success` (não
+   um núcleo): é estado semântico de validação, igual danger, não cor
+   de módulo. */
+.campo.campo-sucesso {
+  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+}
+.campo.campo-sucesso:focus,
+.campo.campo-sucesso:focus-within {
+  border-color: color-mix(in srgb, var(--color-success) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 8%, transparent);
+}
 
 /* Lista nativa do `<select>` (`ui/Select.tsx`) — o navegador ignora
    `background`/`color` do próprio `<select>` na lista de opções aberta em
@@ -364,6 +376,35 @@ select option {
   animation: pulso-vivo 2s ease-in-out infinite;
 }
 
+/* Variante de anel duplo (2026-09-15, "12 animações" do usuário) — mais
+   dramático que o `.pulso-vivo` simples, reservado pro ÚNICO estado mais
+   crítico do sistema: o banner "N evento(s) acontecendo agora" do
+   Dashboard. Não substitui o `.pulso-vivo` em nenhum outro lugar (sidebar,
+   MetricCard `aoVivo` etc.) — usar os dois em todo canto "ao vivo" tiraria
+   o que faz este aqui chamar mais atenção. */
+@keyframes pulso-anel {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--pulso-cor, var(--color-execucao)) 55%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--pulso-cor, var(--color-execucao)) 30%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px color-mix(in srgb, var(--pulso-cor, var(--color-execucao)) 0%, transparent),
+      0 0 0 10px color-mix(in srgb, var(--pulso-cor, var(--color-execucao)) 0%, transparent);
+  }
+}
+.pulso-anel {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--pulso-cor, var(--color-execucao));
+  animation: pulso-anel 2.5s ease-out infinite;
+}
+
 /* -- 5. Feedback de clique — todo botão encolhe ligeiramente no clique.
    CUIDADO: usa `transition-property` (lista), nunca o shorthand
    `transition` — o shorthand SUBSTITUI qualquer transition-colors/
@@ -394,6 +435,23 @@ button:not(:disabled):active {
   transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+/* -- 7. Toast "processando" (`toast.processando`, ver lib/toast.tsx,
+   2026-09-15) — 3 pontinhos subindo em sequência, no lugar do ícone de
+   status, enquanto uma ação demorada (PDF, WhatsApp) não termina. -- */
+@keyframes bounce-dot {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+}
+.dot-bounce {
+  animation: bounce-dot 1.2s ease-in-out infinite;
+}
+
 /* -- The Reduced-Motion Rule — remove/reduz toda animação automática ou
    decorativa; hover/clique (resposta a ação direta) ficam mais leves mas
    sem o deslocamento. -- */
@@ -412,7 +470,9 @@ button:not(:disabled):active {
   .skeleton {
     animation: none;
   }
-  .pulso-vivo {
+  .pulso-vivo,
+  .pulso-anel,
+  .dot-bounce {
     animation: none;
   }
   button:not(:disabled):active {

@@ -1,5 +1,5 @@
 import { Activity, AlertTriangle, Banknote, Calendar, CheckCircle2, Clock3, Filter, Fingerprint, GlassWater, Lock, Package, PackageCheck, Star, TrendingUp, Truck, Users, Wallet } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { listarAuditorias } from '../lib/api/auditoria';
 import { calcularFaturamentoPorMes, diasAteEvento, listarContratos } from '../lib/api/contratos';
@@ -21,7 +21,6 @@ import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Skeleton } from '../components/Skeleton';
-import { DotLive } from '../components/ui/DotLive';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Reveal } from '../components/ui/Reveal';
@@ -359,7 +358,11 @@ export default function Dashboard() {
             linha seguinte. */}
         {!carregando && eventosHoje.length > 0 && (
           <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-md border border-execucao/25 bg-execucao/10 px-4 py-2.5">
-            <DotLive categoria="execucao" />
+            {/* anel duplo (2026-09-15) em vez do `DotLive` simples — só
+                aqui, é o único estado mais crítico do sistema ("tem gente
+                agora mesmo num evento"), merece se destacar mais que o
+                pulso padrão usado em todo resto. */}
+            <span className="pulso-anel" style={{ '--pulso-cor': 'var(--color-execucao)' } as CSSProperties} title="Ao vivo" />
             <span className="text-[13px] font-semibold text-execucao">
               {eventosHoje.length} evento{eventosHoje.length > 1 ? 's' : ''} acontecendo agora
             </span>
@@ -591,6 +594,7 @@ export default function Dashboard() {
                     <ProgressBar
                       valor={coberturaFuncaoHoje.necessario.bartender > 0 ? (coberturaFuncaoHoje.bartender / coberturaFuncaoHoje.necessario.bartender) * 100 : 0}
                       categoria="pessoas"
+                      glow
                     />
                   </div>
                   <div>
@@ -603,6 +607,7 @@ export default function Dashboard() {
                     <ProgressBar
                       valor={coberturaFuncaoHoje.necessario.barback > 0 ? (coberturaFuncaoHoje.barback / coberturaFuncaoHoje.necessario.barback) * 100 : 0}
                       categoria="pessoas"
+                      glow
                     />
                   </div>
                 </div>
@@ -724,7 +729,7 @@ export default function Dashboard() {
                               </span>
                               {proxima && <span className="font-mono text-pending">próxima {proxima.horario.slice(0, 5)}</span>}
                             </div>
-                            <ProgressBar valor={(concluidos / cues.length) * 100} categoria="agenda" />
+                            <ProgressBar valor={(concluidos / cues.length) * 100} categoria="agenda" glow />
                             {proxima && <p className="mt-1 text-[11px] text-text-dim">Próxima transição: {proxima.titulo}</p>}
                           </div>
                         );

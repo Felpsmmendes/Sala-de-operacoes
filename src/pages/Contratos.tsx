@@ -11,6 +11,7 @@ import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
+import { RevealGroup } from '../components/ui/RevealGroup';
 import { AnaliseVendas } from '../components/contratos/AnaliseVendas';
 import { ConfigPix, carregarConfigPix, type ConfigPixDados } from '../components/contratos/ConfigPix';
 import { ModalContratoNovo, type DadosContratoNovo } from '../components/contratos/ModalContratoNovo';
@@ -313,7 +314,7 @@ export default function Contratos() {
           {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
           {!carregando && !erro && contratos.length === 0 && <EstadoVazio Icone={FileSignature} titulo="Nenhum contrato ainda" descricao="Gere um contrato a partir de um orçamento aceito ou crie um do zero." />}
 
-          <div className="flex flex-col gap-3">
+          <RevealGroup className="flex flex-col gap-3">
             {/* Mini-card de vidro leve por contrato (DESIGN.md > Tables &
                 Lists, 2026-09-09) — saldo quitado ganha um tom verde bem
                 sutil (é dinheiro, categoria da tela), o resto fica neutro. */}
@@ -410,7 +411,7 @@ export default function Contratos() {
                 </div>
               </div>
             ))}
-          </div>
+          </RevealGroup>
         </Panel>
 
         <AnaliseVendas contratos={contratos} />

@@ -60,7 +60,7 @@ export function LeadForm({
         <Input rotulo="Valor estimado (R$)" categoria="pessoas" type="number" min={0} step="0.01" value={valorEstimado} onChange={(e) => setValorEstimado(e.target.value)} placeholder="Ex: 5000" />
       </div>
       <div className="sm:col-span-2">
-        <Textarea rotulo="Observações" categoria="pessoas" value={observacoes ?? ''} onChange={(e) => setObservacoes(e.target.value)} placeholder="Detalhes do contato, contexto do evento..." />
+        <Textarea rotulo="Observações" categoria="pessoas" maxLength={500} value={observacoes ?? ''} onChange={(e) => setObservacoes(e.target.value)} placeholder="Detalhes do contato, contexto do evento..." />
       </div>
 
       {erro && <p className="sm:col-span-2 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}

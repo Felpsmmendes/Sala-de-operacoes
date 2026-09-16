@@ -42,10 +42,20 @@ export function ItemForm({ onSalvar, salvando }: { onSalvar: (dados: NovoItemEst
       </Select>
       <Input rotulo="Unidade" categoria="operacao" required value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="Ex: garrafa, kg, saco" />
       <Input rotulo="Estoque atual" categoria="operacao" type="number" min={0} step="0.01" value={estoqueAtual} onChange={(e) => setEstoqueAtual(e.target.value)} />
-      <Input rotulo="Estoque mínimo" categoria="operacao" type="number" min={0} step="0.01" value={estoqueMinimo} onChange={(e) => setEstoqueMinimo(e.target.value)} />
+      <Input
+        rotulo="Estoque mínimo"
+        dicaTooltip="Dispara alerta quando a quantidade atual cai abaixo deste valor."
+        categoria="operacao"
+        type="number"
+        min={0}
+        step="0.01"
+        value={estoqueMinimo}
+        onChange={(e) => setEstoqueMinimo(e.target.value)}
+      />
       <div className="sm:col-span-3">
         <Input
-          rotulo="Consumo por convidado (opcional — habilita a calculadora preditiva)"
+          rotulo="Consumo por convidado (opcional)"
+          dicaTooltip="Habilita a calculadora preditiva de quanto vai ser gasto por evento, com base no número de convidados."
           categoria="operacao"
           type="number"
           min={0}

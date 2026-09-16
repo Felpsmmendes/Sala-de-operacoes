@@ -112,6 +112,7 @@ export function ModalEditarContrato({ contrato, onFechar, onSalvar, salvando }: 
           <Textarea
             rotulo="Observações / brindes"
             categoria="dinheiro"
+            maxLength={1000}
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             rows={3}

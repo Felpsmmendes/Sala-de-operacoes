@@ -350,7 +350,12 @@ export default function Auditoria() {
                 <div>
                   <p className="mb-3 border-b border-line pb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Operacional</p>
                   <div className="flex flex-col gap-3">
-                    <Checkbox rotulo="Sobras reintegradas ao estoque (registre a movimentação em Estoque & Compras)" marcado={sobrasReintegradas} onMudar={setSobrasReintegradas} />
+                    <Checkbox
+                      rotulo="Sobras reintegradas ao estoque"
+                      subtexto="Registre a movimentação em Estoque & Compras depois de marcar."
+                      marcado={sobrasReintegradas}
+                      onMudar={setSobrasReintegradas}
+                    />
                     <Input rotulo="Link da foto da doca limpa (opcional)" value={fotoDocaUrl} onChange={(e) => setFotoDocaUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp da foto" />
                   </div>
                 </div>

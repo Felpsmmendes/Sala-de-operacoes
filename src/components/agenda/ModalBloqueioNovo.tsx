@@ -49,7 +49,7 @@ export function ModalBloqueioNovo({ dataInicial, onFechar, onCriar, criando }: {
             />
             <Input rotulo="Até" categoria="agenda" type="date" min={dataInicio} value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </div>
-          <Textarea rotulo="Observação (opcional)" categoria="agenda" value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} placeholder="Ex: Degustação com Fulano às 15h" />
+          <Textarea rotulo="Observação (opcional)" categoria="agenda" maxLength={300} value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} placeholder="Ex: Degustação com Fulano às 15h" />
         </div>
 
         <button

@@ -378,7 +378,7 @@ function FormNovaTarefa({ data, leads, onCriar, criando }: { data: string; leads
           </option>
         ))}
       </Select>
-      <Textarea categoria="agenda" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Observações (opcional): detalhes extras, o que precisa ser levado…" className="min-h-[60px]" />
+      <Textarea categoria="agenda" maxLength={500} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Observações (opcional): detalhes extras, o que precisa ser levado…" className="min-h-[60px]" />
       <div className="flex gap-2">
         <button
           type="button"

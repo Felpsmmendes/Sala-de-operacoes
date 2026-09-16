@@ -219,7 +219,7 @@ function PainelNo({
           )}
 
           {(d.acao_tipo ?? 'registrar_nota') === 'registrar_nota' && (
-            <Textarea rotulo="Texto da nota" categoria={cat} value={d.acao_texto ?? ''} onChange={(e) => set({ acao_texto: e.target.value })} placeholder="Ex: Lead esfriou — ligar antes de marcar como perdido." />
+            <Textarea rotulo="Texto da nota" categoria={cat} maxLength={300} value={d.acao_texto ?? ''} onChange={(e) => set({ acao_texto: e.target.value })} placeholder="Ex: Lead esfriou — ligar antes de marcar como perdido." />
           )}
 
           {d.acao_tipo === 'criar_tarefa' && (

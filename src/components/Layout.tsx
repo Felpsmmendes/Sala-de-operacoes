@@ -20,7 +20,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { Suspense, useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTema } from '../lib/useTema';
@@ -368,7 +368,29 @@ function RelogioStatus() {
 
 /** Container padrão pra conteúdo de página (largura máxima + respiro). */
 export function Conteudo({ children }: { children: ReactNode }) {
-  return <main className="mx-auto max-w-[1680px] px-5 py-6 lg:px-8">{children}</main>;
+  // Entrada suave a cada troca de tela (2026-09-15, "12 animações" do
+  // usuário) — como cada página é um chunk `lazy` separado (ver App.tsx),
+  // ela já remonta do zero a cada navegação; um efeito de fade+slide no
+  // MOUNT deste wrapper único (usado por toda tela interna) já cobre o
+  // sistema inteiro de uma vez, sem duplicar o mesmo hook em ~15 páginas.
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(8px)';
+    const frame = requestAnimationFrame(() => {
+      el.style.transition = 'opacity 0.28s ease, transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)';
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return (
+    <main ref={ref} className="mx-auto max-w-[1680px] px-5 py-6 lg:px-8">
+      {children}
+    </main>
+  );
 }
 
 /** Fallback do Suspense do conteúdo (ver comentário acima do `<Outlet/>`)

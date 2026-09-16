@@ -41,7 +41,7 @@ export function ModalTarefaNova({ leads, onFechar, onCriar, criando }: { leads: 
               </option>
             ))}
           </Select>
-          <Textarea rotulo="Observações (opcional)" categoria="agenda" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Detalhes extras, o que precisa ser levado, quem precisa ser avisado…" />
+          <Textarea rotulo="Observações (opcional)" categoria="agenda" maxLength={500} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Detalhes extras, o que precisa ser levado, quem precisa ser avisado…" />
         </div>
 
         <button

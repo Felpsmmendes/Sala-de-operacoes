@@ -15,6 +15,7 @@ import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { Checkbox } from '../components/ui/Checkbox';
 import { EstadoVazio } from '../components/ui/EmptyState';
+import { RevealGroup } from '../components/ui/RevealGroup';
 import { Select } from '../components/ui/Select';
 import { montarLinkConfirmacao } from '../lib/api/confirmacaoEscala';
 import { montarMensagemConvocacao } from '../lib/mensagemConvocacao';
@@ -367,7 +368,7 @@ export default function Escala() {
                   {desteEvento.length === 0 ? (
                     <EstadoVazio Icone={Users} titulo="Ninguém convocado pra este evento ainda" />
                   ) : (
-                    <div className="flex flex-col gap-2">
+                    <RevealGroup className="flex flex-col gap-2">
                       {desteEvento.map((esc) => (
                         <div key={esc.id} className="rounded-sm border border-line bg-input p-3 text-sm">
                           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -447,7 +448,7 @@ export default function Escala() {
                           </div>
                         </div>
                       ))}
-                    </div>
+                    </RevealGroup>
                   )}
 
                   {convocarParaEvento?.id === evento.id && (
