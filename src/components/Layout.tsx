@@ -24,6 +24,7 @@ import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useTema } from '../lib/useTema';
+import { Breadcrumb } from './Breadcrumb';
 import { Skeleton } from './Skeleton';
 import { CommandPalette } from './ui/CommandPalette';
 import { DotLive } from './ui/DotLive';
@@ -332,9 +333,24 @@ export default function Layout() {
     reaparecia (e "piscava") no topo de toda tela ao navegar. Agora vive
     uma vez só, na sidebar persistente (ver `Layout`). */
 export function Cabecalho({ titulo, subtitulo }: { titulo: string; subtitulo: string }) {
+  const location = useLocation();
+  // Trilha [Sala de Operações > Núcleo > Página] (2026-09-16) — reaproveita
+  // os mesmos grupos da sidebar (`NUCLEOS`/`nucleoDaRota`), nunca uma
+  // hierarquia paralela. Escondida em tela sem núcleo (Painel/
+  // Configurações) — nesses casos o H1 abaixo já basta.
+  const nucleo = nucleoDaRota(location.pathname);
   return (
     <header className="border-b border-line px-5 pt-3.5 lg:px-8">
       <div className="mx-auto max-w-[1680px]">
+        {nucleo && (
+          <Breadcrumb
+            itens={[
+              { rotulo: 'Sala de Operações', to: '/' },
+              { rotulo: nucleo },
+              { rotulo: titulo },
+            ]}
+          />
+        )}
         <RelogioStatus />
         <h1 className="mb-1 mt-1 text-[26px] font-extrabold tracking-tight text-text">{titulo}</h1>
         <p className="pb-5 text-sm text-text-dim">{subtitulo}</p>

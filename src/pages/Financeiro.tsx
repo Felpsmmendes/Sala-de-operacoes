@@ -7,6 +7,7 @@ import { listarEventos } from '../lib/api/eventos';
 import { atualizarStatusLancamento, criarLancamento, excluirLancamento, listarDreMensal, listarLancamentos } from '../lib/api/financeiro';
 import { listarFunis } from '../lib/api/funis';
 import { listarLeads } from '../lib/api/leads';
+import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
@@ -213,7 +214,7 @@ export default function Financeiro() {
           <MetricCard Icone={Scale} rotulo="Saldo do mês" valor={formatarMoeda(receitaMes - despesaMes)} legenda="Receita paga − despesa paga" categoria="dinheiro" />
         </MetricGrid>
 
-        {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
+        {erro && <AlertaBanner tom="perigo" className="mb-4">{erro}</AlertaBanner>}
 
         <div className="mb-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_320px]">
           <Panel>

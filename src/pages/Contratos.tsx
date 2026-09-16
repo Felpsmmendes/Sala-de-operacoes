@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, Download, FileSignature, Pencil, Plus, Wallet } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Download, FileSignature, Pencil, Plus, Search, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { bloqueioNaData, listarBloqueios } from '../lib/api/bloqueiosAgenda';
 import { atualizarContrato, cancelarContrato, criarContrato, diasAteEvento, excluirContrato, listarContratos, marcarSinalPago, atualizarStatusSaldo, type EdicaoContrato } from '../lib/api/contratos';
@@ -8,9 +8,11 @@ import { buscarPortalPorContrato } from '../lib/api/portalCliente';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
+import { Paginacao } from '../components/Paginacao';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
+import { Input } from '../components/ui/Input';
 import { RevealGroup } from '../components/ui/RevealGroup';
 import { AnaliseVendas } from '../components/contratos/AnaliseVendas';
 import { ConfigPix, carregarConfigPix, type ConfigPixDados } from '../components/contratos/ConfigPix';
@@ -22,12 +24,13 @@ import { Checkbox } from '../components/ui/Checkbox';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
-import { CATEGORIA_BLOQUEIO_ROTULO, formatarData, formatarMoeda } from '../lib/status';
+import { CATEGORIA_BLOQUEIO_ROTULO, formatarData, formatarMoeda, normalizarTexto } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import { exportarCsv } from '../lib/exportarCsv';
-import type { BloqueioAgenda, ContratoComLead, FormaPagamento, Lead, OrcamentoCompleto, StatusSaldo } from '../lib/types';
+import type { BloqueioAgenda, ContratoComLead, FormaPagamento, Lead, OrcamentoCompleto, StatusContrato, StatusSaldo } from '../lib/types';
 
 const FORMA_PAGAMENTO_ROTULO: Record<FormaPagamento, string> = { pix: 'PIX', boleto: 'Boleto', cartao: 'Cartão' };
+const STATUS_CONTRATO_ROTULO: Record<StatusContrato, string> = { ativo: 'Ativo', cancelado: 'Cancelado', concluido: 'Concluído' };
 
 // Prazo do saldo ajustado de D-7 pra D-20 (2026-09-07, regra real da empresa mudou).
 function BadgeD20({ dias, saldoQuitado }: { dias: number; saldoQuitado: boolean }) {
@@ -53,6 +56,15 @@ export default function Contratos() {
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [documentoAberto, setDocumentoAberto] = useState<ContratoComLead | null>(null);
   const [portalTokenDocumento, setPortalTokenDocumento] = useState<string | null>(null);
+  // Busca + filtro + paginação na lista de contratos (2026-09-16, direção
+  // "redesign SaaS" do usuário) — a lista de KPIs/CSV/AnaliseVendas
+  // continua sobre `contratos` inteiro, sem filtro, de propósito: isso
+  // aqui é só conveniência de navegação da lista visual, nunca deveria
+  // mudar o que os cards do topo contam.
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | StatusContrato>('todos');
+  const [pagina, setPagina] = useState(1);
+  const POR_PAGINA = 10;
   const confirmar = useConfirmDialog();
 
   /** Abre o modal de documento — busca o token do Portal do Cliente na
@@ -230,6 +242,24 @@ export default function Contratos() {
     return { totalContratado, sinaisPendentes, saldosPendentes, emRisco };
   }, [contratos]);
 
+  const contratosFiltrados = useMemo(() => {
+    const termo = normalizarTexto(busca.trim());
+    return contratos.filter((c) => {
+      if (filtroStatus !== 'todos' && c.status !== filtroStatus) return false;
+      if (termo && !normalizarTexto(c.lead?.nome ?? '').includes(termo)) return false;
+      return true;
+    });
+  }, [contratos, busca, filtroStatus]);
+
+  // volta pra página 1 sempre que a busca/filtro muda o total de
+  // resultados — senão dava pra ficar "presa" numa página 3 que não
+  // existe mais depois de filtrar.
+  useEffect(() => {
+    setPagina(1);
+  }, [busca, filtroStatus]);
+
+  const contratosPaginados = useMemo(() => contratosFiltrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA), [contratosFiltrados, pagina]);
+
   return (
     <>
       <Cabecalho titulo="Contratos" subtitulo="Sinal de 20% no fechamento, quitação dos 80% restantes até 20 dias antes do evento." />
@@ -273,7 +303,11 @@ export default function Contratos() {
         <Panel className="mb-4">
           <PanelHeader
             titulo="Contratos"
-            desc="Sinal e saldo de cada contrato — a regra dos 20/80 não deixa passar despercebido."
+            desc={
+              busca || filtroStatus !== 'todos'
+                ? `${contratosFiltrados.length} de ${contratos.length} contrato(s)`
+                : 'Sinal e saldo de cada contrato — a regra dos 20/80 não deixa passar despercebido.'
+            }
             acao={
               <div className="flex items-center gap-2">
                 <button
@@ -314,11 +348,34 @@ export default function Contratos() {
           {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
           {!carregando && !erro && contratos.length === 0 && <EstadoVazio Icone={FileSignature} titulo="Nenhum contrato ainda" descricao="Gere um contrato a partir de um orçamento aceito ou crie um do zero." />}
 
+          {!carregando && !erro && contratos.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              <div className="relative min-w-[200px] flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" strokeWidth={2} />
+                <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar cliente…" className="pl-8" />
+              </div>
+              <div className="w-44">
+                <Select categoria="dinheiro" value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value as 'todos' | StatusContrato)}>
+                  <option value="todos">Todos os status</option>
+                  {(Object.keys(STATUS_CONTRATO_ROTULO) as StatusContrato[]).map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_CONTRATO_ROTULO[s]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {!carregando && !erro && contratos.length > 0 && contratosFiltrados.length === 0 && (
+            <EstadoVazio Icone={Search} titulo="Nenhum contrato encontrado" descricao="Ajuste a busca ou o filtro de status." />
+          )}
+
           <RevealGroup className="flex flex-col gap-3">
             {/* Mini-card de vidro leve por contrato (DESIGN.md > Tables &
                 Lists, 2026-09-09) — saldo quitado ganha um tom verde bem
                 sutil (é dinheiro, categoria da tela), o resto fica neutro. */}
-            {contratos.map((c) => (
+            {contratosPaginados.map((c) => (
               <div
                 key={c.id}
                 className={`p-4 ${c.saldo_status === 'quitado' ? 'list-row-tint' : 'list-row'}`}
@@ -412,6 +469,8 @@ export default function Contratos() {
               </div>
             ))}
           </RevealGroup>
+
+          <Paginacao paginaAtual={pagina} total={contratosFiltrados.length} porPagina={POR_PAGINA} onMudarPagina={setPagina} />
         </Panel>
 
         <AnaliseVendas contratos={contratos} />

@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Banknote, Calendar, CheckCircle2, Clock3, Filter, Fingerprint, GlassWater, Lock, Package, PackageCheck, Star, TrendingUp, Truck, Users, Wallet } from 'lucide-react';
+import { Activity, AlertTriangle, Banknote, Calendar, CheckCircle2, ClipboardCheck, Clock3, Filter, Fingerprint, GlassWater, Lock, Package, PackageCheck, Star, TrendingUp, Truck, Users, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { listarAuditorias } from '../lib/api/auditoria';
@@ -12,9 +12,11 @@ import { listarFunis } from '../lib/api/funis';
 import { listarLeads } from '../lib/api/leads';
 import { listarOrcamentoIdsComHoraAdicional } from '../lib/api/orcamentos';
 import { buscarPresencaResumo } from '../lib/api/ponto';
+import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { GraficoBarraSplit } from '../components/charts/GraficoBarraSplit';
+import { GraficoBarrasHorizontal } from '../components/charts/GraficoBarrasHorizontal';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
 import { GraficoDRE } from '../components/charts/GraficoDRE';
 import { GraficoLinha } from '../components/charts/GraficoLinha';
@@ -214,6 +216,18 @@ export default function Dashboard() {
   const leadsPorFunil = useMemo(
     () => funis.map((f, i) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: corFunilPorIndice(i) })),
     [funis, leads]
+  );
+  // Distribuição de contratos por status (2026-09-16, direção "redesign
+  // SaaS" do usuário) — cores de ESTADO (neutro/sucesso/perigo), não de
+  // núcleo, mesmo padrão já usado no donut de "Cobertura de equipe hoje"
+  // aqui do lado (confirmado=sucesso, convocado=pendente, recusado=perigo).
+  const contratosPorStatus = useMemo(
+    () => [
+      { rotulo: 'Ativo', valor: contratos.filter((c) => c.status === 'ativo').length, corClasse: 'text-neutral' },
+      { rotulo: 'Concluído', valor: contratos.filter((c) => c.status === 'concluido').length, corClasse: 'text-success' },
+      { rotulo: 'Cancelado', valor: contratos.filter((c) => c.status === 'cancelado').length, corClasse: 'text-danger' },
+    ],
+    [contratos]
   );
   const contratosEmRisco = useMemo(
     () => contratos.filter((c) => c.status !== 'cancelado' && c.saldo_status !== 'quitado' && diasAteEvento(c.data_evento) <= 20).length,
@@ -480,14 +494,11 @@ export default function Dashboard() {
           </div>
         )}
 
-        {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
+        {erro && <AlertaBanner tom="perigo" className="mb-4">{erro}</AlertaBanner>}
 
         {clientesInsatisfeitos.length > 0 && (
-          <div className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2.5 text-[12.5px] text-danger">
-            <p className="mb-1.5 flex items-center gap-1.5 font-semibold">
-              <Star className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2} /> {clientesInsatisfeitos.length} cliente(s) insatisfeito(s) nos últimos 30 dias
-            </p>
-            <ul className="flex flex-col gap-1 pl-5 list-disc">
+          <AlertaBanner tom="perigo" Icone={Star} titulo={`${clientesInsatisfeitos.length} cliente(s) insatisfeito(s) nos últimos 30 dias`} className="mb-4">
+            <ul className="flex flex-col gap-1 pl-5 text-[12.5px] list-disc">
               {clientesInsatisfeitos.map(({ auditoria, evento }) => (
                 <li key={auditoria.evento_id}>
                   <Link to={`/auditoria?evento=${auditoria.evento_id}`} className="hover:underline">
@@ -497,7 +508,7 @@ export default function Dashboard() {
                 </li>
               ))}
             </ul>
-          </div>
+          </AlertaBanner>
         )}
 
         <Reveal>
@@ -642,6 +653,24 @@ export default function Dashboard() {
                 { rotulo: 'A receber', valor: financeiroMesPendente, corClasse: 'text-pending' },
               ]}
             />
+          </Panel>
+        </Reveal>
+
+        {/* Distribuição de contratos por status (2026-09-16, direção
+            "redesign SaaS" do usuário) — complementa o donut de leads
+            acima (funil comercial) com o outro lado do funil: o que já
+            virou contrato de verdade, e em que situação está. */}
+        <Reveal delay={90} className="mb-4">
+          <Panel>
+            <PanelHeader
+              titulo="Contratos por status"
+              acao={
+                <Link to="/contratos" className={linkPainelDinheiro}>
+                  Ver contratos <ClipboardCheck className="h-3.5 w-3.5" />
+                </Link>
+              }
+            />
+            <GraficoBarrasHorizontal barras={contratosPorStatus} formatarValor={(v) => `${v}`} />
           </Panel>
         </Reveal>
 
