@@ -1,6 +1,6 @@
 import { AlertTriangle, CalendarClock, Clock3, Download, Timer, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
 import { atualizarChecklistEscala, atualizarStatusEscala, convocarMembro, listarEscalasDosEventos, removerEscala } from '../lib/api/escalas';
 import { criarMembro, inativarMembro, listarEquipe } from '../lib/api/equipe';
@@ -13,8 +13,10 @@ import { ModalHoraExtra } from '../components/escala/ModalHoraExtra';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
+import { Avatar } from '../components/ui/Avatar';
 import { Checkbox } from '../components/ui/Checkbox';
 import { EstadoVazio } from '../components/ui/EmptyState';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { RevealGroup } from '../components/ui/RevealGroup';
 import { Select } from '../components/ui/Select';
 import { montarLinkConfirmacao } from '../lib/api/confirmacaoEscala';
@@ -208,10 +210,13 @@ export default function Escala() {
             <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
               {equipe.map((m) => (
                 <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2 text-sm">
-                  <div>
-                    <strong className="text-text">{m.nome}</strong>
-                    <span className="ml-2 text-[11.5px] text-text-faint">{FUNCAO_EQUIPE_ROTULO[m.funcao] ?? m.funcao}</span>
-                    {m.telefone && <span className="ml-2 text-[11.5px] text-text-dim">{m.telefone}</span>}
+                  <div className="flex items-center gap-2.5">
+                    <Avatar nome={m.nome} categoria="pessoas" tamanho={28} />
+                    <div>
+                      <strong className="text-text">{m.nome}</strong>
+                      <span className="ml-2 text-[11.5px] text-text-faint">{FUNCAO_EQUIPE_ROTULO[m.funcao] ?? m.funcao}</span>
+                      {m.telefone && <span className="ml-2 text-[11.5px] text-text-dim">{m.telefone}</span>}
+                    </div>
                   </div>
                   <button type="button" onClick={() => inativarMembro(m.id).then(carregarBase).catch(aoFalhar)} className="text-[11.5px] font-medium text-danger hover:underline">
                     Inativar
@@ -249,7 +254,16 @@ export default function Escala() {
           <SkeletonLinhas />
         ) : eventos.length === 0 ? (
           <Panel>
-            <EstadoVazio Icone={CalendarClock} titulo="Nenhum evento disponível ainda" descricao="Gere um contrato na Agenda primeiro." />
+            <EstadoVazio
+              Icone={CalendarClock}
+              titulo="Nenhum evento disponível ainda"
+              descricao="Gere um contrato na Agenda primeiro."
+              acao={
+                <Link to="/contratos" className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-strong">
+                  Ir pra Contratos
+                </Link>
+              }
+            />
           </Panel>
         ) : eventosFiltrados.length === 0 ? (
           <Panel>
@@ -361,9 +375,35 @@ export default function Escala() {
                     </div>
                   </div>
 
-                  <p className="mb-3 text-[11.5px] text-text-faint">
-                    Necessário pra {evento.convidados ?? 0} convidados: {necessario.bartender} bartender(s) + {necessario.barback} barback (todo pacote sai com vidro de verdade) — hoje tem {bartenderAtual} bartender(s) e {barbackAtual} barback confirmado(s)/convocado(s).
-                  </p>
+                  <p className="mb-2 text-[11.5px] text-text-faint">Necessário pra {evento.convidados ?? 0} convidados (todo pacote sai com vidro de verdade):</p>
+
+                  {/* Barras de cobertura (2026-09-16, "redesign visual" do
+                      usuário) — no lugar do texto corrido de antes.
+                      `execucao` (verde) quando cobre 100%, `pessoas`
+                      (azul) enquanto falta gente; número fica vermelho se
+                      faltar mais de 1. */}
+                  <div className="mb-3 flex flex-col gap-2">
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                        <span>Bartenders</span>
+                        <span className={`font-mono ${faltaBartender === 0 ? 'text-execucao' : faltaBartender > 1 ? 'text-danger' : 'text-text-dim'}`}>
+                          {bartenderAtual}/{necessario.bartender}
+                          {faltaBartender === 0 && necessario.bartender > 0 ? ' ✓' : ''}
+                        </span>
+                      </div>
+                      <ProgressBar valor={necessario.bartender > 0 ? (bartenderAtual / necessario.bartender) * 100 : 100} categoria={faltaBartender === 0 ? 'execucao' : 'pessoas'} />
+                    </div>
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                        <span>Barbacks</span>
+                        <span className={`font-mono ${faltaBarback === 0 ? 'text-execucao' : faltaBarback > 1 ? 'text-danger' : 'text-text-dim'}`}>
+                          {barbackAtual}/{necessario.barback}
+                          {faltaBarback === 0 && necessario.barback > 0 ? ' ✓' : ''}
+                        </span>
+                      </div>
+                      <ProgressBar valor={necessario.barback > 0 ? (barbackAtual / necessario.barback) * 100 : 100} categoria={faltaBarback === 0 ? 'execucao' : 'pessoas'} />
+                    </div>
+                  </div>
 
                   {desteEvento.length === 0 ? (
                     <EstadoVazio Icone={Users} titulo="Ninguém convocado pra este evento ainda" />

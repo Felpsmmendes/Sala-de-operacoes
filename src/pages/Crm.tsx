@@ -155,6 +155,7 @@ export default function Crm() {
   async function aoMoverLead(leadId: string, funilId: string) {
     const lead = leads.find((l) => l.id === leadId) ?? todosLeads.find((l) => l.id === leadId);
     if (!lead || lead.status === funilId) return;
+    const funilAnterior = lead.status;
     // otimista: já reflete na tela, sem esperar a rede.
     setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: funilId } : l)));
     setTodosLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: funilId } : l)));
@@ -162,6 +163,11 @@ export default function Crm() {
     try {
       await atualizarLead(leadId, { status: funilId });
       aplicarAutomacoesEvento('mudanca_funil', { ...lead, status: funilId }, { funilNovoId: funilId }).then(avisarResultadoAutomacoes).catch((e) => toast.erro(mensagemDeErro(e)));
+      const nomeFunil = funis.find((f) => f.id === funilId)?.nome ?? funilId;
+      // "Desfazer" move de volta pro funil anterior — dispara `aoMoverLead`
+      // de novo, então roda automação de novo também (mesmo efeito de
+      // arrastar na mão pra lá e de volta; não é um caso novo).
+      toast.sucesso(`Lead movido para ${nomeFunil}.`, { rotulo: 'Desfazer', callback: () => aoMoverLead(leadId, funilAnterior) });
     } catch (e) {
       toast.erro(mensagemDeErro(e));
       carregar();
@@ -335,6 +341,7 @@ export default function Crm() {
                         onCriarFunil={aoCriarFunil}
                         onRenomearFunil={aoRenomearFunil}
                         onExcluirFunil={aoExcluirFunil}
+                        ultimoContato={ultimoContatoPorLead}
                       />
                     ) : (
                       <TabelaLeads
@@ -343,6 +350,7 @@ export default function Crm() {
                         selecionadoId={selecionadoId}
                         onSelecionar={(id) => setSelecionadoId(id === selecionadoId ? null : id)}
                         ultimoContato={ultimoContatoPorLead}
+                        aoAdicionarLead={() => setAba('novo')}
                       />
                     )}
                   </div>

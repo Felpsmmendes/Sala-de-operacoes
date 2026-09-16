@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useAlertas } from '../lib/AlertasContext';
 import { useAuth } from '../lib/AuthContext';
 import { useTema } from '../lib/useTema';
 import { Breadcrumb } from './Breadcrumb';
@@ -101,8 +102,24 @@ const BOTTOMBAR: ItemNav[] = [
   { to: '/fechamento', rotulo: 'Fechamento', Icone: BarChart3 },
 ];
 
+// `group relative` sempre presentes (2026-09-16) — só têm efeito visual
+// quando o tooltip customizado do modo colapsado existe dentro do link
+// (ver `TooltipColapsado` abaixo); expandido, não muda nada.
 function classesLink({ isActive }: { isActive: boolean }) {
-  return ['nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium', isActive ? 'is-active' : ''].join(' ');
+  return ['nav-item group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium', isActive ? 'is-active' : ''].join(' ');
+}
+
+/** Tooltip que só existe quando a sidebar está no modo ícone-só
+    (2026-09-16, "redesign visual" do usuário) — o `title` nativo do
+    NavLink continua (acessibilidade/fallback), isso aqui é só o balão
+    visual consistente com o resto do design system, no lugar do
+    tooltip cru do navegador. */
+function TooltipColapsado({ texto }: { texto: string }) {
+  return (
+    <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-sm border border-line bg-panel px-2 py-1 text-xs text-text opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+      {texto}
+    </span>
+  );
 }
 
 const CHAVE_NUCLEOS_ABERTOS = 'emcena_nucleos_abertos';
@@ -116,6 +133,7 @@ function nucleoDaRota(pathname: string): string | null {
 
 export default function Layout() {
   const { session } = useAuth();
+  const { contagem: contagemAlertas } = useAlertas();
   const location = useLocation();
   const email = session?.user?.email ?? '';
   const nomePerfil = (session?.user?.user_metadata as { nome?: string } | undefined)?.nome || email || 'Gestor';
@@ -193,7 +211,7 @@ export default function Layout() {
       >
         <div className={`flex items-center gap-2 ${colapsada ? 'flex-col' : 'justify-between px-1'}`}>
           <a href="/" className="flex items-center gap-2.5 overflow-hidden">
-            <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[11px] bg-white text-[12px] font-black text-[#050507]">EC</span>
+            <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[11px] bg-white text-[12px] font-black text-[#050507] transition-transform duration-200 hover:scale-105">EC</span>
             {!colapsada && (
               <span className="flex flex-col leading-tight">
                 <span className="whitespace-nowrap text-[13.5px] font-extrabold text-text">EM CENA</span>
@@ -215,8 +233,25 @@ export default function Layout() {
           <div className="flex flex-col gap-1 border-b border-line pb-4">
             {!colapsada && <p className="px-3 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-text-ultra">Principal</p>}
             <NavLink key={PAINEL.to} to={PAINEL.to} end title={colapsada ? PAINEL.rotulo : undefined} className={classesLink}>
-              <PAINEL.Icone className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
-              {!colapsada && <span className="truncate">{PAINEL.rotulo}</span>}
+              <span className="relative flex-shrink-0">
+                <PAINEL.Icone className="nav-icon h-[15px] w-[15px]" strokeWidth={1.75} />
+                {/* Badge de "pontos de atenção" (2026-09-16) — escrito só
+                    pelo Dashboard via AlertasContext (ver comentário lá).
+                    Só no modo colapsado (ícone-só): expandido, o número
+                    já aparece na pill ao lado do rótulo, abaixo. */}
+                {colapsada && contagemAlertas > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[8px] font-bold text-white">
+                    {contagemAlertas > 9 ? '9+' : contagemAlertas}
+                  </span>
+                )}
+              </span>
+              {!colapsada && (
+                <span className="flex flex-1 items-center justify-between gap-2 truncate">
+                  {PAINEL.rotulo}
+                  {contagemAlertas > 0 && <span className="flex-shrink-0 rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white">{contagemAlertas}</span>}
+                </span>
+              )}
+              {colapsada && <TooltipColapsado texto={PAINEL.rotulo} />}
             </NavLink>
           </div>
           {NUCLEOS.map((nucleo) => {
@@ -241,6 +276,7 @@ export default function Layout() {
                     <NavLink key={item.to} to={item.to} end={item.to === '/'} title={colapsada ? item.rotulo : undefined} className={classesLink}>
                       <item.Icone className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
                       {!colapsada && <span className="truncate">{item.rotulo}</span>}
+                      {colapsada && <TooltipColapsado texto={item.rotulo} />}
                     </NavLink>
                   ))}
               </div>
@@ -403,7 +439,7 @@ export function Conteudo({ children }: { children: ReactNode }) {
     return () => cancelAnimationFrame(frame);
   }, []);
   return (
-    <main ref={ref} className="mx-auto max-w-[1680px] px-5 py-6 lg:px-8">
+    <main ref={ref} className="mx-auto max-w-[1680px] px-5 py-6 sm:px-6 lg:px-8">
       {children}
     </main>
   );

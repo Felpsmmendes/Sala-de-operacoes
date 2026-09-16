@@ -3,9 +3,19 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 
 export type ToastTipo = 'sucesso' | 'erro' | 'info' | 'aviso' | 'processando';
 
-export type ToastItem = { id: string; mensagem: string; tipo: ToastTipo; duracao: number };
+/** Ação inline no toast (2026-09-16, "redesign visual" do usuário) —
+    "Desfazer" pra ação reversível (marcar pago, mover lead de funil):
+    clicar desfaz E fecha o toast, evita segurar a decisão "isso foi
+    certo?" na cabeça até o toast sumir sozinho. */
+export type ToastAcao = { rotulo: string; callback: () => void };
 
-type ToastContextType = { toasts: ToastItem[]; adicionar: (mensagem: string, tipo?: ToastTipo, duracao?: number) => string; remover: (id: string) => void };
+export type ToastItem = { id: string; mensagem: string; tipo: ToastTipo; duracao: number; acao?: ToastAcao };
+
+type ToastContextType = {
+  toasts: ToastItem[];
+  adicionar: (mensagem: string, tipo?: ToastTipo, duracao?: number, acao?: ToastAcao) => string;
+  remover: (id: string) => void;
+};
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
@@ -23,12 +33,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const adicionar = useCallback(
-    (mensagem: string, tipo: ToastTipo = 'info', duracao = tipo === 'erro' ? 6000 : tipo === 'aviso' ? 5000 : 4000) => {
+    (mensagem: string, tipo: ToastTipo = 'info', duracao = tipo === 'erro' ? 6000 : tipo === 'aviso' ? 5000 : 4000, acao?: ToastAcao) => {
       const id = String(++contadorRef.current);
       // no máximo 5 ao mesmo tempo — o 6º empurra o mais antigo pra fora,
       // nunca deixa a pilha crescer indefinidamente numa tela com muitos
       // erros em sequência.
-      setToasts((atual) => [...atual.slice(-4), { id, mensagem, tipo, duracao }]);
+      setToasts((atual) => [...atual.slice(-4), { id, mensagem, tipo, duracao, acao }]);
       if (duracao > 0) setTimeout(() => remover(id), duracao);
       // devolve o id pra quem chamou (ex.: `toast.processando`) poder
       // remover manualmente quando a ação acabar, sem esperar o timeout.
@@ -69,7 +79,10 @@ export function _registrarRemocaoToast(fn: ToastContextType['remover']): void {
   _remover = fn;
 }
 export const toast = {
-  sucesso: (msg: string) => _adicionar?.(msg, 'sucesso'),
+  /** `acao` opcional (2026-09-16) — "Desfazer" pra ação reversível.
+      Duração maior (8s em vez de 4s) só quando tem ação, pra dar tempo
+      de clicar. */
+  sucesso: (msg: string, acao?: ToastAcao) => _adicionar?.(msg, 'sucesso', acao ? 8000 : undefined, acao),
   erro: (msg: string) => _adicionar?.(msg, 'erro'),
   info: (msg: string) => _adicionar?.(msg, 'info'),
   aviso: (msg: string) => _adicionar?.(msg, 'aviso'),
@@ -133,6 +146,18 @@ function ToastLinha({ toast: t, aoRemover }: { toast: ToastItem; aoRemover: (id:
         </span>
       )}
       <p className="min-w-0 flex-1 whitespace-pre-line break-words text-[13px] leading-snug text-text">{t.mensagem}</p>
+      {t.acao && (
+        <button
+          type="button"
+          onClick={() => {
+            t.acao!.callback();
+            aoRemover(t.id);
+          }}
+          className="mt-0.5 flex-shrink-0 whitespace-nowrap font-semibold underline decoration-dotted hover:decoration-solid"
+        >
+          {t.acao.rotulo}
+        </button>
+      )}
       {/* toast "processando" some sozinho quando a promessa termina — sem
           botão de fechar manual, pra não deixar quem tá vendo achar que
           dá pra cancelar a ação em andamento cancelando o aviso dela. */}

@@ -23,6 +23,7 @@ import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
+import { Reveal } from '../components/ui/Reveal';
 import { ChecklistEvento } from '../components/estoque/ChecklistEvento';
 import { ItemForm } from '../components/estoque/ItemForm';
 import { ModalCompra } from '../components/estoque/ModalCompra';
@@ -231,6 +232,7 @@ export default function Estoque() {
         </div>
 
         {aba === 'checklists' && (
+          <Reveal>
           <Panel>
             <PanelHeader titulo="Checklist de carga por evento" desc="Itens do pacote contratado (padrão) + observações/brindes do contrato, por evento." />
             {carregando ? (
@@ -256,10 +258,11 @@ export default function Estoque() {
               </div>
             )}
           </Panel>
+          </Reveal>
         )}
 
         {aba === 'avancado' && (
-          <>
+          <Reveal>
             <Panel className="mb-4">
               <PanelHeader titulo="Calculadora preditiva" desc="Quanto vai ser consumido pra X convidados, comparado com o que tem no galpão." acao={<Calculator className="h-4 w-4 text-text-faint" />} />
               <div className="mb-3 max-w-xs">
@@ -327,10 +330,11 @@ export default function Estoque() {
                 </div>
               )}
             </Panel>
-          </>
+          </Reveal>
         )}
 
         {aba === 'avarias' && (
+          <Reveal>
           <Panel>
             <PanelHeader titulo="Histórico de avarias" desc="Quebras e perdas registradas." />
             {avarias.length === 0 ? (
@@ -349,9 +353,11 @@ export default function Estoque() {
               </div>
             )}
           </Panel>
+          </Reveal>
         )}
 
         {aba === 'vinculos' && (
+          <Reveal>
           <Panel>
             <PanelHeader
               titulo="Vincular checklist de carga ao estoque"
@@ -383,6 +389,7 @@ export default function Estoque() {
               </div>
             )}
           </Panel>
+          </Reveal>
         )}
       </Conteudo>
 

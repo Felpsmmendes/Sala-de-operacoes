@@ -13,6 +13,7 @@ import { SkeletonLinhas } from '../components/Skeleton';
 import { Checkbox } from '../components/ui/Checkbox';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
+import { RevealGroup } from '../components/ui/RevealGroup';
 import { RotuloCampo } from '../components/ui/RotuloCampo';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
@@ -213,6 +214,7 @@ export default function Auditoria() {
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
+        <RevealGroup>
         {auditorias.length >= 3 && (
           <Panel className="mb-4">
             <PanelHeader titulo="Histórico de satisfação" desc={`Baseado em ${distribuicaoNps.total} evento(s) com NPS registrado`} />
@@ -449,6 +451,7 @@ export default function Auditoria() {
             )}
           </Panel>
         </div>
+        </RevealGroup>
       </Conteudo>
     </>
   );

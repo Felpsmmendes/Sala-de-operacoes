@@ -206,7 +206,16 @@ export default function Agenda() {
               <Panel>
                 <PanelHeader titulo="Próximos eventos" desc={`${proximos.length} nos próximos meses`} />
                 {proximos.length === 0 ? (
-                  <EstadoVazio Icone={Calendar} titulo="Nenhum evento futuro ainda" descricao="Gere um contrato pra criar o primeiro." />
+                  <EstadoVazio
+                    Icone={Calendar}
+                    titulo="Nenhum evento futuro ainda"
+                    descricao="Gere um contrato pra criar o primeiro."
+                    acao={
+                      <Link to="/contratos" className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-strong">
+                        Ir pra Contratos
+                      </Link>
+                    }
+                  />
                 ) : (
                   <div className="flex flex-col gap-3">
                     {proximos.map((ev) => (

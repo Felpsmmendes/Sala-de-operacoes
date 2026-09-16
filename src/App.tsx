@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Skeleton } from './components/Skeleton';
+import { AlertasProvider } from './lib/AlertasContext';
 import { AuthProvider } from './lib/AuthContext';
 import { _registrarRemocaoToast, _registrarToast, ToastProvider, useToast } from './lib/toast';
 
@@ -72,6 +73,7 @@ export default function App() {
   return (
     <ToastProvider>
       <BrowserRouter>
+        <AlertasProvider>
         <AuthProvider>
           <ToastBridge />
           <Suspense fallback={<CarregandoTela />}>
@@ -129,6 +131,7 @@ export default function App() {
             </Routes>
           </Suspense>
         </AuthProvider>
+        </AlertasProvider>
       </BrowserRouter>
     </ToastProvider>
   );

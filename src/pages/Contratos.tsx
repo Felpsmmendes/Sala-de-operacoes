@@ -11,6 +11,7 @@ import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Paginacao } from '../components/Paginacao';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
+import { Avatar } from '../components/ui/Avatar';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { RevealGroup } from '../components/ui/RevealGroup';
@@ -38,6 +39,45 @@ function BadgeD20({ dias, saldoQuitado }: { dias: number; saldoQuitado: boolean 
   if (dias < 0) return <Badge tom="perigo" texto={`Evento há ${Math.abs(dias)}d — saldo em aberto`} />;
   if (dias <= 20) return <Badge tom="perigo" texto={`D-${dias}: quitação obrigatória`} />;
   return <Badge tom="pendente" texto={`D-${dias} até o evento`} />;
+}
+
+const COR_ESTADO: Record<'sucesso' | 'pendente' | 'perigo' | 'neutro', string> = {
+  sucesso: 'var(--color-success)',
+  pendente: 'var(--color-pending)',
+  perigo: 'var(--color-danger)',
+  neutro: 'var(--color-line-strong)',
+};
+
+/** Marcador de uma etapa da barra de liquidação abaixo. */
+function MarcadorLiquidacao({ cor, ativo, rotulo, valor }: { cor: string; ativo: boolean; rotulo: string; valor?: string }) {
+  return (
+    <div className="flex w-16 flex-shrink-0 flex-col items-center gap-1">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full" style={{ background: ativo ? cor : 'var(--color-raised)', border: `2px solid ${cor}` }}>
+        {ativo && <CheckCircle2 className="h-2.5 w-2.5 text-[#031a18]" strokeWidth={3} />}
+      </span>
+      <span className="text-center text-[9.5px] font-semibold uppercase tracking-wide text-text-faint">{rotulo}</span>
+      {valor && <span className="font-mono text-[10px] text-text-dim">{valor}</span>}
+    </div>
+  );
+}
+
+/** Barra visual "Sinal → Saldo → Liquidado" (2026-09-16, "redesign
+    visual" do usuário) — resumo de 1 olhada do card inteiro de
+    sinal+saldo acima, útil quando o gestor está só passando o olho por
+    vários contratos. Nunca substitui os controles de cima (checkbox,
+    select), é só um eco visual. */
+function BarraLiquidacao({ sinalPago, saldoStatus, diasAteEvento, valorSinal, valorSaldo }: { sinalPago: boolean; saldoStatus: StatusSaldo; diasAteEvento: number; valorSinal: number; valorSaldo: number }) {
+  const liquidado = saldoStatus === 'quitado';
+  const estadoSaldo: keyof typeof COR_ESTADO = liquidado ? 'sucesso' : saldoStatus === 'parcial' ? 'pendente' : diasAteEvento <= 20 ? 'perigo' : 'neutro';
+  return (
+    <div className="mt-3 flex items-center">
+      <MarcadorLiquidacao cor={COR_ESTADO[sinalPago ? 'sucesso' : 'neutro']} ativo={sinalPago} rotulo="Sinal" valor={formatarMoeda(valorSinal)} />
+      <div className="h-[2px] flex-1" style={{ background: sinalPago ? COR_ESTADO.sucesso : 'var(--color-line)' }} />
+      <MarcadorLiquidacao cor={COR_ESTADO[estadoSaldo]} ativo={estadoSaldo === 'sucesso'} rotulo="Saldo" valor={formatarMoeda(valorSaldo)} />
+      <div className="h-[2px] flex-1" style={{ background: liquidado ? COR_ESTADO.sucesso : 'var(--color-line)' }} />
+      <MarcadorLiquidacao cor={COR_ESTADO[liquidado ? 'sucesso' : 'neutro']} ativo={liquidado} rotulo="Liquidado" />
+    </div>
+  );
 }
 
 export default function Contratos() {
@@ -219,6 +259,7 @@ export default function Contratos() {
     setContratos((atual) => atual.map((c) => (c.id === id ? { ...c, sinal_pago: pago } : c)));
     try {
       await marcarSinalPago(id, pago);
+      toast.sucesso(pago ? 'Sinal marcado como pago.' : 'Sinal marcado como pendente.', { rotulo: 'Desfazer', callback: () => aoMudarSinalPago(id, !pago) });
     } finally {
       carregar();
     }
@@ -346,7 +387,18 @@ export default function Contratos() {
           />
           {carregando && <SkeletonLinhas />}
           {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
-          {!carregando && !erro && contratos.length === 0 && <EstadoVazio Icone={FileSignature} titulo="Nenhum contrato ainda" descricao="Gere um contrato a partir de um orçamento aceito ou crie um do zero." />}
+          {!carregando && !erro && contratos.length === 0 && (
+            <EstadoVazio
+              Icone={FileSignature}
+              titulo="Nenhum contrato ainda"
+              descricao="Gere um contrato a partir de um orçamento aceito ou crie um do zero."
+              acao={
+                <button type="button" onClick={() => setCriandoAberto(true)} className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-strong">
+                  Criar contrato
+                </button>
+              }
+            />
+          )}
 
           {!carregando && !erro && contratos.length > 0 && (
             <div className="mb-3 flex flex-wrap gap-2">
@@ -382,14 +434,17 @@ export default function Contratos() {
                 style={c.saldo_status === 'quitado' ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : undefined}
               >
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <strong className="block truncate text-[15px] text-text" title={c.lead?.nome ?? undefined}>
-                      {c.lead?.nome ?? '—'}
-                    </strong>
-                    <p className="text-[12.5px] text-text-dim">
-                      {formatarData(c.data_evento)} · {c.local || <span className="text-pending">local não informado</span>} · {formatarMoeda(c.valor_total)}
-                      {c.forma_pagamento && <span className="ml-1">· {FORMA_PAGAMENTO_ROTULO[c.forma_pagamento]}</span>}
-                    </p>
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <Avatar nome={c.lead?.nome ?? '?'} categoria="dinheiro" />
+                    <div className="min-w-0">
+                      <strong className="block truncate text-[15px] text-text" title={c.lead?.nome ?? undefined}>
+                        {c.lead?.nome ?? '—'}
+                      </strong>
+                      <p className="text-[12.5px] text-text-dim">
+                        {formatarData(c.data_evento)} · {c.local || <span className="text-pending">local não informado</span>} · {formatarMoeda(c.valor_total)}
+                        {c.forma_pagamento && <span className="ml-1">· {FORMA_PAGAMENTO_ROTULO[c.forma_pagamento]}</span>}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5">
                     <BadgeD20 dias={diasAteEvento(c.data_evento)} saldoQuitado={c.saldo_status === 'quitado'} />
@@ -438,6 +493,8 @@ export default function Contratos() {
                     </div>
                   </div>
                 </div>
+
+                <BarraLiquidacao sinalPago={c.sinal_pago} saldoStatus={c.saldo_status} diasAteEvento={diasAteEvento(c.data_evento)} valorSinal={c.valor_sinal} valorSaldo={c.valor_saldo} />
 
                 <div className="mt-3 flex items-center justify-between">
                   {c.sinal_pago && c.saldo_status === 'quitado' ? (

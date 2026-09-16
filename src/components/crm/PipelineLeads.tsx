@@ -6,6 +6,7 @@ import { toast } from '../../lib/toast';
 import { formatarMoeda } from '../../lib/status';
 import { useArrastarRolagem } from '../../lib/useArrastarRolagem';
 import { useConfirmDialog } from '../../lib/useConfirmDialog';
+import { Avatar } from '../ui/Avatar';
 import { Input } from '../ui/Input';
 
 const CORES: { valor: FunilLead['cor']; rotulo: string; classe: string; variavel: string }[] = [
@@ -32,6 +33,7 @@ export function PipelineLeads({
   onCriarFunil,
   onRenomearFunil,
   onExcluirFunil,
+  ultimoContato = new Map(),
 }: {
   leads: Lead[];
   funis: FunilLead[];
@@ -42,6 +44,12 @@ export function PipelineLeads({
   onCriarFunil: (nome: string, cor: FunilLead['cor']) => Promise<void>;
   onRenomearFunil: (id: string, dados: { nome?: string; cor?: FunilLead['cor'] }) => Promise<void>;
   onExcluirFunil: (id: string) => Promise<void>;
+  /** Mapa lead_id → data ISO do contato mais recente (2026-09-16,
+      "redesign visual" do usuário) — mesmo dado que a TabelaLeads já usa,
+      reaproveitado aqui pra mostrar "há quanto tempo" direto no card do
+      kanban, sem precisar abrir o lead. Opcional: card sem essa
+      informação não quebra, só não mostra a linha de último contato. */
+  ultimoContato?: Map<string, string>;
 }) {
   const scrollRef = useArrastarRolagem<HTMLDivElement>();
   const confirmar = useConfirmDialog();
@@ -221,24 +229,46 @@ export function PipelineLeads({
 
               <div className="flex flex-col gap-2">
                 {itens.length === 0 && <p className="px-0.5 py-2 text-xs italic text-text-faint">Nenhum lead aqui</p>}
-                {itens.map((lead) => (
-                  <button
-                    key={lead.id}
-                    type="button"
-                    draggable={!editandoFunis}
-                    onDragStart={(ev) => ev.dataTransfer.setData('text/lead-id', lead.id)}
-                    onClick={() => onSelecionar(lead.id)}
-                    className={`flex flex-col gap-0.5 rounded-sm border bg-input p-2.5 text-left text-sm transition-colors hover:border-line-strong hover:bg-raised ${
-                      editandoFunis ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
-                    } ${lead.id === selecionadoId ? 'border-people' : 'border-line'}`}
-                  >
-                    <strong className="block truncate text-[13px] font-semibold text-text" title={lead.nome}>
-                      {lead.nome}
-                    </strong>
-                    {lead.telefone && <span className="text-[11.5px] text-text-dim">{lead.telefone}</span>}
-                    {lead.valor_estimado != null && <span className="font-mono text-[11.5px] text-pending">{formatarMoeda(lead.valor_estimado)}</span>}
-                  </button>
-                ))}
+                {itens.map((lead) => {
+                  const dataContato = ultimoContato.get(lead.id);
+                  // mesmo cálculo/limiar já usado na TabelaLeads
+                  // (>=14 dias = frio, >=7 = esfriando, resto = recente).
+                  const dias = dataContato ? Math.floor((Date.now() - new Date(dataContato).getTime()) / 86_400_000) : null;
+                  const corContato = dias == null ? '' : dias >= 14 ? 'text-danger' : dias >= 7 ? 'text-pending' : 'text-success';
+                  return (
+                    <button
+                      key={lead.id}
+                      type="button"
+                      draggable={!editandoFunis}
+                      onDragStart={(ev) => ev.dataTransfer.setData('text/lead-id', lead.id)}
+                      onClick={() => onSelecionar(lead.id)}
+                      className={`flex flex-col gap-1.5 rounded-sm border bg-input p-2.5 text-left text-sm transition-colors hover:border-line-strong hover:bg-raised ${
+                        editandoFunis ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+                      } ${lead.id === selecionadoId ? 'border-people' : 'border-line'}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Avatar nome={lead.nome} categoria="pessoas" tamanho={26} />
+                        <span className="min-w-0 flex-1">
+                          <strong className="block truncate text-[13px] font-semibold text-text" title={lead.nome}>
+                            {lead.nome}
+                          </strong>
+                          {lead.valor_estimado != null && <span className="font-mono text-[11.5px] text-pending">{formatarMoeda(lead.valor_estimado)}</span>}
+                        </span>
+                      </div>
+                      {(lead.telefone || lead.origem || dias != null) && (
+                        <div className="flex flex-col gap-1 border-t border-line pt-1.5 text-[11px] text-text-faint">
+                          {lead.telefone && <span className="truncate">{lead.telefone}</span>}
+                          {(lead.origem || dias != null) && (
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 truncate">{lead.origem}</span>
+                              {dias != null && <span className={`flex-shrink-0 font-medium ${corContato}`}>{dias <= 0 ? 'Hoje' : dias === 1 ? '1 dia' : `${dias} dias`}</span>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

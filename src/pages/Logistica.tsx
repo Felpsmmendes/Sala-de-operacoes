@@ -15,6 +15,7 @@ import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
+import { RevealGroup } from '../components/ui/RevealGroup';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
@@ -175,6 +176,7 @@ export default function Logistica() {
           </div>
         )}
 
+        <RevealGroup>
         {eventosHoje.length > 0 && (
           <Panel className="mb-4">
             <PanelHeader titulo="Frota hoje" desc={`${eventosHoje.length} evento(s) hoje — acompanhe o status de saída das vans (não fica gravado, é só do dia)`} />
@@ -402,6 +404,7 @@ export default function Logistica() {
             </div>
           )}
         </Panel>
+        </RevealGroup>
       </Conteudo>
     </>
   );

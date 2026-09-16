@@ -12,6 +12,7 @@ import { listarFunis } from '../lib/api/funis';
 import { listarLeads } from '../lib/api/leads';
 import { listarOrcamentoIdsComHoraAdicional } from '../lib/api/orcamentos';
 import { buscarPresencaResumo } from '../lib/api/ponto';
+import { useAlertas } from '../lib/AlertasContext';
 import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
@@ -36,6 +37,29 @@ function formatarMes(mes: string): string {
   const [ano, m] = mes.slice(0, 7).split('-');
   const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   return `${nomes[Number(m) - 1]}/${ano}`;
+}
+
+/** % do evento já passado, só pra evento "em_execucao" hoje (2026-09-16,
+    "redesign visual" do usuário) — mesma correção de "virou a
+    madrugada" já usada em `calcularHoraExtra` (escalas.ts): se o fim
+    previsto é numericamente menor que o início (ex. 20:00 → 02:00),
+    soma 24h nele antes de comparar. `null` quando falta início ou fim
+    previsto (não dá pra calcular sem os dois). */
+function progressoTemporalEvento(horaInicio: string | null, horaFimPrevista: string | null): number | null {
+  if (!horaInicio || !horaFimPrevista) return null;
+  const paraMinutos = (h: string) => {
+    const [hh, mm] = h.split(':').map(Number);
+    return hh * 60 + mm;
+  };
+  const agora = new Date();
+  const inicio = paraMinutos(horaInicio);
+  let fim = paraMinutos(horaFimPrevista);
+  let atual = agora.getHours() * 60 + agora.getMinutes();
+  if (fim < inicio) fim += 24 * 60;
+  if (atual < inicio) atual += 24 * 60; // já viramos o dia, mas o evento é "de ontem"
+  const total = fim - inicio;
+  if (total <= 0) return null;
+  return Math.max(0, Math.min(100, ((atual - inicio) / total) * 100));
 }
 
 const SALDO_INFO: Record<string, { rotulo: string; tom: 'sucesso' | 'pendente' | 'perigo' }> = {
@@ -250,6 +274,13 @@ export default function Dashboard() {
   // no topo da tela — mesmos 3 sinais que já geram alerta em outro lugar
   // da própria tela (estoque crítico, contrato em risco, NPS baixo).
   const pontosDeAtencao = itensCriticos + contratosEmRisco + clientesInsatisfeitos.length;
+  // Espelha o total pro badge da sidebar (2026-09-16, "redesign visual"
+  // do usuário) — ver AlertasContext.tsx pro porquê de ser contexto e
+  // não prop (Dashboard é filho do Layout, não pai).
+  const { setContagem } = useAlertas();
+  useEffect(() => {
+    setContagem(pontosDeAtencao);
+  }, [pontosDeAtencao, setContagem]);
 
   // banner de risco operacional (2026-09-14) — "N pontos de atenção" acima
   // já avisa que tem problema, mas não diz QUAL evento nem dá o caminho
@@ -732,6 +763,22 @@ export default function Dashboard() {
                           <span className="font-mono text-[12.5px] text-text">{ev.convidados ?? '—'}</span>
                         </div>
                       </div>
+
+                      {ev.status === 'em_execucao' &&
+                        (() => {
+                          const pct = progressoTemporalEvento(ev.hora_inicio, ev.hora_fim_prevista);
+                          if (pct == null) return null;
+                          return (
+                            <div className="mb-3">
+                              <div className="mb-1 flex items-center justify-between text-[10px] text-text-faint">
+                                <span className="font-mono">{ev.hora_inicio?.slice(0, 5)}</span>
+                                <span className="font-semibold text-execucao">{Math.round(pct)}% do evento</span>
+                                <span className="font-mono">{ev.hora_fim_prevista?.slice(0, 5)}</span>
+                              </div>
+                              <ProgressBar valor={pct} categoria="execucao" glow />
+                            </div>
+                          );
+                        })()}
 
                       <div className="mb-3 flex flex-wrap items-center gap-2">
                         {contrato && <Badge tom={SALDO_INFO[contrato.saldo_status].tom} texto={SALDO_INFO[contrato.saldo_status].rotulo} />}

@@ -2,6 +2,7 @@ import { Filter } from 'lucide-react';
 import { useMemo } from 'react';
 import type { FunilLead, Lead } from '../../lib/types';
 import { Badge } from '../Badge';
+import { Avatar } from '../ui/Avatar';
 import { EstadoVazio } from '../ui/EmptyState';
 import { funilDoLead, formatarMoeda } from '../../lib/status';
 
@@ -34,6 +35,7 @@ export function TabelaLeads({
   selecionadoId,
   onSelecionar,
   ultimoContato = new Map(),
+  aoAdicionarLead,
 }: {
   leads: Lead[];
   funis: FunilLead[];
@@ -43,6 +45,9 @@ export function TabelaLeads({
       alimenta "Leads esfriando" em Crm.tsx, reaproveitado aqui como coluna
       pra priorizar follow-up direto na lista, sem precisar abrir cada lead. */
   ultimoContato?: Map<string, string>;
+  /** Ação do estado vazio (2026-09-16, "redesign visual" do usuário) —
+      opcional: sem isso, o estado vazio continua sem botão, como já era. */
+  aoAdicionarLead?: () => void;
 }) {
   const diasPorLead = useMemo(() => {
     const agora = Date.now();
@@ -54,7 +59,20 @@ export function TabelaLeads({
     );
   }, [leads, ultimoContato]);
 
-  if (leads.length === 0) return <EstadoVazio Icone={Filter} titulo="Nenhum lead encontrado com esses filtros" />;
+  if (leads.length === 0)
+    return (
+      <EstadoVazio
+        Icone={Filter}
+        titulo="Nenhum lead encontrado com esses filtros"
+        acao={
+          aoAdicionarLead && (
+            <button type="button" onClick={aoAdicionarLead} className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-strong">
+              Adicionar lead
+            </button>
+          )
+        }
+      />
+    );
   return (
     <div className="overflow-x-auto">
       <div className="flex min-w-[690px] flex-col gap-2">
@@ -71,7 +89,10 @@ export function TabelaLeads({
           const info = funilDoLead(funis, lead.status);
           return (
             <div key={lead.id} className={`list-row ${COLS} px-3 py-2.5 text-sm ${lead.id === selecionadoId ? 'border-people' : ''}`}>
-              <span className="truncate text-text">{lead.nome}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <Avatar nome={lead.nome} categoria="pessoas" tamanho={24} />
+                <span className="truncate text-text">{lead.nome}</span>
+              </span>
               <span className="truncate text-text-dim">{lead.telefone || lead.email || '—'}</span>
               <span className="truncate text-text-dim">{lead.origem || '—'}</span>
               <span className="truncate font-mono text-text">{lead.valor_estimado != null ? formatarMoeda(lead.valor_estimado) : '—'}</span>

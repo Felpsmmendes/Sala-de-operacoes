@@ -83,7 +83,10 @@ export default function Financeiro() {
   function aoMarcarPago(id: string, pago: boolean) {
     setLancamentos((atual) => atual.map((l) => (l.id === id ? { ...l, status: pago ? 'pago' : 'pendente' } : l)));
     atualizarStatusLancamento(id, pago ? 'pago' : 'pendente')
-      .then(carregar)
+      .then(() => {
+        toast.sucesso(pago ? 'Lançamento marcado como pago.' : 'Lançamento marcado como pendente.', { rotulo: 'Desfazer', callback: () => aoMarcarPago(id, !pago) });
+        carregar();
+      })
       .catch((e) => {
         aoFalhar(e);
         carregar();
@@ -362,6 +365,17 @@ export default function Financeiro() {
                   </div>
                 </div>
               ))}
+
+              {/* Linha de total fixa (2026-09-16, "redesign visual" do
+                  usuário) — soma só do que está visível agora (filtro de
+                  status/mês já aplicado), não da tabela toda. */}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 pt-3 text-sm">
+                <span className="font-mono text-[11px] uppercase tracking-wide text-text-faint">Total ({visiveis.length} lançamento{visiveis.length === 1 ? '' : 's'})</span>
+                <div className="flex gap-4">
+                  <span className="font-mono font-semibold text-success">+ {formatarMoeda(visiveis.filter((l) => l.tipo === 'receita').reduce((s, l) => s + l.valor, 0))}</span>
+                  <span className="font-mono font-semibold text-danger">− {formatarMoeda(visiveis.filter((l) => l.tipo === 'despesa').reduce((s, l) => s + l.valor, 0))}</span>
+                </div>
+              </div>
             </div>
           )}
         </Panel>
