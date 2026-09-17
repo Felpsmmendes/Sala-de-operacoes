@@ -7,8 +7,11 @@ import { Input } from '../components/ui/Input';
 import { useAuth } from '../lib/AuthContext';
 import { listarGestores } from '../lib/api/gestores';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { toast } from '../lib/toast';
 import { formatarData } from '../lib/status';
 import type { Gestor } from '../lib/types';
+
+const CHAVE_META_MENSAL = 'emcena_meta_mensal';
 
 export default function Configuracoes() {
   const { session, sair, atualizarNome, atualizarSenha } = useAuth();
@@ -33,6 +36,31 @@ export default function Configuracoes() {
   const [senhaConfirma, setSenhaConfirma] = useState('');
   const [salvandoSenha, setSalvandoSenha] = useState(false);
   const [msgSenha, setMsgSenha] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+
+  // Meta de faturamento mensal (2026-09-17, "master redesign") — só
+  // referência pro Fechamento Mensal calcular % de atingimento; não é
+  // dado de negócio real, então localStorage basta (regra global do
+  // prompt: nada de tabela nova no Supabase pra isso).
+  const [metaMensal, setMetaMensal] = useState<number>(() => {
+    try {
+      return Number(localStorage.getItem(CHAVE_META_MENSAL) ?? 0);
+    } catch {
+      return 0;
+    }
+  });
+  const [salvandoMeta, setSalvandoMeta] = useState(false);
+
+  function aoSalvarMeta() {
+    setSalvandoMeta(true);
+    try {
+      localStorage.setItem(CHAVE_META_MENSAL, String(metaMensal));
+      toast.sucesso('Meta mensal salva.');
+    } catch (e) {
+      toast.erro(mensagemDeErro(e));
+    } finally {
+      setSalvandoMeta(false);
+    }
+  }
 
   async function aoSalvarNome() {
     setSalvandoNome(true);
@@ -89,6 +117,33 @@ export default function Configuracoes() {
               >
                 {salvandoNome ? 'Salvando…' : 'Salvar perfil'}
               </button>
+            </div>
+          </Panel>
+
+          <Panel>
+            <PanelHeader titulo="Operacional" desc="Parâmetros usados nos indicadores do sistema." />
+            <div className="flex flex-col gap-4">
+              <div className="flex items-end gap-2">
+                <Input
+                  rotulo="Meta de faturamento mensal (R$)"
+                  dica="Aparece no Fechamento Mensal como referência de atingimento."
+                  type="number"
+                  value={metaMensal || ''}
+                  onChange={(e) => setMetaMensal(Number(e.target.value))}
+                  placeholder="Ex: 50000"
+                  min={0}
+                  step={1000}
+                  className="flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={aoSalvarMeta}
+                  disabled={salvandoMeta}
+                  className="rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"
+                >
+                  {salvandoMeta ? 'Salvando…' : 'Salvar'}
+                </button>
+              </div>
             </div>
           </Panel>
 

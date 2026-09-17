@@ -3,8 +3,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Skeleton } from './components/Skeleton';
-import { AlertasProvider } from './lib/AlertasContext';
 import { AuthProvider } from './lib/AuthContext';
+import { NotificacoesProvider } from './lib/NotificacoesContext';
 import { _registrarRemocaoToast, _registrarToast, ToastProvider, useToast } from './lib/toast';
 
 // Import de cada tela vira `lazy` — sem isso, o build gerava 1 bundle só
@@ -73,7 +73,7 @@ export default function App() {
   return (
     <ToastProvider>
       <BrowserRouter>
-        <AlertasProvider>
+        <NotificacoesProvider>
         <AuthProvider>
           <ToastBridge />
           <Suspense fallback={<CarregandoTela />}>
@@ -131,7 +131,7 @@ export default function App() {
             </Routes>
           </Suspense>
         </AuthProvider>
-        </AlertasProvider>
+        </NotificacoesProvider>
       </BrowserRouter>
     </ToastProvider>
   );

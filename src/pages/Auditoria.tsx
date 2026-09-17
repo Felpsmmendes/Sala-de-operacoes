@@ -5,7 +5,9 @@ import { buscarAuditoriaDoEvento, listarAuditorias, salvarAuditoria } from '../l
 import { buscarChecklistPadrao, listarChecklistExtra } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
 import { criarTarefa } from '../lib/api/tarefasAgenda';
+import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
+import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
@@ -178,6 +180,29 @@ export default function Auditoria() {
       total: comNota.length,
     };
   }, [auditorias]);
+  // Tendência de NPS mês a mês (2026-09-17, "P2/P3") — média das notas
+  // de cada mês com auditoria registrada; só entra no gráfico quando há
+  // 2+ meses (1 ponto só não mostra tendência nenhuma).
+  const npsPorMes = useMemo(() => {
+    const grupos = new Map<string, number[]>();
+    auditorias.forEach((a) => {
+      if (a.nps_nota == null) return;
+      const mes = a.criado_em.slice(0, 7);
+      grupos.set(mes, [...(grupos.get(mes) ?? []), a.nps_nota]);
+    });
+    const meses = [...grupos.keys()].sort();
+    return {
+      categorias: meses.map((m) => {
+        const [ano, mes] = m.split('-');
+        return new Date(Number(ano), Number(mes) - 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      }),
+      pontos: meses.map((m) => {
+        const notas = grupos.get(m)!;
+        return Math.round((notas.reduce((s, n) => s + n, 0) / notas.length) * 10) / 10;
+      }),
+    };
+  }, [auditorias]);
+
   const npsMedio90d = useMemo(() => {
     const limite = new Date();
     limite.setDate(limite.getDate() - 90);
@@ -200,6 +225,16 @@ export default function Auditoria() {
         .slice(0, 2),
     [auditorias]
   );
+  // Avaliações realmente negativas (NPS 0-4, não os 5-6 "neutro-baixo" de
+  // `feedbacksNegativos` acima) nos últimos 30 dias — mesmo recorte do
+  // Dashboard (`clientesInsatisfeitos`), só que local a esta tela
+  // (2026-09-17, "topbar + notificações").
+  const npsRuim = useMemo(() => {
+    const limite = new Date();
+    limite.setDate(limite.getDate() - 30);
+    const limiteStr = limite.toISOString().slice(0, 10);
+    return auditorias.filter((a) => a.nps_nota != null && a.nps_nota <= 4 && a.criado_em >= limiteStr);
+  }, [auditorias]);
 
   return (
     <>
@@ -212,7 +247,20 @@ export default function Auditoria() {
           <MetricCard Icone={PackageCheck} rotulo="Avarias acumuladas" valor={formatarMoeda(totalAvarias)} legenda="Soma de todos os eventos" categoria="operacao" />
         </MetricGrid>
 
+        {!carregando && npsRuim.length > 0 && (
+          <AlertaBanner tom="pendente" Icone={Star} titulo={`${npsRuim.length} avaliação${npsRuim.length > 1 ? 'ões' : ''} negativa${npsRuim.length > 1 ? 's' : ''} nos últimos 30 dias`} className="mb-4" dispensavel>
+            Clientes com nota NPS 0–4 merecem retorno prioritário.
+          </AlertaBanner>
+        )}
+
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
+
+        {npsPorMes.categorias.length >= 2 && (
+          <Panel className="mb-4">
+            <PanelHeader titulo="Tendência de NPS" desc="Média mensal de satisfação dos clientes — escala 0 a 10." />
+            <GraficoLinha categorias={npsPorMes.categorias} series={[{ rotulo: 'NPS médio', corClasse: 'text-people', pontos: npsPorMes.pontos }]} formatarValor={(v) => v.toFixed(1)} />
+          </Panel>
+        )}
 
         <RevealGroup>
         {auditorias.length >= 3 && (

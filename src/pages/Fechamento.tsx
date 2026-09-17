@@ -1,4 +1,4 @@
-import { Banknote, TrendingUp, Users } from 'lucide-react';
+import { Banknote, Target, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { calcularFaturamentoPorMes, listarContratos, type FaturamentoMes } from '../lib/api/contratos';
 import { listarOrcamentos } from '../lib/api/orcamentos';
@@ -48,6 +48,17 @@ export default function Fechamento() {
   // recorte de "fechado" que o resto da tela usa (não cancelado).
   const contratosDoMes = useMemo(() => contratos.filter((c) => c.status !== 'cancelado' && mesAtual && c.data_evento.slice(0, 7) === mesAtual.mes.slice(0, 7)), [contratos, mesAtual]);
   const ticketMedio = contratosDoMes.length > 0 ? contratosDoMes.reduce((s, c) => s + c.valor_total, 0) / contratosDoMes.length : 0;
+
+  // Meta mensal (2026-09-17, "master redesign") — configurada em
+  // Configurações, guardada em localStorage (não é dado de negócio,
+  // é só uma referência de atingimento pra este painel).
+  const metaMensal = useMemo(() => {
+    try {
+      return Number(localStorage.getItem('emcena_meta_mensal') ?? 0);
+    } catch {
+      return 0;
+    }
+  }, []);
   // "recorrente" olha o HISTÓRICO inteiro (não só o mês) — é sobre o
   // lead já ter fechado mais de uma vez com a Em Cena, não só neste mês.
   const clientesRecorrentes = useMemo(() => {
@@ -93,6 +104,15 @@ export default function Fechamento() {
           />
           <MetricCard Icone={TrendingUp} rotulo="Ticket médio do mês" valor={formatarMoeda(ticketMedio)} legenda={`${contratosDoMes.length} contrato(s) neste mês`} categoria="dinheiro" />
           <MetricCard Icone={Users} rotulo="Clientes recorrentes" valor={String(clientesRecorrentes)} legenda="Leads com mais de 1 contrato" categoria="pessoas" />
+          {metaMensal > 0 && (
+            <MetricCard
+              Icone={Target}
+              rotulo="Meta do mês"
+              valor={`${Math.round(((mesAtual?.valor ?? 0) / metaMensal) * 100)}%`}
+              legenda={`${formatarMoeda(mesAtual?.valor ?? 0)} de ${formatarMoeda(metaMensal)}`}
+              categoria="dinheiro"
+            />
+          )}
         </MetricGrid>
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -112,16 +132,24 @@ export default function Fechamento() {
                 {/* Mini-cards de vidro leve (DESIGN.md > Tables & Lists,
                     2026-09-09), não mais <table>/<tr> crua. */}
                 <div className="flex min-w-[280px] flex-col gap-2">
-                  <div className="grid grid-cols-2 gap-3 px-3 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                  <div className="grid grid-cols-3 gap-3 px-3 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
                     <span>Mês</span>
                     <span>Faturado</span>
+                    <span>Variação</span>
                   </div>
-                  {[...meses].reverse().map((m) => (
-                    <div key={m.mes} className="list-row grid grid-cols-2 items-center gap-3 px-3 py-2 text-[12.5px]">
-                      <span className="text-text">{formatarMes(m.mes)}</span>
-                      <span className="font-mono text-text">{formatarMoeda(m.valor)}</span>
-                    </div>
-                  ))}
+                  {[...meses].reverse().map((m, i, arr) => {
+                    const anterior = arr[i + 1];
+                    const variacao = anterior && anterior.valor > 0 ? Math.round(((m.valor - anterior.valor) / anterior.valor) * 100) : null;
+                    return (
+                      <div key={m.mes} className="list-row grid grid-cols-3 items-center gap-3 px-3 py-2 text-[12.5px]">
+                        <span className="text-text">{formatarMes(m.mes)}</span>
+                        <span className="font-mono text-text">{formatarMoeda(m.valor)}</span>
+                        <span className={`font-mono text-[11.5px] font-semibold ${variacao == null ? 'text-text-faint' : variacao > 0 ? 'text-money' : variacao < 0 ? 'text-danger' : 'text-text-faint'}`}>
+                          {variacao == null ? '—' : `${variacao > 0 ? '+' : ''}${variacao}%`}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </Panel>

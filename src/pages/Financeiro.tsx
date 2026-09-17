@@ -94,6 +94,14 @@ export default function Financeiro() {
   }
 
   const mesAtual = new Date().toISOString().slice(0, 7);
+  // lançamentos vencidos (2026-09-17, "topbar + notificações") — pendente
+  // com vencimento já passado, independente do filtro de status/mês ativo
+  // na lista abaixo (é um alerta, não deve depender de qual filtro o
+  // gestor deixou selecionado da última vez).
+  const vencidos = useMemo(() => {
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    return lancamentos.filter((l) => l.status === 'pendente' && l.vencimento && l.vencimento < hojeStr);
+  }, [lancamentos]);
   const aReceber = lancamentos.filter((l) => l.tipo === 'receita' && l.status === 'pendente').reduce((s, l) => s + l.valor, 0);
   const aPagar = lancamentos.filter((l) => l.tipo === 'despesa' && l.status === 'pendente').reduce((s, l) => s + l.valor, 0);
   const receitaMes = lancamentos.filter((l) => l.tipo === 'receita' && l.status === 'pago' && (l.data_pagamento ?? '').slice(0, 7) === mesAtual).reduce((s, l) => s + l.valor, 0);
@@ -237,6 +245,11 @@ export default function Financeiro() {
         </MetricGrid>
 
         {erro && <AlertaBanner tom="perigo" className="mb-4">{erro}</AlertaBanner>}
+        {!carregando && vencidos.length > 0 && (
+          <AlertaBanner tom="perigo" titulo={`${vencidos.length} lançamento${vencidos.length > 1 ? 's' : ''} com vencimento em atraso`} className="mb-4" dispensavel>
+            Regularize os pagamentos vencidos para manter o fluxo de caixa.
+          </AlertaBanner>
+        )}
 
         <div className="mb-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_320px]">
           <Panel>
@@ -335,23 +348,26 @@ export default function Financeiro() {
               {/* Mini-card de vidro leve por lançamento (DESIGN.md > Tables &
                   Lists, 2026-09-09) — pago ganha um tom verde bem sutil
                   (é dinheiro, categoria da tela), pendente fica neutro. */}
-              {visiveisOrdenados.map((l) => (
+              {visiveisOrdenados.map((l) => {
+                const vencido = l.status === 'pendente' && !!l.vencimento && l.vencimento < new Date().toISOString().slice(0, 10);
+                return (
                 <div
                   key={l.id}
-                  className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm ${l.status === 'pago' ? 'list-row-tint' : 'list-row'}`}
-                  style={l.status === 'pago' ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : undefined}
+                  className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm ${l.status === 'pago' || vencido ? 'list-row-tint' : 'list-row'}`}
+                  style={l.status === 'pago' ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : vencido ? ({ '--row-color': 'var(--color-danger)' } as CSSProperties) : undefined}
                 >
                   <div className="min-w-0">
                     <strong className={l.tipo === 'receita' ? 'text-success' : 'text-text'}>{l.tipo === 'receita' ? '+' : '−'} {formatarMoeda(l.valor)}</strong>
                     <span className="ml-2 text-text">{l.descricao}</span>
                     {l.categoria && <span className="ml-2 rounded-full border border-line bg-input px-2 py-0.5 text-[10px] text-text-faint">{l.categoria}</span>}
-                    <p className="text-[11.5px] text-text-faint">
+                    <p className={`text-[11.5px] ${vencido ? 'font-semibold text-danger' : 'text-text-faint'}`}>
                       {l.vencimento ? `vence ${formatarData(l.vencimento)}` : 'sem vencimento'}
                       {l.data_pagamento ? ` · pago em ${formatarData(l.data_pagamento)}` : ''}
+                      {vencido ? ' · em atraso' : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge tom={l.status === 'pago' ? 'sucesso' : 'pendente'} texto={l.status === 'pago' ? 'Pago' : 'Pendente'} />
+                    <Badge tom={l.status === 'pago' ? 'sucesso' : vencido ? 'perigo' : 'pendente'} texto={l.status === 'pago' ? 'Pago' : vencido ? 'Atrasado' : 'Pendente'} />
                     <button
                       type="button"
                       onClick={() => aoMarcarPago(l.id, l.status !== 'pago')}
@@ -364,7 +380,8 @@ export default function Financeiro() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {/* Linha de total fixa (2026-09-16, "redesign visual" do
                   usuário) — soma só do que está visível agora (filtro de

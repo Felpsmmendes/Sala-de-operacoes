@@ -5,6 +5,7 @@ import { atualizarContrato, cancelarContrato, criarContrato, diasAteEvento, excl
 import { listarLeads } from '../lib/api/leads';
 import { listarOrcamentos } from '../lib/api/orcamentos';
 import { buscarPortalPorContrato } from '../lib/api/portalCliente';
+import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
@@ -311,6 +312,17 @@ export default function Contratos() {
           <MetricCard Icone={Clock} rotulo="Saldos pendentes" valor={String(metricas.saldosPendentes.length)} legenda="Aguardando os 80%" categoria="dinheiro" />
           <MetricCard Icone={AlertTriangle} rotulo="Em risco (D-20)" valor={String(metricas.emRisco.length)} legenda="Saldo não quitado, evento em 20 dias ou menos" categoria="dinheiro" />
         </MetricGrid>
+
+        {!carregando && metricas.emRisco.length > 0 && (
+          <AlertaBanner tom="perigo" titulo={`${metricas.emRisco.length} contrato${metricas.emRisco.length > 1 ? 's' : ''} com saldo pendente — evento em ≤ 20 dias`} className="mb-3">
+            {metricas.emRisco.map((c) => `${c.lead?.nome ?? '?'} (D-${diasAteEvento(c.data_evento)})`).join(' · ')}
+          </AlertaBanner>
+        )}
+        {!carregando && metricas.sinaisPendentes.length > 0 && (
+          <AlertaBanner tom="pendente" Icone={Clock} titulo={`${metricas.sinaisPendentes.length} sinal${metricas.sinaisPendentes.length > 1 ? 'is' : ''} de entrada pendente${metricas.sinaisPendentes.length > 1 ? 's' : ''}`} className="mb-4">
+            Confirme o recebimento do sinal (20%) para garantir o contrato.
+          </AlertaBanner>
+        )}
 
         <Panel className="mb-4">
           <PanelHeader titulo="Chave PIX do negócio" desc="Usada pra gerar a cobrança (QR Code) do sinal e do saldo de cada contrato." />

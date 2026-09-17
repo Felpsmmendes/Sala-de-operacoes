@@ -1,5 +1,5 @@
 import { CheckCircle2, Clock3, ListChecks } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
 import { criarCue, excluirCue, listarCuesDoEvento, marcarCueConcluido, sincronizarCuesAutomaticos, type NovoCue } from '../lib/api/cueSheet';
@@ -9,7 +9,9 @@ import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { Checkbox } from '../components/ui/Checkbox';
+import { DotLive } from '../components/ui/DotLive';
 import { EstadoVazio } from '../components/ui/EmptyState';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
@@ -172,6 +174,18 @@ export default function CueSheet() {
   const proximoNumero = cues.length > 0 ? Math.max(...cues.map((c) => c.numero)) + 1 : 1;
   const concluidos = cues.filter((c) => c.concluido).length;
 
+  // Cue "atual" na visão em lista (2026-09-17, "master redesign") — o
+  // último cue cujo horário já passou e que ainda não foi marcado
+  // concluído; mesmo espírito da linha "agora" que já existe só na
+  // Timeline (ver `TimelineCues` acima), agora também na lista.
+  const cueAtualId = useMemo(() => {
+    if (cues.length === 0) return null;
+    const agora = new Date();
+    const horaAtual = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+    const passados = cues.filter((c) => !c.concluido && c.horario.slice(0, 5) <= horaAtual);
+    return passados.length > 0 ? passados[passados.length - 1].id : null;
+  }, [cues]);
+
   return (
     <>
       <Cabecalho titulo="Roteiro do Evento" subtitulo="Cronograma minuto a minuto da equipe em campo, passo a passo." />
@@ -182,6 +196,18 @@ export default function CueSheet() {
           <MetricCard Icone={ListChecks} rotulo="Canal de rádio" valor={eventoAtual?.canal_radio || '—'} legenda="Comunicação de campo do evento" categoria="agenda" />
           <MetricCard Icone={ListChecks} rotulo="Local" valor={eventoAtual?.local || '—'} legenda={eventoAtual?.hora_inicio ? `início ${eventoAtual.hora_inicio}` : 'sem horário definido'} categoria="agenda" />
         </MetricGrid>
+
+        {cues.length > 0 && (
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-[12px] font-medium text-text-dim">Progresso do evento</span>
+            <div className="flex-1">
+              <ProgressBar valor={(concluidos / cues.length) * 100} categoria="agenda" />
+            </div>
+            <span className="font-mono text-[12px] text-text-faint">
+              {concluidos}/{cues.length}
+            </span>
+          </div>
+        )}
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
@@ -244,7 +270,12 @@ export default function CueSheet() {
             ) : (
               <ol className="flex flex-col gap-2">
                 {cues.map((c) => (
-                  <li key={c.id} className={`flex items-start gap-3 rounded-sm border px-3 py-2.5 text-sm ${c.concluido ? 'border-success/30 bg-success/10' : 'border-line bg-input'}`}>
+                  <li
+                    key={c.id}
+                    className={`flex items-start gap-3 rounded-sm border px-3 py-2.5 text-sm ${
+                      c.concluido ? 'border-success/30 bg-success/10' : c.id === cueAtualId ? 'border-accent/40 bg-accent/8 ring-1 ring-accent/20' : 'border-line bg-input'
+                    }`}
+                  >
                     <div className="mt-0.5">
                       <Checkbox categoria="agenda" marcado={c.concluido} onMudar={(v) => aoMarcarConcluido(c.id, v)} />
                     </div>
@@ -252,7 +283,8 @@ export default function CueSheet() {
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="text-text">
                           <span className="mr-2 font-mono text-text-faint">#{String(c.numero).padStart(2, '0')}</span>
-                          <span className="font-mono text-pending">{c.horario.slice(0, 5)}</span>
+                          {c.id === cueAtualId && <DotLive categoria="agenda" />}
+                          <span className="ml-2 font-mono text-pending">{c.horario.slice(0, 5)}</span>
                           <strong className="ml-2 text-text">{c.titulo}</strong>
                           {c.origem === 'automatico' && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-text-faint">auto</span>}
                         </span>

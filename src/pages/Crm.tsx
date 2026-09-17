@@ -1,4 +1,4 @@
-import { CheckCircle2, Filter, MessageCircle, Smartphone, Snowflake, UserPlus, Users, Zap } from 'lucide-react';
+import { CheckCircle2, Filter, MessageCircle, Smartphone, Snowflake, TrendingUp, UserPlus, Users, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { aplicarAutomacoesEvento } from '../lib/api/automacoes';
@@ -53,6 +53,7 @@ export default function Crm() {
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<StatusLead | ''>('');
+  const [filtroValor, setFiltroValor] = useState<'' | 'ate5k' | '5k15k' | 'acima15k'>('');
   const [ultimoContatoPorLead, setUltimoContatoPorLead] = useState<Map<string, string>>(new Map());
 
   const [modo, setModo] = useState<'pipeline' | 'tabela'>('pipeline');
@@ -200,9 +201,23 @@ export default function Crm() {
   }
 
   const funisPorId = new Map(funis.map((f) => [f.id, f]));
-  const emNegociacao = leads.filter((l) => funisPorId.get(l.status)?.papel == null).length;
-  const ganhos = leads.filter((l) => funisPorId.get(l.status)?.papel === 'ganho').length;
-  const perdidos = leads.filter((l) => funisPorId.get(l.status)?.papel === 'perdido').length;
+
+  // Filtro de valor estimado (2026-09-17, "P2/P3") — em cima do que já
+  // veio filtrado do servidor por busca/status; nunca refaz a consulta.
+  const leadsFiltrados = useMemo(() => {
+    if (!filtroValor) return leads;
+    return leads.filter((l) => {
+      const v = l.valor_estimado ?? 0;
+      if (filtroValor === 'ate5k') return v <= 5000;
+      if (filtroValor === '5k15k') return v > 5000 && v <= 15000;
+      return v > 15000;
+    });
+  }, [leads, filtroValor]);
+
+  const emNegociacao = leadsFiltrados.filter((l) => funisPorId.get(l.status)?.papel == null).length;
+  const ganhos = leadsFiltrados.filter((l) => funisPorId.get(l.status)?.papel === 'ganho').length;
+  const perdidos = leadsFiltrados.filter((l) => funisPorId.get(l.status)?.papel === 'perdido').length;
+  const taxaConversao = leadsFiltrados.length > 0 ? Math.round((ganhos / leadsFiltrados.length) * 100) : 0;
 
   // "Leads esfriando" (Fase D do roadmap, 2026-09-11) — só considera quem
   // ainda está em negociação (papel null: ganho/perdido já são casos
@@ -249,10 +264,11 @@ export default function Crm() {
         {aba === 'leads' && (
           <>
             <MetricGrid>
-              <MetricCard Icone={Users} rotulo="Total de leads" valor={String(leads.length)} legenda="Nesta busca/filtro" categoria="pessoas" />
+              <MetricCard Icone={Users} rotulo="Total de leads" valor={String(leadsFiltrados.length)} legenda="Nesta busca/filtro" categoria="pessoas" />
               <MetricCard Icone={Filter} rotulo="Em negociação" valor={String(emNegociacao)} legenda="Nos funis do meio" categoria="pessoas" />
               <MetricCard Icone={CheckCircle2} rotulo="Ganhos" valor={String(ganhos)} legenda="Virou contrato" categoria="pessoas" />
               <MetricCard Icone={Users} rotulo="Perdidos" valor={String(perdidos)} legenda="Fora do funil" categoria="pessoas" />
+              <MetricCard Icone={TrendingUp} rotulo="Taxa de conversão" valor={`${taxaConversao}%`} legenda="Ganhos / total nesta busca" categoria="pessoas" />
               <MetricCard
                 Icone={Snowflake}
                 rotulo="Leads esfriando"
@@ -290,12 +306,12 @@ export default function Crm() {
               </Panel>
             )}
 
-            {funis.length > 0 && leads.length > 0 && (
+            {funis.length > 0 && leadsFiltrados.length > 0 && (
               <Panel className="mb-4">
                 <PanelHeader titulo="Leads por funil" desc="Quantos leads estão em cada coluna do Pipeline, nesta busca/filtro." />
                 <GraficoDonut
                   centroRotulo="Leads"
-                  fatias={funis.map((f, i) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: corFunilPorIndice(i) }))}
+                  fatias={funis.map((f, i) => ({ rotulo: f.nome, valor: leadsFiltrados.filter((l) => l.status === f.id).length, corClasse: corFunilPorIndice(i) }))}
                   formatarValor={(v) => `${v} lead${v === 1 ? '' : 's'}`}
                 />
               </Panel>
@@ -322,6 +338,14 @@ export default function Crm() {
                     ))}
                   </Select>
                 </div>
+                <div className="w-full sm:w-48">
+                  <Select value={filtroValor} onChange={(e) => setFiltroValor(e.target.value as typeof filtroValor)} categoria="pessoas">
+                    <option value="">Qualquer valor</option>
+                    <option value="ate5k">Até R$5.000</option>
+                    <option value="5k15k">R$5.000 – R$15.000</option>
+                    <option value="acima15k">Acima de R$15.000</option>
+                  </Select>
+                </div>
               </div>
 
               {carregando && <p className="text-sm text-text-dim">Carregando leads…</p>}
@@ -332,7 +356,7 @@ export default function Crm() {
                   <div className="min-w-0">
                     {modo === 'pipeline' ? (
                       <PipelineLeads
-                        leads={leads}
+                        leads={leadsFiltrados}
                         funis={funis}
                         selecionadoId={selecionadoId}
                         onSelecionar={(id) => setSelecionadoId(id === selecionadoId ? null : id)}
@@ -345,7 +369,7 @@ export default function Crm() {
                       />
                     ) : (
                       <TabelaLeads
-                        leads={leads}
+                        leads={leadsFiltrados}
                         funis={funis}
                         selecionadoId={selecionadoId}
                         onSelecionar={(id) => setSelecionadoId(id === selecionadoId ? null : id)}

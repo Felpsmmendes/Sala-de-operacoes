@@ -12,6 +12,7 @@ import {
   Menu,
   Moon,
   Package,
+  Plus,
   Receipt,
   Search,
   Sun,
@@ -21,14 +22,15 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { useAlertas } from '../lib/AlertasContext';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
+import { useNotificacoes } from '../lib/NotificacoesContext';
 import { useTema } from '../lib/useTema';
 import { Breadcrumb } from './Breadcrumb';
 import { Skeleton } from './Skeleton';
 import { CommandPalette } from './ui/CommandPalette';
 import { DotLive } from './ui/DotLive';
+import { SinoNotificacoes } from './ui/SinoNotificacoes';
 
 export type ItemNav = { to: string; rotulo: string; Icone: typeof LayoutDashboard };
 
@@ -133,7 +135,7 @@ function nucleoDaRota(pathname: string): string | null {
 
 export default function Layout() {
   const { session } = useAuth();
-  const { contagem: contagemAlertas } = useAlertas();
+  const { naoLidas: contagemAlertas } = useNotificacoes();
   const location = useLocation();
   const email = session?.user?.email ?? '';
   const nomePerfil = (session?.user?.user_metadata as { nome?: string } | undefined)?.nome || email || 'Gestor';
@@ -235,10 +237,12 @@ export default function Layout() {
             <NavLink key={PAINEL.to} to={PAINEL.to} end title={colapsada ? PAINEL.rotulo : undefined} className={classesLink}>
               <span className="relative flex-shrink-0">
                 <PAINEL.Icone className="nav-icon h-[15px] w-[15px]" strokeWidth={1.75} />
-                {/* Badge de "pontos de atenção" (2026-09-16) — escrito só
-                    pelo Dashboard via AlertasContext (ver comentário lá).
-                    Só no modo colapsado (ícone-só): expandido, o número
-                    já aparece na pill ao lado do rótulo, abaixo. */}
+                {/* Badge de "pontos de atenção" (2026-09-16, atualizado
+                    2026-09-17 pra ler de `NotificacoesContext` — mesma
+                    contagem de não-lidas que alimenta o sino da topbar,
+                    nunca um número calculado à parte). Só no modo
+                    colapsado (ícone-só): expandido, o número já aparece
+                    na pill ao lado do rótulo, abaixo. */}
                 {colapsada && contagemAlertas > 0 && (
                   <span className="absolute -right-1.5 -top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[8px] font-bold text-white">
                     {contagemAlertas > 9 ? '9+' : contagemAlertas}
@@ -294,15 +298,6 @@ export default function Layout() {
               Operação Normal
             </div>
           )}
-          <button
-            type="button"
-            onClick={alternar}
-            title={tema === 'escuro' ? 'Mudar pro modo claro' : 'Mudar pro modo escuro'}
-            className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-text-faint transition-colors hover:bg-raised hover:text-text ${colapsada ? 'justify-center' : ''}`}
-          >
-            {tema === 'escuro' ? <Sun className="h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} /> : <Moon className="h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />}
-            {!colapsada && <span>{tema === 'escuro' ? 'Modo claro' : 'Modo escuro'}</span>}
-          </button>
           <NavLink
             to="/configuracoes"
             title={colapsada ? 'Configurações' : undefined}
@@ -323,6 +318,54 @@ export default function Layout() {
 
       {/* -- conteúdo -- */}
       <div className={`flex-1 pb-20 transition-[margin] duration-200 lg:pb-0 ${colapsada ? 'lg:ml-16' : 'lg:ml-[210px]'}`}>
+        {/* Topbar persistente (2026-09-17, "topbar + notificações") — busca,
+            atalho de criação e sino ficam fixos no topo em TODA tela
+            autenticada, em vez de cada `Cabecalho` remontar seu próprio
+            botão de busca. O alternador de tema mora aqui agora (saiu do
+            rodapé da sidebar): esta topbar é tão persistente quanto a
+            sidebar (nunca desmonta entre rotas), então não reintroduz o
+            "pisca" que motivou tirá-lo do `Cabecalho` por página em
+            2026-09-14 — ver comentário em `useTema` acima. */}
+        <div className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-line bg-sidebar/90 px-5 backdrop-blur-sm lg:px-6">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            className="hidden items-center gap-2 rounded-md border border-line bg-raised px-3 py-1.5 text-[12px] text-text-faint transition-colors hover:border-line-strong hover:text-text-dim sm:flex"
+          >
+            <Search className="h-3.5 w-3.5" strokeWidth={2} />
+            <span>Buscar…</span>
+            <kbd className="ml-2 rounded border border-line bg-panel px-1.5 py-0.5 font-mono text-[9px] text-text-ultra">⌘K</kbd>
+          </button>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            title="Buscar (⌘K)"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-line bg-raised text-text-faint transition-colors hover:border-line-strong hover:text-text sm:hidden"
+          >
+            <Search className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+
+          <div className="flex-1" />
+
+          <Link
+            to="/agenda"
+            className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[12px] font-semibold text-accent-ink transition-colors hover:bg-accent-strong"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+            <span className="hidden sm:inline">Novo Evento</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={alternar}
+            title={tema === 'escuro' ? 'Modo claro' : 'Modo escuro'}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-line bg-raised text-text-faint transition-colors hover:border-line-strong hover:text-text"
+          >
+            {tema === 'escuro' ? <Sun className="h-[15px] w-[15px]" strokeWidth={1.75} /> : <Moon className="h-[15px] w-[15px]" strokeWidth={1.75} />}
+          </button>
+
+          <SinoNotificacoes />
+        </div>
         {/* Suspense PRÓPRIO daqui (2026-09-13), não só o de cima em
             App.tsx — sem isso, trocar de página (cada rota é um chunk
             lazy próprio, ver App.tsx) suspendia até o Suspense mais
@@ -406,14 +449,6 @@ function RelogioStatus() {
       <DotLive categoria="acao" />
       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-ultra">Centro Integrado de Controle</span>
       <span className="ml-auto font-mono text-xs tabular-nums text-text-dim">{hora}</span>
-      <button
-        type="button"
-        onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-        title="Busca rápida (Ctrl/Cmd + K)"
-        className="hidden items-center gap-1 rounded-sm border border-line bg-raised px-1.5 py-0.5 font-mono text-[9.5px] text-text-faint transition-colors hover:text-text sm:flex"
-      >
-        <Search className="h-2.5 w-2.5" strokeWidth={2} /> ⌘K
-      </button>
     </div>
   );
 }

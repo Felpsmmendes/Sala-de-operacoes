@@ -12,7 +12,6 @@ import { listarFunis } from '../lib/api/funis';
 import { listarLeads } from '../lib/api/leads';
 import { listarOrcamentoIdsComHoraAdicional } from '../lib/api/orcamentos';
 import { buscarPresencaResumo } from '../lib/api/ponto';
-import { useAlertas } from '../lib/AlertasContext';
 import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
@@ -28,6 +27,7 @@ import { EstadoVazio } from '../components/ui/EmptyState';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Reveal } from '../components/ui/Reveal';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { useNotificacoes } from '../lib/NotificacoesContext';
 import { toast } from '../lib/toast';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
 import { STATUS_EVENTO_INFO, corFunilPorIndice, formatarData, formatarMoeda } from '../lib/status';
@@ -37,6 +37,72 @@ function formatarMes(mes: string): string {
   const [ano, m] = mes.slice(0, 7).split('-');
   const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   return `${nomes[Number(m) - 1]}/${ano}`;
+}
+
+function tempoRelativoAtividade(d: Date): string {
+  const min = Math.floor((Date.now() - d.getTime()) / 60_000);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+
+type Atividade = { texto: string; sub: string; quando: Date; link: string; cor: string };
+
+/** "Atividades recentes" (2026-09-17, "master redesign") — nunca um feed
+    de eventos gravado à parte (isso seria uma tabela de auditoria nova,
+    proibida pelas regras do prompt); é só um reordenar dos MESMOS
+    `contratos`/`leads` que o Dashboard já carrega, pelos campos
+    `atualizado_em` que já existem. */
+function AtividadesRecentes({ contratos, leads }: { contratos: ContratoComLead[]; leads: Lead[] }) {
+  const atividades: Atividade[] = [];
+
+  [...contratos]
+    .sort((a, b) => b.atualizado_em.localeCompare(a.atualizado_em))
+    .slice(0, 3)
+    .forEach((c) =>
+      atividades.push({
+        texto: c.saldo_status === 'quitado' ? 'Contrato quitado' : 'Contrato atualizado',
+        sub: `${c.lead?.nome ?? '—'} · ${formatarMoeda(c.valor_total)}`,
+        quando: new Date(c.atualizado_em),
+        link: '/contratos',
+        cor: 'text-money',
+      })
+    );
+
+  [...leads]
+    .sort((a, b) => b.atualizado_em.localeCompare(a.atualizado_em))
+    .slice(0, 2)
+    .forEach((l) =>
+      atividades.push({
+        texto: 'Lead atualizado',
+        sub: `${l.nome}${l.valor_estimado ? ` · ${formatarMoeda(l.valor_estimado)}` : ''}`,
+        quando: new Date(l.atualizado_em),
+        link: '/crm',
+        cor: 'text-people',
+      })
+    );
+
+  const ordenadas = atividades.sort((a, b) => b.quando.getTime() - a.quando.getTime()).slice(0, 5);
+  if (ordenadas.length === 0) return null;
+
+  return (
+    <Panel className="mb-4">
+      <PanelHeader titulo="Atividades recentes" desc="Últimas ações no sistema" />
+      <div className="flex flex-col divide-y divide-line">
+        {ordenadas.map((a, i) => (
+          <Link key={i} to={a.link} className="flex items-center gap-3 py-2.5 transition-colors hover:text-text">
+            <div className={`h-2 w-2 flex-shrink-0 rounded-full ${a.cor.replace('text-', 'bg-')}`} />
+            <div className="min-w-0 flex-1">
+              <p className={`text-[12.5px] font-semibold ${a.cor}`}>{a.texto}</p>
+              <p className="text-[11.5px] text-text-dim">{a.sub}</p>
+            </div>
+            <span className="flex-shrink-0 font-mono text-[10px] text-text-ultra">{tempoRelativoAtividade(a.quando)}</span>
+          </Link>
+        ))}
+      </div>
+    </Panel>
+  );
 }
 
 /** % do evento já passado, só pra evento "em_execucao" hoje (2026-09-16,
@@ -274,13 +340,6 @@ export default function Dashboard() {
   // no topo da tela — mesmos 3 sinais que já geram alerta em outro lugar
   // da própria tela (estoque crítico, contrato em risco, NPS baixo).
   const pontosDeAtencao = itensCriticos + contratosEmRisco + clientesInsatisfeitos.length;
-  // Espelha o total pro badge da sidebar (2026-09-16, "redesign visual"
-  // do usuário) — ver AlertasContext.tsx pro porquê de ser contexto e
-  // não prop (Dashboard é filho do Layout, não pai).
-  const { setContagem } = useAlertas();
-  useEffect(() => {
-    setContagem(pontosDeAtencao);
-  }, [pontosDeAtencao, setContagem]);
 
   // banner de risco operacional (2026-09-14) — "N pontos de atenção" acima
   // já avisa que tem problema, mas não diz QUAL evento nem dá o caminho
@@ -303,6 +362,59 @@ export default function Dashboard() {
       .filter(({ pendencias }) => pendencias.length > 0)
       .sort((a, b) => a.ev.data_evento.localeCompare(b.ev.data_evento));
   }, [eventos, contratoPorId, presencaPorEvento, hoje]);
+
+  // Leads esfriando (>7 dias sem contato) pro sino de notificações
+  // (2026-09-17, "topbar + notificações") — MESMA regra do CRM (Crm.tsx):
+  // `papel == null` (etapa do meio do funil), nunca uma lista fixa de
+  // status como 'fechado'/'perdido' — o status de um lead é o id
+  // dinâmico da etapa do funil, não uma palavra fixa, então checar contra
+  // string literal nunca bateria com nada de verdade.
+  const funisPorId = useMemo(() => new Map(funis.map((f) => [f.id, f])), [funis]);
+  const leadsEsfriandoGlobal = useMemo(() => {
+    const limite = 7 * 86_400_000;
+    return leads.filter((l) => funisPorId.get(l.status)?.papel == null && Date.now() - new Date(l.atualizado_em).getTime() >= limite);
+  }, [leads, funisPorId]);
+
+  const sinaisPendentesGlobal = useMemo(() => contratos.filter((c) => c.status === 'ativo' && !c.sinal_pago), [contratos]);
+
+  // Alimenta o sino de notificações (topbar) — dedupe por título já
+  // acontece dentro do próprio `adicionarNotificacao` (ver
+  // NotificacoesContext), então rodar de novo a cada recarregamento
+  // (60s) não duplica nada.
+  const { adicionarNotificacao } = useNotificacoes();
+  useEffect(() => {
+    if (carregando) return;
+
+    eventosComPendencia.forEach(({ ev, pendencias }) => {
+      const nomeCliente = ev.contrato?.lead?.nome ?? 'Evento';
+      const dias = diasAteEvento(ev.data_evento);
+      if (pendencias.includes('saldo em aberto')) {
+        adicionarNotificacao({ tom: 'perigo', titulo: `D-${dias}: saldo pendente — ${nomeCliente}`, descricao: formatarData(ev.data_evento), link: '/contratos' });
+      }
+      if (pendencias.includes('sem equipe escalada')) {
+        adicionarNotificacao({ tom: 'pendente', titulo: `Sem equipe: ${nomeCliente}`, descricao: formatarData(ev.data_evento), link: '/escala' });
+      }
+    });
+
+    itensEstoque
+      .filter((i) => i.estoque_atual <= i.estoque_minimo)
+      .forEach((item) => {
+        adicionarNotificacao({ tom: 'perigo', titulo: `Estoque crítico: ${item.nome}`, descricao: `${item.estoque_atual} ${item.unidade} (mín. ${item.estoque_minimo})`, link: '/estoque' });
+      });
+
+    leadsEsfriandoGlobal.forEach((lead) => {
+      const dias = Math.floor((Date.now() - new Date(lead.atualizado_em).getTime()) / 86_400_000);
+      adicionarNotificacao({ tom: 'neutro', titulo: `Lead esfriando: ${lead.nome}`, descricao: `${dias} dias sem contato`, link: '/crm' });
+    });
+
+    sinaisPendentesGlobal.forEach((c) => {
+      adicionarNotificacao({ tom: 'pendente', titulo: `Sinal pendente — ${c.lead?.nome ?? 'Contrato'}`, descricao: formatarMoeda(c.valor_sinal), link: '/contratos' });
+    });
+
+    clientesInsatisfeitos.forEach(({ auditoria, evento }) => {
+      adicionarNotificacao({ tom: 'perigo', titulo: `NPS baixo: ${evento?.contrato?.lead?.nome ?? 'cliente'}`, descricao: `Nota ${auditoria.nps_nota}`, link: '/auditoria' });
+    });
+  }, [carregando, eventosComPendencia, itensEstoque, leadsEsfriandoGlobal, sinaisPendentesGlobal, clientesInsatisfeitos, adicionarNotificacao]);
 
   // Fase C do roadmap (2026-09-11) — dado REAL de consumo (contador de
   // drinks, ver DrinksPublico.tsx), no lugar do número fabricado que o
@@ -478,7 +590,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <section className="metric-grid mb-4 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        <section className="metric-grid mb-4 grid grid-cols-2 gap-4 md:grid-cols-3">
           <MetricCard Icone={Calendar} rotulo="Eventos hoje" valor={String(eventosHoje.length)} legenda={formatarData(hoje)} categoria="agenda" aoVivo />
           <MetricCard
             Icone={Banknote}
@@ -541,6 +653,49 @@ export default function Dashboard() {
             </ul>
           </AlertaBanner>
         )}
+
+        {/* Painel de Pendências (2026-09-17, "master redesign") — resumo
+            clicável dos mesmos sinais que já alimentam o sino/badge, só
+            que reunidos numa faixa só, pra pular direto pro módulo certo
+            sem precisar caçar cada número espalhado pela tela. */}
+        {!carregando && (
+          <Panel className="mb-4">
+            <PanelHeader
+              titulo="Pendências"
+              desc="Itens que precisam de ação"
+              acao={
+                pontosDeAtencao === 0 ? (
+                  <span className="flex items-center gap-1.5 text-[12px] text-execucao">
+                    <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} />
+                    Tudo em dia
+                  </span>
+                ) : null
+              }
+            />
+            {pontosDeAtencao > 0 && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                {[
+                  { n: contratosEmRisco, label: 'Contratos D-20', link: '/contratos' },
+                  { n: sinaisPendentesGlobal.length, label: 'Sinais pendentes', link: '/contratos' },
+                  { n: itensCriticos, label: 'Estoque crítico', link: '/estoque' },
+                  { n: eventosComPendencia.length, label: 'Eventos c/ pendência', link: '/agenda' },
+                  { n: clientesInsatisfeitos.length, label: 'NPS baixo', link: '/auditoria' },
+                ]
+                  .filter((item) => item.n > 0)
+                  .map((item) => (
+                    <Link key={item.label} to={item.link} className="flex items-center gap-2.5 rounded-md border border-danger/25 bg-danger/8 px-3 py-2.5 transition-colors hover:border-line-strong">
+                      <span className="font-mono text-[20px] font-black leading-none text-danger">{item.n}</span>
+                      <span className="text-[11.5px] font-medium text-text-dim">{item.label}</span>
+                    </Link>
+                  ))}
+              </div>
+            )}
+          </Panel>
+        )}
+
+        {/* Atividades Recentes — derivadas dos mesmos dados já carregados
+            (contratos/leads), sem nenhuma tabela nova. */}
+        {!carregando && <AtividadesRecentes contratos={contratos} leads={leads} />}
 
         <Reveal>
           <Panel className="mb-4">

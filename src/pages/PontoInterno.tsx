@@ -3,8 +3,10 @@ import { Check, Clock, LogIn, LogOut, Settings, ShieldOff, Users } from 'lucide-
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { atualizarJornadaFuncionario, baterPonto, cadastrarMeuNome, definirAtivoFuncionario, listarFuncionariosInternos, listarMeusRegistrosHoje, listarRegistrosDeHoje, listarRegistrosPorPeriodo, obterMeuFuncionario } from '../lib/api/pontoInterno';
 import { SkeletonLinhas } from '../components/Skeleton';
+import { Avatar } from '../components/ui/Avatar';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input, InputMoeda } from '../components/ui/Input';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { formatarMoeda } from '../lib/status';
@@ -561,15 +563,32 @@ export default function PontoInterno() {
               (() => {
                 const resumos = calcularResumoJornada(registrosPeriodo, equipe);
                 const totalAPagar = resumos.reduce((s, r) => s + (r.valorAPagar ?? 0), 0);
+                // dias do período em janela (2026-09-17, "P2/P3") — mesma
+                // janela usada na busca acima (`inicio`): 7 dias fixos, ou
+                // do dia 1 até hoje ("mes" não é o mês inteiro, é o
+                // decorrido dele).
+                const diasNoPeriodo = periodoRelatorio === 'semana' ? 7 : new Date().getDate();
                 return (
                   <div className="flex flex-col gap-2">
-                    {resumos.map((r) => (
+                    {resumos.map((r) => {
+                      const taxaPresenca = Math.round((r.diasTrabalhados / diasNoPeriodo) * 100);
+                      return (
                       <div key={r.funcionario.id} className="rounded-sm border border-line bg-input px-3 py-2.5 text-[12.5px]">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className={r.funcionario.ativo ? 'font-medium text-text' : 'text-text-faint line-through'}>{r.funcionario.nome}</span>
+                          <span className="flex items-center gap-2">
+                            <Avatar nome={r.funcionario.nome} categoria="pessoas" tamanho={26} />
+                            <span className={r.funcionario.ativo ? 'font-medium text-text' : 'text-text-faint line-through'}>{r.funcionario.nome}</span>
+                          </span>
                           <span className="text-[11px] text-text-faint">
                             {r.diasTrabalhados} dia(s) · {r.registros} registro(s)
                           </span>
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="w-24 flex-shrink-0 text-[10px] uppercase tracking-wide text-text-faint">Presença no período</span>
+                          <div className="flex-1">
+                            <ProgressBar valor={taxaPresenca} categoria={taxaPresenca >= 80 ? 'execucao' : taxaPresenca >= 60 ? 'acao' : 'acao'} />
+                          </div>
+                          <span className={`font-mono text-[11px] font-semibold ${taxaPresenca >= 80 ? 'text-execucao' : taxaPresenca >= 60 ? 'text-pending' : 'text-danger'}`}>{taxaPresenca}%</span>
                         </div>
                         <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                           <div>
@@ -591,7 +610,8 @@ export default function PontoInterno() {
                         </div>
                         {!r.jornadaConfigurada && <p className="mt-1.5 text-[11px] text-pending">Jornada/valor-hora não configurado — clique em "Configurar" acima pra separar hora extra e calcular pagamento.</p>}
                       </div>
-                    ))}
+                      );
+                    })}
                     {totalAPagar > 0 && (
                       <div className="flex items-center justify-between rounded-sm border border-success/25 bg-success/10 px-3 py-2.5 text-[12.5px]">
                         <strong className="text-text">Total a pagar no período</strong>

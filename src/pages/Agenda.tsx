@@ -145,6 +145,15 @@ export default function Agenda() {
   const hoje = new Date().toISOString().slice(0, 10);
   const proximos = eventos.filter((ev) => ev.data_evento >= hoje && ev.status !== 'cancelado').slice(0, 8);
   const proximosBloqueios = bloqueios.filter((b) => b.data_fim >= hoje).slice(0, 6);
+  // Tarefas dos próximos 7 dias (2026-09-17, "P2/P3") — diferente de
+  // "Próximos eventos" (que já existe e cobre eventos), tarefa só
+  // aparece hoje ao clicar num dia específico do calendário; sem isso
+  // dava pra "esquecer" uma tarefa marcada pra depois de amanhã sem
+  // nunca clicar naquele dia de novo.
+  const em7dias = new Date(hoje + 'T00:00:00');
+  em7dias.setDate(em7dias.getDate() + 7);
+  const em7diasStr = em7dias.toISOString().slice(0, 10);
+  const tarefasEstaSemana = tarefas.filter((t) => !t.concluida && t.data >= hoje && t.data <= em7diasStr).sort((a, b) => a.data.localeCompare(b.data));
 
   return (
     <>
@@ -240,6 +249,23 @@ export default function Agenda() {
                   </div>
                 )}
               </Panel>
+
+              {tarefasEstaSemana.length > 0 && (
+                <Panel>
+                  <PanelHeader titulo="Tarefas esta semana" desc={`${tarefasEstaSemana.length} nos próximos 7 dias`} />
+                  <div className="flex flex-col gap-2">
+                    {tarefasEstaSemana.map((t) => (
+                      <div key={t.id} className="rounded-sm border border-line bg-input p-2.5">
+                        <span className="flex items-center justify-between gap-2 text-[12.5px] text-text">
+                          <span className="min-w-0 truncate">{t.titulo}</span>
+                          <span className="flex-shrink-0 font-mono text-[10.5px] text-text-faint">{formatarData(t.data)}</span>
+                        </span>
+                        {t.lead && <span className="mt-0.5 block text-[11px] text-text-faint">{t.lead.nome}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+              )}
 
               {proximosBloqueios.length > 0 && (
                 <Panel>

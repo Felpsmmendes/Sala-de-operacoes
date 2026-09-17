@@ -23,6 +23,7 @@ import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { EstadoVazio } from '../components/ui/EmptyState';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { Reveal } from '../components/ui/Reveal';
 import { ChecklistEvento } from '../components/estoque/ChecklistEvento';
 import { ItemForm } from '../components/estoque/ItemForm';
@@ -302,29 +303,35 @@ export default function Estoque() {
                   {itens.map((item) => (
                     <div
                       key={item.id}
-                      className={`flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2.5 text-sm ${ehCritico(item) ? 'border-l-2 border-l-danger' : ''}`}
+                      className={`flex flex-col gap-2 rounded-sm border border-line bg-input px-3 py-2.5 text-sm ${ehCritico(item) ? 'border-l-2 border-l-danger' : ''}`}
                     >
-                      <div className="min-w-0">
-                        <strong className="text-text">{item.nome}</strong>
-                        <span className="ml-2 text-[11.5px] uppercase tracking-wide text-text-faint">{item.categoria}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-text-dim">
-                          {item.estoque_atual} / {item.estoque_minimo} {item.unidade}
-                        </span>
-                        {ehCritico(item) ? <Badge tom="perigo" texto="Crítico" /> : <Badge tom="sucesso" texto="OK" />}
-                        <button type="button" onClick={() => setMovimentoAberto(item)} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
-                          Movimentar
-                        </button>
-                        {ehCritico(item) && (
-                          <button type="button" onClick={() => setCompraAberta(item)} className="rounded-sm bg-accent px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink hover:bg-accent-strong">
-                            Gerar compra
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <strong className="text-text">{item.nome}</strong>
+                          <span className="ml-2 text-[11.5px] uppercase tracking-wide text-text-faint">{item.categoria}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-text-dim">
+                            {item.estoque_atual} / {item.estoque_minimo} {item.unidade}
+                          </span>
+                          {ehCritico(item) ? <Badge tom="perigo" texto="Crítico" /> : <Badge tom="sucesso" texto="OK" />}
+                          <button type="button" onClick={() => setMovimentoAberto(item)} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
+                            Movimentar
                           </button>
-                        )}
-                        <button type="button" onClick={() => aoExcluirItem(item)} className="text-[11.5px] font-medium text-danger hover:underline">
-                          Excluir
-                        </button>
+                          {ehCritico(item) && (
+                            <button type="button" onClick={() => setCompraAberta(item)} className="rounded-sm bg-accent px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink hover:bg-accent-strong">
+                              Gerar compra
+                            </button>
+                          )}
+                          <button type="button" onClick={() => aoExcluirItem(item)} className="text-[11.5px] font-medium text-danger hover:underline">
+                            Excluir
+                          </button>
+                        </div>
                       </div>
+                      <ProgressBar
+                        valor={item.estoque_minimo > 0 ? Math.min(100, (item.estoque_atual / item.estoque_minimo) * 100) : 100}
+                        categoria={ehCritico(item) ? 'acao' : 'execucao'}
+                      />
                     </div>
                   ))}
                 </div>

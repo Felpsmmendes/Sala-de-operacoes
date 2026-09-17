@@ -1,5 +1,5 @@
-import { AlertTriangle, CheckCircle2, Info, type LucideIcon, XCircle } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { AlertTriangle, CheckCircle2, Info, type LucideIcon, X, XCircle } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import type { TomBadge } from './Badge';
 
 const ICONE: Record<TomBadge, LucideIcon> = { perigo: XCircle, pendente: AlertTriangle, sucesso: CheckCircle2, neutro: Info };
@@ -17,7 +17,29 @@ const CLASSES: Record<TomBadge, string> = {
     pra nunca inventar uma paleta de alerta paralela. `Icone` sobrescreve
     o ícone padrão do tom quando o alerta é sobre algo específico (ex.:
     Star pra satisfação do cliente, não um genérico de perigo). */
-export function AlertaBanner({ tom = 'perigo', titulo, Icone, children, className = '' }: { tom?: TomBadge; titulo?: string; Icone?: LucideIcon; children: ReactNode; className?: string }) {
+export function AlertaBanner({
+  tom = 'perigo',
+  titulo,
+  Icone,
+  children,
+  className = '',
+  dispensavel = false,
+}: {
+  tom?: TomBadge;
+  titulo?: string;
+  Icone?: LucideIcon;
+  children: ReactNode;
+  className?: string;
+  /** Ganha um X pra fechar (2026-09-17, "topbar + notificações") — só pra
+      avisos informativos que o gestor já viu e não precisa ver de novo
+      naquela sessão; nunca em risco financeiro/operacional real (esses
+      continuam sempre visíveis, sem opção de dispensar). Não persiste
+      entre recarregamentos de propósito — é "já vi, some por agora", não
+      "nunca mais me avise". */
+  dispensavel?: boolean;
+}) {
+  const [dispensado, setDispensado] = useState(false);
+  if (dispensado) return null;
   const IconeFinal = Icone ?? ICONE[tom];
   return (
     <div className={`flex items-start gap-2.5 rounded-sm border px-3.5 py-3 text-[13px] ${CLASSES[tom]} ${className}`}>
@@ -26,6 +48,11 @@ export function AlertaBanner({ tom = 'perigo', titulo, Icone, children, classNam
         {titulo && <p className="mb-1 font-semibold">{titulo}</p>}
         {children}
       </div>
+      {dispensavel && (
+        <button type="button" onClick={() => setDispensado(true)} title="Dispensar" className="flex-shrink-0 opacity-60 transition-opacity hover:opacity-100">
+          <X className="h-3.5 w-3.5" strokeWidth={2} />
+        </button>
+      )}
     </div>
   );
 }

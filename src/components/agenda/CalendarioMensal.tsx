@@ -118,7 +118,7 @@ export function CalendarioMensal({
         key={d}
         type="button"
         onClick={() => onSelecionarDia(d === diaSelecionado ? null : d)}
-        className={`flex min-h-[68px] cursor-pointer flex-col items-start gap-1 rounded-md border p-1.5 text-left text-[12.5px] text-text transition-colors hover:bg-raised sm:min-h-[80px] ${
+        className={`group relative flex min-h-[68px] cursor-pointer flex-col items-start gap-1 rounded-md border p-1.5 text-left text-[12.5px] text-text transition-colors hover:bg-raised sm:min-h-[80px] ${
           diaSelecionado === d ? 'border-schedule bg-raised' : 'border-line'
         }`}
       >
@@ -130,6 +130,23 @@ export function CalendarioMensal({
           {tarefasDia.length > 0 && <span className={`h-1.5 w-1.5 rounded-full ${temTarefaPendente ? 'bg-schedule' : 'bg-text-faint'}`} title="Tarefa" />}
           {bloqueiosDia.length > 0 && <Lock className="h-2.5 w-2.5 text-text-faint" strokeWidth={2.5} />}
         </span>
+
+        {/* Tooltip ao hover (2026-09-17, "master redesign") — prévia sem
+            precisar clicar pra selecionar o dia. Só quando há evento;
+            tarefa/bloqueio já têm o próprio ponto/ícone acima como sinal. */}
+        {itens.length > 0 && (
+          <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 hidden w-[200px] -translate-x-1/2 rounded-md border border-line bg-panel p-2.5 text-left shadow-lg group-hover:block">
+            {itens.slice(0, 3).map((ev) => (
+              <div key={ev.id} className="mb-1.5 last:mb-0">
+                <p className="truncate text-[12px] font-semibold text-text">{ev.contrato?.lead?.nome ?? 'Evento'}</p>
+                <p className="text-[11px] text-text-faint">
+                  {ev.hora_inicio ? ev.hora_inicio.slice(0, 5) : '—'} · {ev.local ?? 'Local não informado'}
+                </p>
+              </div>
+            ))}
+            {itens.length > 3 && <p className="text-[10.5px] text-text-faint">e mais {itens.length - 3}…</p>}
+          </div>
+        )}
       </button>
     );
   }

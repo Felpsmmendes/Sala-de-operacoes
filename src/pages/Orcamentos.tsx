@@ -1,4 +1,4 @@
-import { CheckCircle2, Copy, ExternalLink, FileDown, Mail, MessageSquare, Pencil, Phone, Receipt, Search, X } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, FileDown, Mail, MessageCircle, MessageSquare, Pencil, Phone, Receipt, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { atualizarOrcamento, criarOrcamento, calcularValorHoraAdicional, calcularValorServico, listarOrcamentos } from '../lib/api/orcamentos';
@@ -14,6 +14,7 @@ import { EstadoVazio } from '../components/ui/EmptyState';
 import { ServicoCard } from '../components/orcamentos/ServicoCard';
 import { SeletorCliente } from '../components/orcamentos/SeletorCliente';
 import { Input } from '../components/ui/Input';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { Select } from '../components/ui/Select';
 import { montarMensagemOrcamento, type ItemSelecionado } from '../lib/mensagemOrcamento';
 import { calcularFrete } from '../lib/freteConfig';
@@ -171,6 +172,16 @@ export default function Orcamentos() {
   const total = totalServicos + valorFreteCobrado;
   const sinal = Math.round(total * 0.2 * 100) / 100;
   const saldo = Math.round(total * 0.8 * 100) / 100;
+
+  const leadSelecionado = useMemo(() => leads.find((l) => l.id === leadId) ?? null, [leads, leadId]);
+
+  // Breakdown por categoria (2026-09-17, "P2/P3") — mesma soma de cada
+  // item (valor + hora adicional) que já alimenta `totalServicos`, só
+  // separada por categoria de serviço pra dar contexto no resumo.
+  const breakdownCategoria = useMemo(() => {
+    const somaCategoria = (cat: 'bar' | 'atracao') => itens.filter((i) => i.servico.categoria === cat).reduce((s, i) => s + i.valor + i.horasAdicionais * i.valorHoraAdicional, 0);
+    return { bar: somaCategoria('bar'), atracao: somaCategoria('atracao') };
+  }, [itens]);
 
   function alternarServico(id: string) {
     setSelecionados((atual) => {
@@ -487,6 +498,28 @@ export default function Orcamentos() {
                   <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Total estimado</span>
                   <strong className="font-mono text-3xl font-semibold text-pending">{formatarMoeda(total)}</strong>
                 </div>
+                {(breakdownCategoria.bar > 0 || breakdownCategoria.atracao > 0) && (
+                  <div className="mb-4 flex flex-col gap-2 border-b border-line pb-4">
+                    {breakdownCategoria.bar > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-[11.5px]">
+                          <span className="text-text-faint">Bar & Coquetelaria</span>
+                          <span className="font-mono font-semibold text-money">{formatarMoeda(breakdownCategoria.bar)}</span>
+                        </div>
+                        <ProgressBar valor={total > 0 ? (breakdownCategoria.bar / total) * 100 : 0} categoria="dinheiro" />
+                      </div>
+                    )}
+                    {breakdownCategoria.atracao > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-[11.5px]">
+                          <span className="text-text-faint">Atrações fotográficas</span>
+                          <span className="font-mono font-semibold text-schedule">{formatarMoeda(breakdownCategoria.atracao)}</span>
+                        </div>
+                        <ProgressBar valor={total > 0 ? (breakdownCategoria.atracao / total) * 100 : 0} categoria="agenda" />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="mb-4 flex flex-col gap-2.5 text-sm">
                   {itens.length === 0 && <p className="text-text-faint">Nenhum serviço selecionado</p>}
                   {(itens.some((i) => i.servico.categoria === 'bar') || itens.some((i) => i.servico.categoria === 'atracao')) && (
@@ -608,18 +641,30 @@ export default function Orcamentos() {
                       rolar. Sem altura máxima: a caixa cresce com o conteúdo,
                       só a página rola, sem scroll aninhado. */}
                   <pre className="mb-3 whitespace-pre-wrap rounded-sm border border-line bg-input p-3 font-sans text-[13px] leading-relaxed text-text">{mensagem}</pre>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard
-                        .writeText(mensagem)
-                        .then(() => setCopiado(true))
-                        .catch(() => toast.aviso('Não foi possível copiar automaticamente — selecione e copie o texto manualmente.'));
-                    }}
-                    className="flex items-center gap-2 rounded-sm border border-line px-4 py-2 text-sm font-medium text-text-dim hover:bg-raised hover:text-text"
-                  >
-                    <Copy className="h-3.5 w-3.5" strokeWidth={2} /> {copiado ? 'Copiado!' : 'Copiar mensagem'}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard
+                          .writeText(mensagem)
+                          .then(() => setCopiado(true))
+                          .catch(() => toast.aviso('Não foi possível copiar automaticamente — selecione e copie o texto manualmente.'));
+                      }}
+                      className="flex items-center gap-2 rounded-sm border border-line px-4 py-2 text-sm font-medium text-text-dim hover:bg-raised hover:text-text"
+                    >
+                      <Copy className="h-3.5 w-3.5" strokeWidth={2} /> {copiado ? 'Copiado!' : 'Copiar mensagem'}
+                    </button>
+                    {leadSelecionado?.telefone && (
+                      <a
+                        href={`https://wa.me/55${leadSelecionado.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(mensagem)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 rounded-sm border border-execucao/30 bg-execucao/10 px-4 py-2 text-sm font-semibold text-execucao transition-colors hover:bg-execucao/20"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" strokeWidth={2} /> Abrir no WhatsApp
+                      </a>
+                    )}
+                  </div>
                 </Panel>
               )}
             </div>

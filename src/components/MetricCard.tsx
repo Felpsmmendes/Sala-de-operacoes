@@ -91,7 +91,7 @@ export function MetricCard({
         <IconBox Icone={Icone} cor={cor} corIcone={corIcone} />
       </div>
       <div className="flex items-end justify-between gap-2">
-        <div className="flex min-w-0 items-baseline gap-2">
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
           {/* valor grande sempre branco, nunca na cor da categoria — é o
               número KPI, banido da lista de "onde a cor de núcleo aparece".
               2 camadas de defesa contra dado longo (achado do usuário,
@@ -110,7 +110,7 @@ export function MetricCard({
           </strong>
           {tendencia && (
             <span
-              className={`flex flex-shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold ${
+              className={`hidden flex-shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold sm:flex ${
                 tendencia.positivo ? 'border-success/25 bg-success/15 text-success' : 'border-danger/25 bg-danger/15 text-danger'
               }`}
             >
@@ -119,7 +119,11 @@ export function MetricCard({
             </span>
           )}
         </div>
-        {historico && historico.length > 1 && <Sparkline pontos={historico} cor={cor} />}
+        {historico && historico.length > 1 && (
+          <span className="hidden flex-shrink-0 sm:flex">
+            <Sparkline pontos={historico} cor={cor} />
+          </span>
+        )}
       </div>
       <span className="text-[11.5px] text-text-faint">{legenda}</span>
     </div>

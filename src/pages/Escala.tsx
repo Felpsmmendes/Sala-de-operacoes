@@ -5,6 +5,7 @@ import { listarEventos } from '../lib/api/eventos';
 import { atualizarChecklistEscala, atualizarStatusEscala, convocarMembro, listarEscalasDosEventos, removerEscala } from '../lib/api/escalas';
 import { criarMembro, inativarMembro, listarEquipe } from '../lib/api/equipe';
 import { listarOrcamentoIdsComHoraAdicional } from '../lib/api/orcamentos';
+import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MembroForm } from '../components/escala/MembroForm';
@@ -200,6 +201,12 @@ export default function Escala() {
           <MetricCard Icone={Timer} rotulo="Prontos (traje+EPI)" valor={String(trajesOkTotal)} legenda={`de ${escalas.length} convocados`} categoria="pessoas" />
           <MetricCard Icone={AlertTriangle} rotulo="Eventos com equipe faltando" valor={String(eventosComFalta)} legenda={`de ${eventos.length} eventos`} categoria="pessoas" />
         </MetricGrid>
+
+        {!carregando && eventosComFalta > 0 && (
+          <AlertaBanner tom="pendente" titulo={`${eventosComFalta} evento${eventosComFalta > 1 ? 's' : ''} com equipe abaixo do necessário`} className="mb-4" dispensavel>
+            Convoque mais freelancers antes do evento.
+          </AlertaBanner>
+        )}
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
