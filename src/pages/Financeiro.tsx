@@ -17,13 +17,14 @@ import { LancamentoForm } from '../components/financeiro/LancamentoForm';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
+import { Drawer } from '../components/ui/Drawer';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { gerarRelatorioExecutivoPdf } from '../lib/pdfRelatorioExecutivo';
 import { exportarCsv } from '../lib/exportarCsv';
 import { formatarData, formatarMoeda, normalizarTexto } from '../lib/status';
-import type { DreMes, Lancamento, NovoLancamento, TipoLancamento } from '../lib/types';
+import type { DreMes, EventoComLead, Lancamento, NovoLancamento, TipoLancamento } from '../lib/types';
 
 function formatarMes(mes: string): string {
   const [ano, m] = mes.slice(0, 7).split('-');
@@ -38,10 +39,17 @@ function aoFalhar(e: unknown) {
 export default function Financeiro() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [dreMeses, setDreMeses] = useState<DreMes[]>([]);
+  const [eventos, setEventos] = useState<EventoComLead[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const [filtro, setFiltro] = useState<'todos' | 'pendentes' | 'pagos'>('pendentes');
+  // Filtros rápidos (REVIEW_DECISOES_V2, Parte 10/16, P2) — troca o
+  // pendentes/pagos/todos por status por um recorte mais acionável (o
+  // que precisa de atenção agora), mesma lista do documento de decisões.
+  const [filtro, setFiltro] = useState<'todos' | 'receitas' | 'despesas' | 'vencidos' | 'proximos7'>('todos');
+  // Formulário vira Drawer (P2) — antes ficava sempre aberto ocupando
+  // espaço fixo em cima da lista.
+  const [novoAberto, setNovoAberto] = useState(false);
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
   const [mesDre, setMesDre] = useState(() => new Date().toISOString().slice(0, 7));
   const [mesLancamentos, setMesLancamentos] = useState<string | 'todos'>('todos');
@@ -54,9 +62,10 @@ export default function Financeiro() {
     setCarregando(true);
     setErro(null);
     try {
-      const [ls, dre] = await Promise.all([listarLancamentos(), listarDreMensal()]);
+      const [ls, dre, ev] = await Promise.all([listarLancamentos(), listarDreMensal(), listarEventos()]);
       setLancamentos(ls);
       setDreMeses(dre);
+      setEventos(ev.filter((e) => e.status !== 'cancelado').sort((a, b) => b.data_evento.localeCompare(a.data_evento)));
     } catch (e) {
       setErro(mensagemDeErro(e));
     } finally {
@@ -73,6 +82,7 @@ export default function Financeiro() {
     try {
       await criarLancamento(dados);
       await carregar();
+      setNovoAberto(false);
     } catch (e) {
       aoFalhar(e);
     } finally {
@@ -102,6 +112,7 @@ export default function Financeiro() {
     const hojeStr = new Date().toISOString().slice(0, 10);
     return lancamentos.filter((l) => l.status === 'pendente' && l.vencimento && l.vencimento < hojeStr);
   }, [lancamentos]);
+  const idsVencidos = useMemo(() => new Set(vencidos.map((l) => l.id)), [vencidos]);
   const aReceber = lancamentos.filter((l) => l.tipo === 'receita' && l.status === 'pendente').reduce((s, l) => s + l.valor, 0);
   const aPagar = lancamentos.filter((l) => l.tipo === 'despesa' && l.status === 'pendente').reduce((s, l) => s + l.valor, 0);
   const receitaMes = lancamentos.filter((l) => l.tipo === 'receita' && l.status === 'pago' && (l.data_pagamento ?? '').slice(0, 7) === mesAtual).reduce((s, l) => s + l.valor, 0);
@@ -114,12 +125,31 @@ export default function Financeiro() {
   const saldoMes = receitaMes - despesaMes;
   const saldoProjetado = receitaMes + aReceber - aPagar;
 
-  // filtro de mês (2026-09-13) — separado do filtro de status: pago usa
-  // `data_pagamento` (data real do dinheiro entrando/saindo), pendente
-  // usa `vencimento` (não tem data_pagamento ainda, por definição).
+  // "Próx. 7 dias" (P2) — pendente com vencimento dentro da próxima
+  // semana (não inclui vencidos, que já tem filtro próprio).
+  const em7diasStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
+  // filtro de mês (2026-09-13) — separado do filtro rápido acima: pago
+  // usa `data_pagamento` (data real do dinheiro entrando/saindo),
+  // pendente usa `vencimento` (não tem data_pagamento ainda, por
+  // definição).
   const visiveis = lancamentos.filter((l) => {
-    const passaStatus = filtro === 'todos' || (filtro === 'pendentes' ? l.status === 'pendente' : l.status === 'pago');
-    if (!passaStatus) return false;
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    const passaFiltro =
+      filtro === 'todos'
+        ? true
+        : filtro === 'receitas'
+          ? l.tipo === 'receita'
+          : filtro === 'despesas'
+            ? l.tipo === 'despesa'
+            : filtro === 'vencidos'
+              ? idsVencidos.has(l.id)
+              : l.status === 'pendente' && !!l.vencimento && l.vencimento >= hojeStr && l.vencimento <= em7diasStr;
+    if (!passaFiltro) return false;
     if (mesLancamentos === 'todos') return true;
     const dataRef = l.status === 'pago' ? l.data_pagamento : l.vencimento;
     return (dataRef ?? '').slice(0, 7) === mesLancamentos;
@@ -309,14 +339,25 @@ export default function Financeiro() {
         {erro && <AlertaBanner tom="perigo" className="mb-4">{erro}</AlertaBanner>}
         {!carregando && vencidos.length > 0 && (
           <AlertaBanner tom="perigo" titulo={`${vencidos.length} lançamento${vencidos.length > 1 ? 's' : ''} com vencimento em atraso`} className="mb-4" dispensavel>
-            Regularize os pagamentos vencidos para manter o fluxo de caixa.
+            <p>Regularize os pagamentos vencidos para manter o fluxo de caixa.</p>
+            <button type="button" onClick={() => setFiltro('vencidos')} className="mt-1 font-semibold text-danger underline underline-offset-2">
+              Ver vencidos →
+            </button>
           </AlertaBanner>
         )}
 
         <div className="mb-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_320px]">
           <Panel>
-            <PanelHeader titulo="Novo lançamento" desc="Sinal e saldo de contrato entram sozinhos ao marcar como pago em Contratos — aqui é pra despesas e receitas avulsas." />
-            <LancamentoForm onSalvar={aoCriar} salvando={salvando} />
+            <PanelHeader
+              titulo="Novo lançamento"
+              desc="Sinal e saldo de contrato entram sozinhos ao marcar como pago em Contratos — aqui é pra despesas e receitas avulsas."
+              acao={
+                <button type="button" onClick={() => setNovoAberto(true)} className="rounded-sm bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
+                  + Novo lançamento
+                </button>
+              }
+            />
+            <p className="text-sm text-text-faint">Clique em "+ Novo lançamento" pra registrar uma despesa ou receita avulsa.</p>
           </Panel>
           <Panel>
             <PanelHeader titulo="Composição do mês" desc="Só valores pagos" />
@@ -358,10 +399,20 @@ export default function Financeiro() {
                     <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
                   </button>
                 </div>
-                <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
-                  {(['pendentes', 'pagos', 'todos'] as const).map((f) => (
+                {/* Filtros rápidos (P2) — recorte acionável em vez de só
+                    status (pendente/pago). */}
+                <div className="inline-flex flex-wrap gap-0.5 rounded-sm border border-line bg-input p-0.5">
+                  {(
+                    [
+                      { f: 'todos' as const, rotulo: 'Todos' },
+                      { f: 'receitas' as const, rotulo: 'Receitas' },
+                      { f: 'despesas' as const, rotulo: 'Despesas' },
+                      { f: 'vencidos' as const, rotulo: 'Vencidos' },
+                      { f: 'proximos7' as const, rotulo: 'Próx. 7 dias' },
+                    ] as const
+                  ).map(({ f, rotulo }) => (
                     <button key={f} type="button" onClick={() => setFiltro(f)} className={`rounded-[5px] px-3 py-1.5 text-[12.5px] font-medium transition-colors ${filtro === f ? 'bg-raised text-money' : 'text-text-dim hover:text-text'}`}>
-                      {f === 'pendentes' ? 'Pendentes' : f === 'pagos' ? 'Pagos' : 'Todos'}
+                      {rotulo}
                     </button>
                   ))}
                 </div>
@@ -411,11 +462,18 @@ export default function Financeiro() {
                   Lists, 2026-09-09) — pago ganha um tom verde bem sutil
                   (é dinheiro, categoria da tela), pendente fica neutro. */}
               {visiveisOrdenados.map((l) => {
-                const vencido = l.status === 'pendente' && !!l.vencimento && l.vencimento < new Date().toISOString().slice(0, 10);
+                const hojeStr = new Date().toISOString().slice(0, 10);
+                const vencido = l.status === 'pendente' && !!l.vencimento && l.vencimento < hojeStr;
+                const diasAtraso = vencido && l.vencimento ? Math.round((new Date(hojeStr + 'T00:00:00').getTime() - new Date(l.vencimento + 'T00:00:00').getTime()) / 86400000) : 0;
+                // Borda lateral sutil por tipo (REVIEW_DECISOES_V2, Parte
+                // 10/16, P2) — só nas linhas "neutras" (não pagas, não
+                // vencidas, que já têm o próprio tom de destaque): verde =
+                // receita, vermelho = despesa.
+                const bordaTipo = l.status !== 'pago' && !vencido ? (l.tipo === 'receita' ? 'border-l-2 border-l-success' : 'border-l-2 border-l-danger/40') : '';
                 return (
                 <div
                   key={l.id}
-                  className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm ${l.status === 'pago' || vencido ? 'list-row-tint' : 'list-row'}`}
+                  className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm ${l.status === 'pago' || vencido ? 'list-row-tint' : 'list-row'} ${bordaTipo}`}
                   style={l.status === 'pago' ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : vencido ? ({ '--row-color': 'var(--color-danger)' } as CSSProperties) : undefined}
                 >
                   <div className="min-w-0">
@@ -425,7 +483,7 @@ export default function Financeiro() {
                     <p className={`text-[11.5px] ${vencido ? 'font-semibold text-danger' : 'text-text-faint'}`}>
                       {l.vencimento ? `vence ${formatarData(l.vencimento)}` : 'sem vencimento'}
                       {l.data_pagamento ? ` · pago em ${formatarData(l.data_pagamento)}` : ''}
-                      {vencido ? ' · em atraso' : ''}
+                      {vencido ? ` · vencido há ${diasAtraso} dia${diasAtraso === 1 ? '' : 's'}` : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -558,6 +616,12 @@ export default function Financeiro() {
           )}
         </Panel>
       </Conteudo>
+
+      {novoAberto && (
+        <Drawer titulo="Novo lançamento" onFechar={() => setNovoAberto(false)}>
+          <LancamentoForm eventos={eventos} onSalvar={aoCriar} salvando={salvando} />
+        </Drawer>
+      )}
     </>
   );
 }

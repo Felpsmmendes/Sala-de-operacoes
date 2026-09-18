@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type FormEvent } from 'react';
-import type { NovoLancamento, TipoLancamento } from '../../lib/types';
+import type { EventoComLead, NovoLancamento, TipoLancamento } from '../../lib/types';
+import { formatarData } from '../../lib/status';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
@@ -10,22 +11,24 @@ import { Select } from '../ui/Select';
 const CATEGORIAS_RECEITA = ['Bar Service', 'Photo Booth', 'Combo', 'Sinal', 'Saldo'];
 const CATEGORIAS_DESPESA = ['Equipe', 'Insumos', 'Frete', 'Aluguel de equipamento', 'Taxas', 'Marketing', 'Outros'];
 
-export function LancamentoForm({ onSalvar, salvando }: { onSalvar: (dados: NovoLancamento) => void; salvando: boolean }) {
+export function LancamentoForm({ eventos = [], onSalvar, salvando }: { eventos?: EventoComLead[]; onSalvar: (dados: NovoLancamento) => void; salvando: boolean }) {
   const [tipo, setTipo] = useState<TipoLancamento>('despesa');
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
   const [vencimento, setVencimento] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [categoria, setCategoria] = useState('');
+  const [eventoId, setEventoId] = useState('');
 
   function aoSubmeter(ev: FormEvent) {
     ev.preventDefault();
-    onSalvar({ tipo, eventoId: null, descricao, valor: Number(valor), vencimento: vencimento || null, observacoes: observacoes || null, categoria: categoria.trim() || null });
+    onSalvar({ tipo, eventoId: eventoId || null, descricao, valor: Number(valor), vencimento: vencimento || null, observacoes: observacoes || null, categoria: categoria.trim() || null });
     setDescricao('');
     setValor('');
     setVencimento('');
     setObservacoes('');
     setCategoria('');
+    setEventoId('');
   }
 
   return (
@@ -60,6 +63,22 @@ export function LancamentoForm({ onSalvar, salvando }: { onSalvar: (dados: NovoL
       <div className="sm:col-span-2">
         <Input rotulo="Observações (opcional)" categoria="dinheiro" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
       </div>
+      {/* Evento relacionado (REVIEW_DECISOES_V2, Parte 10/16, P2) —
+          `Lancamento.evento_id` já existe no banco desde sempre, só nunca
+          tinha campo na tela pra preencher (sempre ia null). Opcional:
+          despesa/receita avulsa sem vínculo continua normal. */}
+      {eventos.length > 0 && (
+        <div className="sm:col-span-4">
+          <Select rotulo="Evento relacionado (opcional)" categoria="dinheiro" value={eventoId} onChange={(e) => setEventoId(e.target.value)}>
+            <option value="">Nenhum</option>
+            {eventos.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? 'sem nome'}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
       <div className="sm:col-span-4">
         <button type="submit" disabled={salvando || !descricao || !valor} className="rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
           {salvando ? 'Salvando…' : 'Adicionar lançamento'}
