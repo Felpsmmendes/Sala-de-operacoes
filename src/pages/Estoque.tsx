@@ -22,6 +22,7 @@ import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
+import { Drawer } from '../components/ui/Drawer';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Reveal } from '../components/ui/Reveal';
@@ -40,6 +41,9 @@ import type { ContratoComLead } from '../lib/types';
 function ehCritico(item: ItemEstoque) {
   return item.estoque_atual <= item.estoque_minimo;
 }
+
+const TIPO_MOVIMENTO_ROTULO: Record<TipoMovimento, string> = { entrada: 'Entrada', saida: 'Saída', avaria: 'Avaria/quebra', reintegracao: 'Reintegração' };
+const TIPO_MOVIMENTO_TOM: Record<TipoMovimento, 'sucesso' | 'pendente' | 'perigo'> = { entrada: 'sucesso', reintegracao: 'sucesso', saida: 'pendente', avaria: 'perigo' };
 // "Zerado" (2026-09-18, REVIEW_DECISOES_V2 Parte 6/07) é o caso extremo
 // de crítico — nunca uma seção à parte no dado, só um recorte visual
 // mais urgente. `ehCritico` acima continua com o significado de sempre
@@ -82,7 +86,19 @@ export default function Estoque() {
   const [salvandoItem, setSalvandoItem] = useState(false);
   const [movimentoAberto, setMovimentoAberto] = useState<ItemEstoque | null>(null);
   const [compraAberta, setCompraAberta] = useState<ItemEstoque | null>(null);
+  // Histórico no drawer (REVIEW_DECISOES_V2, Parte 7/16, P2) — carregado
+  // sob demanda (só quando o item é aberto), não junto com o resto da
+  // tela: histórico de todo item de uma vez não teria uso na maior parte
+  // do tempo.
+  const [historicoItem, setHistoricoItem] = useState<ItemEstoque | null>(null);
+  const [historicoMovimentos, setHistoricoMovimentos] = useState<MovimentoComItem[]>([]);
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
   const [convidadosCalc, setConvidadosCalc] = useState('');
+  // Seletor de evento (REVIEW_DECISOES_V2, Parte 7/16, P2) — antes só
+  // dava pra digitar um número solto de convidados; escolher um evento
+  // real preenche esse número sozinho (ainda editável depois, pra
+  // simular um cenário hipotético sem estar ligado a nenhum evento).
+  const [eventoCalcId, setEventoCalcId] = useState('');
   const [naoVinculados, setNaoVinculados] = useState<string[]>([]);
   const [vinculando, setVinculando] = useState<string | null>(null);
   // painel de situação + filtro (2026-09-18, REVIEW_DECISOES_V2 Estoque
@@ -181,6 +197,18 @@ export default function Estoque() {
     }
   }
 
+  async function aoAbrirHistorico(item: ItemEstoque) {
+    setHistoricoItem(item);
+    setCarregandoHistorico(true);
+    try {
+      setHistoricoMovimentos(await listarMovimentos(undefined, item.id));
+    } catch (e) {
+      toast.erro(mensagemDeErro(e));
+    } finally {
+      setCarregandoHistorico(false);
+    }
+  }
+
   const itensCriticos = itens.filter(ehCritico);
   const comprasPendentes = compras.filter((c) => c.status === 'pendente');
 
@@ -240,6 +268,14 @@ export default function Estoque() {
         return { item: i, necessario, deficit: Math.max(0, Math.round((necessario - i.estoque_atual) * 100) / 100) };
       });
   }, [itens, convidadosCalc]);
+
+  const contratosParaCalculadora = useMemo(() => contratos.filter((c) => c.convidados != null).sort((a, b) => b.data_evento.localeCompare(a.data_evento)), [contratos]);
+
+  function aoSelecionarEventoCalc(id: string) {
+    setEventoCalcId(id);
+    const c = contratosParaCalculadora.find((c) => c.id === id);
+    setConvidadosCalc(c?.convidados != null ? String(c.convidados) : '');
+  }
 
   return (
     <>
@@ -423,8 +459,30 @@ export default function Estoque() {
           <Reveal>
             <Panel className="mb-4">
               <PanelHeader titulo="Calculadora preditiva" desc="Quanto vai ser consumido pra X convidados, comparado com o que tem no galpão." acao={<Calculator className="h-4 w-4 text-text-faint" />} />
-              <div className="mb-3 max-w-xs">
-                <Input type="number" min={1} categoria="operacao" value={convidadosCalc} onChange={(e) => setConvidadosCalc(e.target.value)} placeholder="Número de convidados" />
+              <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Select
+                  categoria="operacao"
+                  value={eventoCalcId}
+                  onChange={(e) => aoSelecionarEventoCalc(e.target.value)}
+                >
+                  <option value="">Cenário livre (sem evento)</option>
+                  {contratosParaCalculadora.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {formatarData(c.data_evento)} — {c.lead?.nome ?? '—'} ({c.convidados} conv.)
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  type="number"
+                  min={1}
+                  categoria="operacao"
+                  value={convidadosCalc}
+                  onChange={(e) => {
+                    setEventoCalcId('');
+                    setConvidadosCalc(e.target.value);
+                  }}
+                  placeholder="ou digite o número de convidados"
+                />
               </div>
               {convidadosCalc &&
                 (previsao.length === 0 ? (
@@ -500,6 +558,9 @@ export default function Estoque() {
                             {item.estoque_atual} / {item.estoque_minimo} {item.unidade}
                           </span>
                           {ehCritico(item) ? <Badge tom="perigo" texto="Crítico" /> : <Badge tom="sucesso" texto="OK" />}
+                          <button type="button" onClick={() => aoAbrirHistorico(item)} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
+                            Histórico
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -595,6 +656,32 @@ export default function Estoque() {
       {movimentoAberto && <ModalMovimento item={movimentoAberto} tipoInicial={tipoMovimentoInicial} onFechar={() => setMovimentoAberto(null)} onConfirmar={aoConfirmarMovimento} />}
       {compraAberta && <ModalCompra item={compraAberta} onFechar={() => setCompraAberta(null)} onConfirmar={aoConfirmarCompra} />}
       {confirmar.dialogo}
+
+      {historicoItem && (
+        <Drawer titulo={`Histórico — ${historicoItem.nome}`} onFechar={() => setHistoricoItem(null)}>
+          {carregandoHistorico ? (
+            <SkeletonLinhas />
+          ) : historicoMovimentos.length === 0 ? (
+            <EstadoVazio Icone={Package} titulo="Nenhuma movimentação registrada ainda" />
+          ) : (
+            <div className="flex flex-col gap-2 text-sm">
+              {historicoMovimentos.map((m) => (
+                <div key={m.id} className="flex items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2">
+                  <div className="min-w-0">
+                    <Badge tom={TIPO_MOVIMENTO_TOM[m.tipo]} texto={TIPO_MOVIMENTO_ROTULO[m.tipo]} />
+                    <p className="mt-1 text-[11px] text-text-faint">{new Date(m.criado_em).toLocaleString('pt-BR')}</p>
+                    {m.observacao && <p className="mt-0.5 truncate text-[11.5px] text-text-dim">{m.observacao}</p>}
+                  </div>
+                  <span className="flex-shrink-0 font-mono text-text">
+                    {m.tipo === 'saida' || m.tipo === 'avaria' ? '−' : '+'}
+                    {m.quantidade} {historicoItem.unidade}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Drawer>
+      )}
     </>
   );
 }

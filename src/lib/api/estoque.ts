@@ -81,9 +81,13 @@ export async function registrarMovimento(dados: { itemId: string; tipo: TipoMovi
   if (error) throw new Error(error.message);
 }
 
-export async function listarMovimentos(tipo?: TipoMovimento): Promise<MovimentoComItem[]> {
+/** `itemId` filtra pro histórico de um item só (REVIEW_DECISOES_V2, Parte
+    7/16, P2 — "Histórico no drawer") — sem isso, os 50 mais recentes
+    ficavam misturados entre todos os itens do galpão. */
+export async function listarMovimentos(tipo?: TipoMovimento, itemId?: string): Promise<MovimentoComItem[]> {
   let query = supabase.from('estoque_movimentos').select('*, item:estoque_itens(id,nome,unidade)').order('criado_em', { ascending: false }).limit(50);
   if (tipo) query = query.eq('tipo', tipo);
+  if (itemId) query = query.eq('item_id', itemId);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return data as unknown as MovimentoComItem[];
