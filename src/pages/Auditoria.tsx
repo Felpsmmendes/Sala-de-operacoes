@@ -1,6 +1,6 @@
-import { AlertTriangle, ClipboardCheck, Download, PackageCheck, Star } from 'lucide-react';
+import { AlertTriangle, Camera, ClipboardCheck, Download, Lightbulb, PackageCheck, Star } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { buscarAuditoriaDoEvento, listarAuditorias, salvarAuditoria } from '../lib/api/auditoria';
 import { buscarChecklistPadrao, listarChecklistExtra } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
@@ -228,6 +228,23 @@ export default function Auditoria() {
     const soma = recentes.reduce((s, a) => s + (a.nps_nota ?? 0), 0);
     return Math.round((soma / recentes.length) * 10) / 10;
   }, [auditorias]);
+  // Tendência no MetricCard (REVIEW_DECISOES_V2, Parte 13/16, P2) —
+  // últimos 90 dias × os 90 dias ANTES desses (91-180 dias atrás), não
+  // "todo o histórico até 90 dias atrás" (isso mudaria de tamanho a cada
+  // dia e deixaria de ser uma janela comparável).
+  const npsMedioAnterior90d = useMemo(() => {
+    const inicio = new Date();
+    inicio.setDate(inicio.getDate() - 180);
+    const fim = new Date();
+    fim.setDate(fim.getDate() - 90);
+    const inicioStr = inicio.toISOString().slice(0, 10);
+    const fimStr = fim.toISOString().slice(0, 10);
+    const anteriores = auditorias.filter((a) => a.nps_nota != null && a.criado_em >= inicioStr && a.criado_em < fimStr);
+    if (anteriores.length === 0) return null;
+    const soma = anteriores.reduce((s, a) => s + (a.nps_nota ?? 0), 0);
+    return Math.round((soma / anteriores.length) * 10) / 10;
+  }, [auditorias]);
+  const tendenciaNota = npsMedio90d != null && npsMedioAnterior90d != null ? Math.round((npsMedio90d - npsMedioAnterior90d) * 10) / 10 : null;
   const taxaAvarias = useMemo(() => {
     if (auditorias.length === 0) return null;
     const comAvaria = auditorias.filter((a) => a.avarias_valor && a.avarias_valor > 0).length;
@@ -259,7 +276,13 @@ export default function Auditoria() {
         <MetricGrid>
           <MetricCard Icone={ClipboardCheck} rotulo="Eventos auditados" valor={String(auditorias.length)} legenda={`de ${eventos.length} eventos`} categoria="neutro" />
           <MetricCard Icone={AlertTriangle} rotulo="Auditoria pendente" valor={String(pendentes)} legenda="Eventos sem registro ainda" categoria="neutro" />
-          <MetricCard Icone={Star} rotulo="Nota média" valor={mediaNps} legenda="Escala de 0 a 10" categoria="pessoas" />
+          <MetricCard
+            Icone={Star}
+            rotulo="Nota média"
+            valor={mediaNps}
+            legenda={tendenciaNota != null ? `${tendenciaNota >= 0 ? '↑' : '↓'} ${tendenciaNota >= 0 ? '+' : ''}${tendenciaNota} vs 90 dias anteriores` : 'Escala de 0 a 10'}
+            categoria="pessoas"
+          />
           <MetricCard Icone={PackageCheck} rotulo="Avarias acumuladas" valor={formatarMoeda(totalAvarias)} legenda="Soma de todos os eventos" categoria="operacao" />
         </MetricGrid>
 
@@ -333,14 +356,38 @@ export default function Auditoria() {
               <div className="mt-3">
                 <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Últimos feedbacks negativos</p>
                 <div className="flex flex-col gap-2">
-                  {feedbacksNegativos.map((a) => (
-                    <div key={a.id} className="rounded-sm border border-danger/20 bg-danger/5 px-3 py-2">
-                      <p className="text-[12px] italic text-text-dim">"{a.nps_comentario}"</p>
-                      <p className="mt-1 text-[10.5px] text-text-faint">
-                        Nota {a.nps_nota} · {formatarData(a.criado_em)}
-                      </p>
-                    </div>
-                  ))}
+                  {/* Feedbacks com contexto (REVIEW_DECISOES_V2, Parte
+                      13/16, P2) — cliente + evento + nota visíveis sem
+                      abrir nada, e "Follow-up criado" (nunca um botão:
+                      a automação de tarefa já dispara sozinha quando a
+                      nota é ≤4, ver `aoSalvar` acima) em vez de deixar
+                      parecer que falta alguém clicar em algo. */}
+                  {feedbacksNegativos.map((a) => {
+                    const evento = eventoPorId.get(a.evento_id);
+                    return (
+                      <div key={a.id} className="rounded-sm border border-danger/20 bg-danger/5 px-3 py-2">
+                        <p className="text-[11.5px] text-text-dim">
+                          Cliente: <strong className="text-text">{evento?.contrato?.lead?.nome ?? '—'}</strong>
+                          {evento && ` · Evento: ${formatarData(evento.data_evento)}`} · Nota: <strong className="text-danger">{a.nps_nota}</strong>
+                        </p>
+                        <p className="mt-1 text-[12px] italic text-text-dim">"{a.nps_comentario}"</p>
+                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                          {a.nps_nota != null && a.nps_nota <= 4 ? (
+                            <span className="flex items-center gap-1.5 text-[11px] font-medium text-success">
+                              <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-success" /> Follow-up criado
+                            </span>
+                          ) : (
+                            <span />
+                          )}
+                          {evento && (
+                            <Link to={`/roteiro?evento=${evento.id}`} className="text-[11px] font-medium text-text-dim hover:underline">
+                              Ver evento →
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -444,21 +491,18 @@ export default function Auditoria() {
               <p className="text-sm text-text-dim">Escolha um evento na lista ao lado.</p>
             ) : (
               <div className="flex flex-col gap-5">
-                {/* seção 1 — Operacional (2026-09-13: hierarquia visual pedida
-                    pelo usuário — o formulário inteiro era uma lista plana,
-                    sem separar o que é operação de logística/estoque do que
-                    é financeiro e do que é satisfação do cliente). */}
+                {/* Formulário em 4 seções (REVIEW_DECISOES_V2, Parte 13/16 —
+                    P1 já tinha separado em 3, P2 pede "Evidência" própria
+                    em vez de junto de Operação): Operação / Avarias /
+                    Evidência / Satisfação. */}
                 <div>
-                  <p className="mb-3 border-b border-line pb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Operacional</p>
-                  <div className="flex flex-col gap-3">
-                    <Checkbox
-                      rotulo="Sobras reintegradas ao estoque"
-                      subtexto="Registre a movimentação em Estoque & Compras depois de marcar."
-                      marcado={sobrasReintegradas}
-                      onMudar={setSobrasReintegradas}
-                    />
-                    <Input rotulo="Link da foto da doca limpa (opcional)" value={fotoDocaUrl} onChange={(e) => setFotoDocaUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp da foto" />
-                  </div>
+                  <p className="mb-3 border-b border-line pb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Operação</p>
+                  <Checkbox
+                    rotulo="Sobras reintegradas ao estoque"
+                    subtexto="Registre a movimentação em Estoque & Compras depois de marcar."
+                    marcado={sobrasReintegradas}
+                    onMudar={setSobrasReintegradas}
+                  />
                 </div>
 
                 {/* seção 2 — Avarias & Quebras */}
@@ -503,11 +547,21 @@ export default function Auditoria() {
                     </div>
                   </div>
                   {avariasValor.trim() !== '' && Number(avariasValor) > 0 && (
-                    <p className="mt-2 text-[12px] text-text-faint">💡 Considere registrar um lançamento de despesa em Finanças pra este valor.</p>
+                    <p className="mt-2 flex items-center gap-1.5 text-[12px] text-text-faint">
+                      <Lightbulb className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2} /> Considere registrar um lançamento de despesa em Finanças pra este valor.
+                    </p>
                   )}
                 </div>
 
-                {/* seção 3 — Satisfação do cliente (NPS como botões 0-10, não
+                {/* seção 3 — Evidência (foto da doca, separada de Operação) */}
+                <div>
+                  <p className="mb-3 flex items-center gap-1.5 border-b border-line pb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                    <Camera className="h-3.5 w-3.5" strokeWidth={2} /> Evidência
+                  </p>
+                  <Input rotulo="Link da foto da doca limpa (opcional)" value={fotoDocaUrl} onChange={(e) => setFotoDocaUrl(e.target.value)} placeholder="Cole o link do Drive/WhatsApp da foto" />
+                </div>
+
+                {/* seção 4 — Satisfação do cliente (NPS como botões 0-10, não
                     mais um input numérico solto — mais rápido de preencher
                     no celular e a faixa de cor já avisa antes de salvar). */}
                 <div>
