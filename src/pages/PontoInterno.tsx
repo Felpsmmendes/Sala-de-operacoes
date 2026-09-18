@@ -1,9 +1,11 @@
 import type { Session } from '@supabase/supabase-js';
-import { Check, Clock, LogIn, LogOut, Settings, ShieldOff, Users } from 'lucide-react';
+import { Check, Clock, LogIn, LogOut, Settings, ShieldOff, UserCheck, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { atualizarJornadaFuncionario, baterPonto, cadastrarMeuNome, definirAtivoFuncionario, listarFuncionariosInternos, listarMeusRegistrosHoje, listarRegistrosDeHoje, listarRegistrosPorPeriodo, obterMeuFuncionario } from '../lib/api/pontoInterno';
+import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
+import { Drawer } from '../components/ui/Drawer';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input, InputMoeda } from '../components/ui/Input';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -344,6 +346,18 @@ export default function PontoInterno() {
   const ultimoTipo = registrosHoje[registrosHoje.length - 1]?.tipo ?? null;
   const proximoTipo: TipoPontoInterno = ultimoTipo === 'entrada' ? 'saida' : 'entrada';
 
+  // Presentes/Sem registro hoje (2026-09-18, REVIEW_DECISOES_V2 Parte
+  // 6/12, P1) — só entre os ATIVOS: desativado não é "sem registro", é
+  // outra situação (fica numa seção própria, separada, mais abaixo).
+  const equipeAtiva = equipe?.filter((f) => f.ativo) ?? [];
+  const equipeInativa = equipe?.filter((f) => !f.ativo) ?? [];
+  function ultimoRegistroHoje(funcionarioId: string) {
+    const regs = registrosEquipe.filter((r) => r.funcionario_id === funcionarioId);
+    return regs[regs.length - 1] ?? null;
+  }
+  const presentesHoje = equipeAtiva.filter((f) => ultimoRegistroHoje(f.id) != null);
+  const semRegistroHoje = equipeAtiva.filter((f) => ultimoRegistroHoje(f.id) == null);
+
   async function aoBaterPonto() {
     if (!meuFuncionario) return;
     setBatendo(true);
@@ -471,7 +485,10 @@ export default function PontoInterno() {
         </div>
 
         {/* painel do gestor: panorama de todo mundo — RLS já garante que só
-            a conta travada em eh_gestor() recebe esses dados. */}
+            a conta travada em eh_gestor() recebe esses dados.
+            REVIEW_DECISOES_V2 Parte 6/12, P1: MetricGrid só de hoje +
+            Presentes/Sem registro separados (nunca "falta" — o sistema
+            não sabe o motivo de quem não bateu ponto ainda). */}
         {ehGestor && equipe && (
           <div className="rounded-lg border border-line bg-panel p-5">
             <div className="mb-3 flex items-center gap-2">
@@ -481,62 +498,120 @@ export default function PontoInterno() {
             {equipe.length === 0 ? (
               <EstadoVazio Icone={Users} titulo="Nenhum funcionário cadastrado ainda" descricao="A pessoa aparece aqui no primeiro login dela." />
             ) : (
-              <div className="flex flex-col gap-2">
-                {equipe.map((f) => {
-                  const registros = registrosEquipe.filter((r) => r.funcionario_id === f.id);
-                  const ultimo = registros[registros.length - 1];
-                  const status = !ultimo ? 'Não bateu ponto hoje' : ultimo.tipo === 'entrada' ? `Entrada às ${horaCurta(ultimo.horario)}` : `Saiu às ${horaCurta(ultimo.horario)}`;
-                  const jornadaConfigurada = f.horario_entrada_padrao && f.horario_saida_padrao;
-                  return (
-                    <div key={f.id} className="rounded-sm border border-line bg-input px-3 py-2 text-[12.5px]">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <strong className={f.ativo ? 'text-text' : 'text-text-faint line-through'}>{f.nome}</strong>
-                          <span className="ml-2 text-text-faint">{status}</span>
-                          {jornadaConfigurada ? (
-                            <span className="ml-2 font-mono text-[11px] text-text-faint">
-                              ({f.horario_entrada_padrao!.slice(0, 5)}–{f.horario_saida_padrao!.slice(0, 5)})
-                            </span>
-                          ) : (
-                            <span className="ml-2 text-[11px] text-pending">jornada não configurada</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button type="button" onClick={() => aoAbrirConfigJornada(f)} className="flex items-center gap-1 text-[11.5px] font-medium text-text-dim hover:underline">
-                            <Settings className="h-3 w-3" strokeWidth={2} /> Configurar
-                          </button>
+              <>
+                <MetricGrid>
+                  <MetricCard Icone={Users} rotulo="Funcionários" valor={String(equipeAtiva.length)} legenda="Ativos" categoria="pessoas" />
+                  <MetricCard Icone={UserCheck} rotulo="Presentes" valor={String(presentesHoje.length)} legenda="Bateram ponto hoje" categoria="pessoas" />
+                  <MetricCard Icone={Clock} rotulo="Sem registro" valor={String(semRegistroHoje.length)} legenda="Ainda não bateram hoje" categoria="pessoas" />
+                </MetricGrid>
+
+                {([
+                  { titulo: 'Presentes', lista: presentesHoje },
+                  { titulo: 'Sem registro', lista: semRegistroHoje },
+                ] as const).map(({ titulo, lista }) => (
+                  <div key={titulo} className="mt-4">
+                    <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                      {titulo} — {lista.length}
+                    </p>
+                    {lista.length === 0 ? (
+                      <p className="text-[12px] text-text-faint">Ninguém nesse grupo agora.</p>
+                    ) : (
+                      <div className="flex flex-col gap-1.5">
+                        {lista.map((f) => {
+                          const ultimo = ultimoRegistroHoje(f.id);
+                          const status = !ultimo ? 'Sem registro' : ultimo.tipo === 'entrada' ? `Entrada ${horaCurta(ultimo.horario)}` : `Saiu ${horaCurta(ultimo.horario)}`;
+                          const jornadaConfigurada = f.horario_entrada_padrao && f.horario_saida_padrao;
+                          return (
+                            <div key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-line bg-input px-3 py-1.5 text-[12.5px]">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${ultimo ? 'bg-success' : 'border border-line'}`} />
+                                <strong className="truncate text-text">{f.nome}</strong>
+                                <span className="flex-shrink-0 font-mono text-text-faint">{status}</span>
+                                {jornadaConfigurada && (
+                                  <span className="hidden flex-shrink-0 font-mono text-[11px] text-text-faint sm:inline">
+                                    {f.horario_entrada_padrao!.slice(0, 5)}–{f.horario_saida_padrao!.slice(0, 5)}
+                                  </span>
+                                )}
+                              </span>
+                              <button type="button" onClick={() => aoAbrirConfigJornada(f)} className="flex flex-shrink-0 items-center gap-1 text-[11.5px] font-medium text-text-dim hover:underline">
+                                <Settings className="h-3 w-3" strokeWidth={2} /> Configurar
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Desativados — não entra na conta de presente/sem registro
+                    (não é a mesma pergunta: aqui é "essa pessoa ainda
+                    trabalha aqui", não "bateu ponto hoje"). */}
+                {equipeInativa.length > 0 && (
+                  <div className="mt-4 border-t border-line pt-3">
+                    <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Desativados — {equipeInativa.length}</p>
+                    <div className="flex flex-col gap-1.5">
+                      {equipeInativa.map((f) => (
+                        <div key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-line bg-input px-3 py-1.5 text-[12.5px]">
+                          <strong className="truncate text-text-faint line-through">{f.nome}</strong>
                           <button
                             type="button"
-                            onClick={() => definirAtivoFuncionario(f.id, !f.ativo).then(() => listarFuncionariosInternos().then(setEquipe))}
-                            className="text-[11.5px] font-medium text-text-dim hover:underline"
+                            onClick={() => definirAtivoFuncionario(f.id, true).then(() => listarFuncionariosInternos().then(setEquipe))}
+                            className="flex-shrink-0 text-[11.5px] font-medium text-text-dim hover:underline"
                           >
-                            {f.ativo ? 'Desativar' : 'Reativar'}
+                            Reativar
                           </button>
                         </div>
-                      </div>
-
-                      {configurandoId === f.id && (
-                        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 sm:grid-cols-4">
-                          <Input rotulo="Entrada padrão" type="time" value={formJornada.horario_entrada_padrao} onChange={(e) => setFormJornada((v) => ({ ...v, horario_entrada_padrao: e.target.value }))} />
-                          <Input rotulo="Saída padrão" type="time" value={formJornada.horario_saida_padrao} onChange={(e) => setFormJornada((v) => ({ ...v, horario_saida_padrao: e.target.value }))} />
-                          <InputMoeda rotulo="Valor/hora normal" value={formJornada.valor_hora} onChange={(e) => setFormJornada((v) => ({ ...v, valor_hora: e.target.value }))} />
-                          <InputMoeda rotulo="Valor/hora extra" value={formJornada.valor_hora_extra} onChange={(e) => setFormJornada((v) => ({ ...v, valor_hora_extra: e.target.value }))} />
-                          <div className="col-span-2 flex items-center gap-2 sm:col-span-4">
-                            <button type="button" disabled={salvandoJornada} onClick={() => aoSalvarJornada(f.id)} className="rounded-sm bg-accent px-3 py-1.5 text-[12px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
-                              {salvandoJornada ? 'Salvando…' : 'Salvar jornada'}
-                            </button>
-                            <button type="button" onClick={() => setConfigurandoId(null)} className="text-[11.5px] text-text-faint hover:text-text-dim">
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
+        )}
+
+        {/* Drawer de configuração de jornada (2026-09-18,
+            REVIEW_DECISOES_V2 Parte 6/12, P1 — "Drawer para configuração
+            de jornada") — antes era um form inline que expandia dentro da
+            própria linha; virou painel lateral, mesmo padrão que a Parte
+            5 do review pede pra configuração por item em qualquer tela. */}
+        {configurandoId && (
+          <Drawer titulo={`Jornada — ${equipe?.find((f) => f.id === configurandoId)?.nome ?? ''}`} onFechar={() => setConfigurandoId(null)}>
+            <div className="flex flex-col gap-3">
+              <Input rotulo="Entrada padrão" type="time" value={formJornada.horario_entrada_padrao} onChange={(e) => setFormJornada((v) => ({ ...v, horario_entrada_padrao: e.target.value }))} />
+              <Input rotulo="Saída padrão" type="time" value={formJornada.horario_saida_padrao} onChange={(e) => setFormJornada((v) => ({ ...v, horario_saida_padrao: e.target.value }))} />
+              <InputMoeda rotulo="Valor/hora normal" value={formJornada.valor_hora} onChange={(e) => setFormJornada((v) => ({ ...v, valor_hora: e.target.value }))} />
+              <InputMoeda rotulo="Valor/hora extra" value={formJornada.valor_hora_extra} onChange={(e) => setFormJornada((v) => ({ ...v, valor_hora_extra: e.target.value }))} />
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={salvandoJornada}
+                  onClick={() => aoSalvarJornada(configurandoId)}
+                  className="flex-1 rounded-sm bg-accent px-3 py-2.5 text-[13px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"
+                >
+                  {salvandoJornada ? 'Salvando…' : 'Salvar jornada'}
+                </button>
+                <button type="button" onClick={() => setConfigurandoId(null)} className="rounded-sm border border-line px-3 py-2.5 text-[13px] text-text-dim hover:bg-raised">
+                  Cancelar
+                </button>
+              </div>
+              {equipe?.find((f) => f.id === configurandoId) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const f = equipe.find((x) => x.id === configurandoId)!;
+                    definirAtivoFuncionario(f.id, !f.ativo)
+                      .then(() => listarFuncionariosInternos().then(setEquipe))
+                      .then(() => setConfigurandoId(null));
+                  }}
+                  className="text-center text-[11.5px] font-medium text-text-faint hover:text-danger hover:underline"
+                >
+                  {equipe.find((f) => f.id === configurandoId)!.ativo ? 'Desativar acesso desta pessoa' : 'Reativar acesso desta pessoa'}
+                </button>
+              )}
+            </div>
+          </Drawer>
         )}
 
         {/* relatório de horas por período (2026-09-13) — separado do
