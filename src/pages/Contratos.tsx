@@ -17,7 +17,7 @@ import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { RevealGroup } from '../components/ui/RevealGroup';
 import { AnaliseVendas } from '../components/contratos/AnaliseVendas';
-import { ConfigPix, carregarConfigPix, type ConfigPixDados } from '../components/contratos/ConfigPix';
+import { carregarConfigPix, type ConfigPixDados } from '../components/contratos/ConfigPix';
 import { ModalContratoNovo, type DadosContratoNovo } from '../components/contratos/ModalContratoNovo';
 import { ModalDocumentoContrato } from '../components/contratos/ModalDocumentoContrato';
 import { ModalEditarContrato } from '../components/contratos/ModalEditarContrato';
@@ -88,7 +88,11 @@ export default function Contratos() {
   const [bloqueios, setBloqueios] = useState<BloqueioAgenda[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [configPix, setConfigPix] = useState<ConfigPixDados>(carregarConfigPix);
+  // Chave PIX do negócio (2026-09-18, REVIEW_DECISOES_V2 Parte 6/14, P1
+  // "ConfigPix movido de Contratos") — a edição saiu daqui e foi pra
+  // Configurações; esta tela só LÊ o valor já salvo (localStorage, ver
+  // ConfigPix.tsx) pra gerar o QR code do PIX na hora de cobrar.
+  const [configPix] = useState<ConfigPixDados>(carregarConfigPix);
   const [pixAberto, setPixAberto] = useState<{ contrato: ContratoComLead; tipo: 'sinal' | 'saldo' } | null>(null);
   const [gerando, setGerando] = useState<string | null>(null);
   const [criandoAberto, setCriandoAberto] = useState(false);
@@ -323,11 +327,6 @@ export default function Contratos() {
             Confirme o recebimento do sinal (20%) para garantir o contrato.
           </AlertaBanner>
         )}
-
-        <Panel className="mb-4">
-          <PanelHeader titulo="Chave PIX do negócio" desc="Usada pra gerar a cobrança (QR Code) do sinal e do saldo de cada contrato." />
-          <ConfigPix onSalvar={setConfigPix} />
-        </Panel>
 
         {orcamentosSemContrato.length > 0 && (
           <Panel className="mb-4">

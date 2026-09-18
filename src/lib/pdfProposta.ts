@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { carregarDadosEmpresa } from './dadosEmpresa';
 import type { ItemSelecionado } from './mensagemOrcamento';
 import { formatarData, formatarMoeda } from './status';
 import type { Lead } from './types';
@@ -6,20 +7,6 @@ import type { Lead } from './types';
 const COR_ACCENT: [number, number, number] = [232, 161, 61]; // #e8a13d — mesmo tom do design system
 const COR_TEXTO: [number, number, number] = [30, 28, 25];
 const COR_DIM: [number, number, number] = [110, 105, 98];
-
-/** Dados da empresa — centralizados aqui (2026-09-14) porque apareciam
-    hardcoded no meio do desenho do cabeçalho, sem CNPJ/contato nenhum no
-    rodapé. Editar aqui atualiza todo PDF gerado daqui pra frente.
-    CNPJ é placeholder — substituir pelo real antes de enviar proposta
-    pra cliente de verdade. */
-const EMPRESA = {
-  nome: 'Em Cena Eventos',
-  cnpj: '00.000.000/0001-00', // ← substituir pelo CNPJ real
-  site: 'emcenaeventos.com.br',
-  email: 'contato@emcenaeventos.com.br',
-  telefone: '(11) 99999-9999',
-  cidade: 'São Paulo/SP',
-} as const;
 
 const X_ESQ = 14;
 const X_DIR = 196;
@@ -69,6 +56,10 @@ export function gerarPdfProposta({
 }): void {
   const sinal = Math.round(total * 0.2 * 100) / 100;
   const saldo = Math.round(total * 0.8 * 100) / 100;
+  // Dados da empresa (2026-09-18) — lidos na hora de gerar, não mais uma
+  // constante fixa no arquivo: editável em Configurações > Empresa (ver
+  // src/lib/dadosEmpresa.ts). CNPJ vazio até o gestor preencher lá.
+  const EMPRESA = carregarDadosEmpresa();
   const doc = new jsPDF();
 
   doc.setFontSize(20);
@@ -223,7 +214,10 @@ export function gerarPdfProposta({
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...COR_DIM);
-    doc.text(`${EMPRESA.nome}  ·  CNPJ ${EMPRESA.cnpj}  ·  ${EMPRESA.telefone}`, (X_ESQ + X_DIR) / 2, Y_RODAPE, { align: 'center' });
+    // CNPJ/telefone só entram se preenchidos em Configurações > Empresa —
+    // "CNPJ " vazio no rodapé pareceria campo esquecido, não intencional.
+    const linhaEmpresa = [EMPRESA.nome, EMPRESA.cnpj ? `CNPJ ${EMPRESA.cnpj}` : null, EMPRESA.telefone || null].filter(Boolean).join('  ·  ');
+    doc.text(linhaEmpresa, (X_ESQ + X_DIR) / 2, Y_RODAPE, { align: 'center' });
 
     doc.text(`${EMPRESA.site}  ·  Emitido em ${formatarData(new Date().toISOString())}`, X_ESQ, Y_RODAPE + 4);
     if (totalPaginas > 1) doc.text(`Página ${p}/${totalPaginas}`, X_DIR, Y_RODAPE + 4, { align: 'right' });

@@ -1,11 +1,13 @@
 import { LogOut, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Cabecalho, Conteudo } from '../components/Layout';
+import { ConfigPix } from '../components/contratos/ConfigPix';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Skeleton } from '../components/Skeleton';
 import { Input } from '../components/ui/Input';
 import { useAuth } from '../lib/AuthContext';
 import { listarGestores } from '../lib/api/gestores';
+import { carregarDadosEmpresa, salvarDadosEmpresa, type DadosEmpresa } from '../lib/dadosEmpresa';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { formatarData } from '../lib/status';
@@ -59,6 +61,25 @@ export default function Configuracoes() {
       toast.erro(mensagemDeErro(e));
     } finally {
       setSalvandoMeta(false);
+    }
+  }
+
+  // Dados da empresa (2026-09-18, REVIEW_DECISOES_V2 Parte 6/14, P1) —
+  // só os campos que os PDFs (proposta comercial) de fato usam. Mesma
+  // lógica de localStorage do ConfigPix/meta mensal — configuração local
+  // do negócio, não dado compartilhado no banco.
+  const [dadosEmpresa, setDadosEmpresa] = useState<DadosEmpresa>(carregarDadosEmpresa);
+  const [salvandoEmpresa, setSalvandoEmpresa] = useState(false);
+
+  function aoSalvarEmpresa() {
+    setSalvandoEmpresa(true);
+    try {
+      salvarDadosEmpresa(dadosEmpresa);
+      toast.sucesso('Dados da empresa salvos.');
+    } catch (e) {
+      toast.erro(mensagemDeErro(e));
+    } finally {
+      setSalvandoEmpresa(false);
     }
   }
 
@@ -144,6 +165,31 @@ export default function Configuracoes() {
                   {salvandoMeta ? 'Salvando…' : 'Salvar'}
                 </button>
               </div>
+            </div>
+          </Panel>
+
+          <Panel>
+            <PanelHeader titulo="Chave PIX do negócio" desc="Usada pra gerar a cobrança (QR Code) do sinal e do saldo de cada contrato." />
+            <ConfigPix onSalvar={() => {}} />
+          </Panel>
+
+          <Panel>
+            <PanelHeader titulo="Empresa" desc="Só os campos que os PDFs (proposta comercial) realmente usam." />
+            <div className="flex flex-col gap-4">
+              <Input rotulo="Nome da empresa" value={dadosEmpresa.nome} onChange={(e) => setDadosEmpresa((v) => ({ ...v, nome: e.target.value }))} />
+              <Input rotulo="CNPJ" value={dadosEmpresa.cnpj} onChange={(e) => setDadosEmpresa((v) => ({ ...v, cnpj: e.target.value }))} placeholder="00.000.000/0001-00" />
+              <Input rotulo="Endereço" value={dadosEmpresa.endereco} onChange={(e) => setDadosEmpresa((v) => ({ ...v, endereco: e.target.value }))} placeholder="Rua, número, bairro, cidade/UF" />
+              <Input rotulo="Telefone" value={dadosEmpresa.telefone} onChange={(e) => setDadosEmpresa((v) => ({ ...v, telefone: e.target.value }))} placeholder="(11) 99999-9999" />
+              <Input rotulo="Site" value={dadosEmpresa.site} onChange={(e) => setDadosEmpresa((v) => ({ ...v, site: e.target.value }))} />
+              <Input rotulo="E-mail" value={dadosEmpresa.email} onChange={(e) => setDadosEmpresa((v) => ({ ...v, email: e.target.value }))} />
+              <button
+                type="button"
+                onClick={aoSalvarEmpresa}
+                disabled={salvandoEmpresa}
+                className="self-start rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"
+              >
+                {salvandoEmpresa ? 'Salvando…' : 'Salvar dados da empresa'}
+              </button>
             </div>
           </Panel>
 
