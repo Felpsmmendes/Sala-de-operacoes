@@ -1,4 +1,4 @@
-import { Banknote, Target, TrendingUp, Users } from 'lucide-react';
+import { Banknote, Camera, GlassWater, Plus, Target, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { calcularFaturamentoPorMes, listarContratos, type FaturamentoMes } from '../lib/api/contratos';
 import { listarOrcamentos } from '../lib/api/orcamentos';
@@ -89,6 +89,34 @@ export default function Fechamento() {
     return { ...totais, total };
   }, [orcamentos, contratosDoMes]);
 
+  // Comparativo anual (REVIEW_DECISOES_V2, Parte 11/16, P2) — no MESMO
+  // gráfico de faturamento (não um card separado): ano atual × ano
+  // anterior lado a lado por mês-calendário (Jan..Dez), só quando existe
+  // dado do ano anterior — senão o gráfico continua a visão padrão
+  // (últimos 12 meses corridos).
+  const anoAtual = new Date().getFullYear();
+  const anoAnterior = anoAtual - 1;
+  const comparativoAnual = useMemo(() => {
+    const nomesMes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const porAnoMes = new Map<string, number>();
+    for (const c of contratos) {
+      if (c.status === 'cancelado') continue;
+      const chave = c.data_evento.slice(0, 7);
+      porAnoMes.set(chave, (porAnoMes.get(chave) ?? 0) + c.valor_total);
+    }
+    const valoresAnoAtual = nomesMes.map((_, i) => porAnoMes.get(`${anoAtual}-${String(i + 1).padStart(2, '0')}`) ?? 0);
+    const valoresAnoAnterior = nomesMes.map((_, i) => porAnoMes.get(`${anoAnterior}-${String(i + 1).padStart(2, '0')}`) ?? 0);
+    return { categorias: nomesMes, valoresAnoAtual, valoresAnoAnterior, temAnoAnterior: valoresAnoAnterior.some((v) => v > 0) };
+  }, [contratos, anoAtual, anoAnterior]);
+
+  const seriesFaturamento = comparativoAnual.temAnoAnterior
+    ? [
+        { rotulo: String(anoAnterior), corClasse: 'text-text-faint', pontos: comparativoAnual.valoresAnoAnterior },
+        { rotulo: String(anoAtual), corClasse: 'text-money', pontos: comparativoAnual.valoresAnoAtual },
+      ]
+    : [{ rotulo: 'Faturamento', corClasse: 'text-money', pontos: meses.map((m) => m.valor) }];
+  const categoriasFaturamento = comparativoAnual.temAnoAnterior ? comparativoAnual.categorias : meses.map((m) => formatarMes(m.mes));
+
   return (
     <>
       <Cabecalho titulo="Fechamento Mensal" subtitulo="Histórico de vendas por mês — quanto foi fechado em contrato, mês a mês." />
@@ -122,8 +150,15 @@ export default function Fechamento() {
         ) : (
           <>
             <Panel className="mb-4">
-              <PanelHeader titulo="Faturamento mensal" desc="Mesmo cálculo do gráfico da Sala de Operações — valor total dos contratos, independe de já ter sido pago." />
-              <GraficoLinha categorias={meses.map((m) => formatarMes(m.mes))} series={[{ rotulo: 'Faturamento', corClasse: 'text-money', pontos: meses.map((m) => m.valor) }]} formatarValor={formatarMoeda} />
+              <PanelHeader
+                titulo="Faturamento mensal"
+                desc={
+                  comparativoAnual.temAnoAnterior
+                    ? `Comparativo ${anoAnterior} × ${anoAtual}, mês a mês — valor total dos contratos, independe de já ter sido pago.`
+                    : 'Últimos 12 meses — valor total dos contratos, independe de já ter sido pago.'
+                }
+              />
+              <GraficoLinha categorias={categoriasFaturamento} series={seriesFaturamento} formatarValor={formatarMoeda} />
             </Panel>
 
             <Panel>
@@ -140,12 +175,15 @@ export default function Fechamento() {
                   {[...meses].reverse().map((m, i, arr) => {
                     const anterior = arr[i + 1];
                     const variacao = anterior && anterior.valor > 0 ? Math.round(((m.valor - anterior.valor) / anterior.valor) * 100) : null;
+                    // Mês atual: borda âmbar sutil na linha (REVIEW_DECISOES_V2,
+                    // Parte 11/16, P1) — não fundo amarelo, só a borda.
+                    const ehMesAtual = mesAtual && m.mes === mesAtual.mes;
                     return (
-                      <div key={m.mes} className="list-row grid grid-cols-3 items-center gap-3 px-3 py-2 text-[12.5px]">
+                      <div key={m.mes} className={`list-row grid grid-cols-3 items-center gap-3 px-3 py-2 text-[12.5px] ${ehMesAtual ? 'border-pending/40' : ''}`}>
                         <span className="text-text">{formatarMes(m.mes)}</span>
                         <span className="font-mono text-text">{formatarMoeda(m.valor)}</span>
                         <span className={`font-mono text-[11.5px] font-semibold ${variacao == null ? 'text-text-faint' : variacao > 0 ? 'text-money' : variacao < 0 ? 'text-danger' : 'text-text-faint'}`}>
-                          {variacao == null ? '—' : `${variacao > 0 ? '+' : ''}${variacao}%`}
+                          {variacao == null ? '—' : `${variacao > 0 ? '↑' : variacao < 0 ? '↓' : ''} ${Math.abs(variacao)}%`}
                         </span>
                       </div>
                     );
@@ -159,17 +197,19 @@ export default function Fechamento() {
                 <PanelHeader titulo="Composição do faturamento" desc={`Baseado nos orçamentos vinculados aos contratos de ${mesAtual ? formatarMes(mesAtual.mes) : 'este mês'}`} />
                 <div className="flex flex-col gap-2">
                   {[
-                    { rotulo: '🍸 Bar Service', valor: breakdownServico.bar, cor: 'bg-money' },
-                    { rotulo: '📸 Atrações fotográficas', valor: breakdownServico.atracao, cor: 'bg-schedule' },
-                    { rotulo: '➕ Serviços adicionais', valor: breakdownServico.adicional, cor: 'bg-neutral' },
+                    { rotulo: 'Bar Service', Icone: GlassWater, valor: breakdownServico.bar, cor: 'bg-money' },
+                    { rotulo: 'Atrações fotográficas', Icone: Camera, valor: breakdownServico.atracao, cor: 'bg-schedule' },
+                    { rotulo: 'Serviços adicionais', Icone: Plus, valor: breakdownServico.adicional, cor: 'bg-neutral' },
                   ]
                     .filter(({ valor }) => valor > 0)
-                    .map(({ rotulo, valor, cor }) => {
+                    .map(({ rotulo, Icone, valor, cor }) => {
                       const pct = breakdownServico.total > 0 ? Math.round((valor / breakdownServico.total) * 100) : 0;
                       return (
                         <div key={rotulo}>
                           <div className="mb-1.5 flex items-center justify-between text-[12.5px]">
-                            <span className="text-text-dim">{rotulo}</span>
+                            <span className="flex items-center gap-1.5 text-text-dim">
+                              <Icone className="h-3.5 w-3.5" strokeWidth={2} /> {rotulo}
+                            </span>
                             <div className="flex items-center gap-3">
                               <span className="font-mono text-[11px] text-text-faint">{pct}%</span>
                               <span className="font-mono font-semibold text-text">{formatarMoeda(valor)}</span>
