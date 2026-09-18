@@ -1,7 +1,8 @@
 import { AlertTriangle, Banknote, Calculator, MapPin, PackageCheck, Plus, Truck, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { cancelarCompra, definirDataChegadaCompra, listarCompras, receberCompra, type CompraComItem } from '../lib/api/estoque';
+import { cancelarCompra, definirDataChegadaCompra, listarCompras, listarItens, receberCompra, type CompraComItem, type ItemEstoque } from '../lib/api/estoque';
+import { diasAteEvento } from '../lib/api/contratos';
 import { listarEventos } from '../lib/api/eventos';
 import { criarLancamento } from '../lib/api/financeiro';
 import { criarRegiaoFrete, excluirRegiaoFrete, listarRegioesFrete } from '../lib/api/regioesFrete';
@@ -15,6 +16,7 @@ import { calcularFrete } from '../lib/freteConfig';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
+import { Checkbox } from '../components/ui/Checkbox';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { RevealGroup } from '../components/ui/RevealGroup';
@@ -29,6 +31,7 @@ function aoFalhar(e: unknown) {
 }
 
 const ESTAGIOS_FROTA = ['Aguardando', 'Em preparação', 'Van carregada', 'Em trânsito', 'Chegou'] as const;
+const ITENS_CHECKLIST_PRE_SAIDA = ['Gelo', 'Bebidas conferidas', 'Equipamento de bar', 'Combustível OK'] as const;
 
 /** Estágio atual = o último (mais avançado na sequência) que tem
     timestamp marcado. Sem nenhum marco ainda, é sempre "Aguardando". */
@@ -45,6 +48,7 @@ export default function Logistica() {
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [regioes, setRegioes] = useState<RegiaoFrete[]>([]);
   const [compras, setCompras] = useState<CompraComItem[]>([]);
+  const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [salvandoVeiculo, setSalvandoVeiculo] = useState(false);
@@ -64,6 +68,10 @@ export default function Logistica() {
   // visão de cadastro, não de um evento específico). Também só em
   // memória — o modelo `Veiculo` não tem essa coluna no banco.
   const [statusVeiculos, setStatusVeiculos] = useState<Record<string, 'disponivel' | 'alocado' | 'manutencao'>>({});
+  // Checklist pré-saída (REVIEW_DECISOES_V2, Parte 8/16, P2) — mesmo
+  // padrão em memória do `statusFrota` acima (operacional do dia, não
+  // histórico); eventoId -> item -> marcado.
+  const [checklistPreSaida, setChecklistPreSaida] = useState<Record<string, Record<string, boolean>>>({});
 
   // calculadora de frete — sem vínculo com evento/romaneio (decisão do
   // usuário, 2026-09-09): só estima, não grava nada. Reaproveita a MESMA
@@ -86,11 +94,12 @@ export default function Logistica() {
     setCarregando(true);
     setErro(null);
     try {
-      const [ev, ve, rg, cp] = await Promise.all([listarEventos(), listarVeiculos(), listarRegioesFrete(), listarCompras()]);
+      const [ev, ve, rg, cp, it] = await Promise.all([listarEventos(), listarVeiculos(), listarRegioesFrete(), listarCompras(), listarItens()]);
       setEventos(ev.filter((e) => e.status !== 'cancelado'));
       setVeiculos(ve);
       setRegioes(rg);
       setCompras(cp);
+      setItensEstoque(it);
       setVeiculoId((atual) => atual || ve[0]?.id || '');
       setRegiaoId((atual) => atual || rg[0]?.id || '');
     } catch (e) {
@@ -162,6 +171,33 @@ export default function Logistica() {
     () => [...compras.filter((c) => c.status === 'pendente')].sort((a, b) => (a.data_chegada_prevista ?? '9999-99-99').localeCompare(b.data_chegada_prevista ?? '9999-99-99')),
     [compras]
   );
+
+  // "Compras × eventos" (REVIEW_DECISOES_V2, Parte 8/16, P2) — cruza cada
+  // compra pendente com os próximos 14 dias de eventos: se o consumo
+  // previsto (mesma fórmula da calculadora preditiva de Estoque) supera o
+  // que já tem no galpão, marca a compra como necessária pra aquele
+  // evento específico, não só "vai chegar algum dia".
+  const urgenciaCompras = useMemo(() => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const em14dias = new Date(hoje + 'T00:00:00');
+    em14dias.setDate(em14dias.getDate() + 14);
+    const em14Str = em14dias.toISOString().slice(0, 10);
+    const proximosEventos = eventos.filter((e) => e.data_evento >= hoje && e.data_evento <= em14Str && e.convidados).sort((a, b) => a.data_evento.localeCompare(b.data_evento));
+
+    const mapa = new Map<string, { dias: number; nomeEvento: string }>();
+    for (const c of comprasPendentes) {
+      const item = c.item ? itensEstoque.find((i) => i.id === c.item!.id) : undefined;
+      if (!item || item.consumo_por_pax == null) continue;
+      for (const ev of proximosEventos) {
+        const necessario = item.consumo_por_pax * (ev.convidados ?? 0);
+        if (necessario > item.estoque_atual) {
+          mapa.set(c.id, { dias: diasAteEvento(ev.data_evento), nomeEvento: ev.contrato?.lead?.nome ?? 'evento' });
+          break;
+        }
+      }
+    }
+    return mapa;
+  }, [comprasPendentes, itensEstoque, eventos]);
 
   async function aoMudarDataChegada(id: string, data: string) {
     setCompras((atual) => atual.map((c) => (c.id === id ? { ...c, data_chegada_prevista: data || null } : c)));
@@ -269,6 +305,26 @@ export default function Logistica() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Checklist pré-saída (2026-09-18, REVIEW_DECISOES_V2
+                        Logística P2) — não trava o botão "Van carregada"
+                        (decisão consistente com o resto do sistema: nunca
+                        travar ação por validação de checklist), só avisa
+                        visualmente se ainda falta algo. */}
+                    {status !== 'Chegou' && (
+                      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line pt-2.5">
+                        {ITENS_CHECKLIST_PRE_SAIDA.map((item) => (
+                          <Checkbox
+                            key={item}
+                            rotulo={item}
+                            categoria="operacao"
+                            marcado={!!checklistPreSaida[ev.id]?.[item]}
+                            onMudar={(v) => setChecklistPreSaida((prev) => ({ ...prev, [ev.id]: { ...prev[ev.id], [item]: v } }))}
+                          />
+                        ))}
+                        {ITENS_CHECKLIST_PRE_SAIDA.every((item) => checklistPreSaida[ev.id]?.[item]) && <Badge tom="sucesso" texto="Pronto para saída" />}
+                      </div>
+                    )}
 
                     {/* Timeline com âncora temporal (2026-09-18) — cada
                         estágio já alcançado mostra a hora exata que foi
@@ -488,13 +544,20 @@ export default function Logistica() {
             <EstadoVazio Icone={PackageCheck} titulo="Nenhuma compra pendente" descricao="Compras entram aqui quando o estoque fica crítico." />
           ) : (
             <div className="flex flex-col gap-2">
-              {comprasPendentes.map((c) => (
-                <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2.5 text-sm">
+              {comprasPendentes.map((c) => {
+                const urgencia = urgenciaCompras.get(c.id);
+                return (
+                <div key={c.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-sm border bg-input px-3 py-2.5 text-sm ${urgencia ? 'border-l-2 border-l-danger border-line' : 'border-line'}`}>
                   <div className="min-w-0">
                     <strong className="text-text">{c.item?.nome ?? '—'}</strong>
                     <span className="ml-2 text-text-dim">
                       {c.quantidade} {c.item?.unidade} · {formatarMoeda(c.valor_total)}
                     </span>
+                    {urgencia && (
+                      <p className="mt-0.5 text-[11.5px] font-medium text-danger">
+                        ⚠ Necessário para {urgencia.nomeEvento} em {urgencia.dias} dia{urgencia.dias === 1 ? '' : 's'}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {c.data_chegada_prevista ? <Badge tom="pendente" texto={formatarData(c.data_chegada_prevista)} /> : <Badge tom="neutro" texto="Sem previsão" />}
@@ -509,7 +572,8 @@ export default function Logistica() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Panel>
