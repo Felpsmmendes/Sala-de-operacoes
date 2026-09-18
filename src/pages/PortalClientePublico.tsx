@@ -1,15 +1,61 @@
-import { CheckCircle2, FileSignature, Lock } from 'lucide-react';
+import { CheckCircle2, FileSignature, Lock, MessageCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { diasAteEvento } from '../lib/api/contratos';
 import { aprovarMoldura, aprovarVideo, assinarContrato, assinarHomologacao, buscarPortalPorToken, registrarVisualizacao } from '../lib/api/portalCliente';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { Input } from '../components/ui/Input';
+import { carregarDadosEmpresa } from '../lib/dadosEmpresa';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { formatarData } from '../lib/status';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import type { PortalPublico } from '../lib/types';
+
+type EstadoEtapa = 'concluida' | 'atual' | 'futura';
+
+/** Barra de progresso (REVIEW_DECISOES_V2, Parte 15/16, P1) — "o que
+    preciso fazer agora?" respondido visualmente antes de qualquer
+    detalhe: ✓ concluída / ● em foco / ○ ainda bloqueada. A etapa
+    "Contrato" só entra quando o portal tem documento de contrato
+    gerado (nem todo contrato tem — ver `Contrato.documento_texto`). */
+function etapasProgresso(portal: PortalPublico): { rotulo: string; estado: EstadoEtapa }[] {
+  const passos: { rotulo: string; feita: boolean }[] = [
+    { rotulo: 'Moldura', feita: portal.moldura_aprovada },
+    { rotulo: 'Vídeo', feita: portal.video_aprovado },
+    { rotulo: 'Homologação', feita: !!portal.assinatura_em },
+  ];
+  if (portal.documento_texto) passos.push({ rotulo: 'Contrato', feita: !!portal.contrato_assinado_em });
+
+  const indiceAtual = passos.findIndex((p) => !p.feita);
+  return passos.map((p, i) => ({
+    rotulo: p.rotulo,
+    estado: p.feita ? 'concluida' : i === indiceAtual ? 'atual' : 'futura',
+  }));
+}
+
+function BarraProgresso({ etapas }: { etapas: { rotulo: string; estado: EstadoEtapa }[] }) {
+  return (
+    <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+      {etapas.map((e, i) => (
+        <div key={e.rotulo} className="flex items-center gap-1.5">
+          {i > 0 && <span className="h-px w-4 flex-shrink-0 bg-line" />}
+          <span
+            className={`flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10.5px] font-semibold ${
+              e.estado === 'concluida'
+                ? 'border-success/30 bg-success/10 text-success'
+                : e.estado === 'atual'
+                  ? 'border-pending/40 bg-pending/15 text-pending'
+                  : 'border-line bg-input text-text-faint'
+            }`}
+          >
+            {e.estado === 'concluida' ? '✓' : e.estado === 'atual' ? '●' : '○'} {e.rotulo}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Página PÚBLICA — o noivo/contratante acessa por link único (token do
@@ -54,6 +100,9 @@ export default function PortalClientePublico() {
   }, [token]);
 
   const travado = portal ? diasAteEvento(portal.data_evento) < 15 : false;
+  const empresa = carregarDadosEmpresa();
+  const telefoneEmpresa = empresa.telefone.replace(/\D/g, '');
+  const linkWhatsappAdmin = telefoneEmpresa && portal ? `https://wa.me/55${telefoneEmpresa}?text=${encodeURIComponent(`Olá! Preciso de ajuda com o portal do meu evento (${portal.lead_nome}, ${formatarData(portal.data_evento)}).`)}` : null;
 
   async function aoAprovarMoldura() {
     if (!token) return;
@@ -182,13 +231,28 @@ export default function PortalClientePublico() {
         ) : (
           <div className="flex flex-col gap-5">
             <div>
-              <p className="text-[13px] text-text">
-                Olá, <strong>{portal.lead_nome}</strong>! Aqui você acompanha e aprova os detalhes do seu evento.
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-[13px] text-text">
+                  Olá, <strong>{portal.lead_nome}</strong>! Aqui você acompanha e aprova os detalhes do seu evento.
+                </p>
+                {linkWhatsappAdmin && (
+                  <a
+                    href={linkWhatsappAdmin}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Falar com a Em Cena Eventos pelo WhatsApp"
+                    className="flex flex-shrink-0 items-center gap-1 rounded-sm border border-line px-2 py-1.5 text-[11.5px] font-semibold text-text-dim hover:bg-raised hover:text-text"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" /> Falar com a gente
+                  </a>
+                )}
+              </div>
               <p className="mt-1 text-[12.5px] text-text-dim">
                 {formatarData(portal.data_evento)} · {portal.local || 'local a confirmar'}
               </p>
             </div>
+
+            {!portal.assinatura_em || (portal.documento_texto && !portal.contrato_assinado_em) ? <BarraProgresso etapas={etapasProgresso(portal)} /> : null}
 
             {travado && !portal.assinatura_em && (
               <p className="flex items-center gap-2 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger">

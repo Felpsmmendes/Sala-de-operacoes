@@ -1,8 +1,9 @@
-import { AlertTriangle, CheckCircle2, Copy, FileSignature } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, FileSignature, MessageCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { diasAteEvento, listarContratos } from '../lib/api/contratos';
 import { atualizarMoldura, atualizarVideo, buscarPortalPorContrato, listarTodosPortais } from '../lib/api/portalCliente';
-import { Badge } from '../components/Badge';
+import { AlertaBanner } from '../components/AlertaBanner';
+import { Badge, type TomBadge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
@@ -17,6 +18,40 @@ import type { ContratoComLead, PortalCliente } from '../lib/types';
 
 function aoFalhar(e: unknown) {
   toast.erro(mensagemDeErro(e));
+}
+
+/** Status rico em 4 estados (REVIEW_DECISOES_V2, Parte 15/16, P1) —
+    substitui o Pendente/Assinado binário de antes, que escondia em qual
+    das 4 fases reais o cliente estava (aprovação de mídia, homologação,
+    contrato). `contrato` carrega `documento_texto`/`contrato_assinado_em`
+    (a etapa de contrato só existe pra quem tem documento gerado — ver
+    migration_028). */
+function statusPortal(contrato: ContratoComLead, portal: PortalCliente | undefined): { texto: string; tom: TomBadge } {
+  if (!portal) return { texto: 'Sem portal', tom: 'neutro' };
+  if (!portal.moldura_aprovada || !portal.video_aprovado) return { texto: 'Aguardando aprovação', tom: 'pendente' };
+  if (!portal.assinatura_em) return { texto: 'Aguardando homologação', tom: 'pendente' };
+  if (contrato.documento_texto && !contrato.contrato_assinado_em) return { texto: 'Aguardando contrato', tom: 'pendente' };
+  return { texto: 'Concluído', tom: 'sucesso' };
+}
+
+function etapasPendentes(contrato: ContratoComLead, portal: PortalCliente): string[] {
+  const lista: string[] = [];
+  if (!portal.moldura_aprovada) lista.push('moldura');
+  if (!portal.video_aprovado) lista.push('vídeo');
+  if (!portal.assinatura_em) lista.push('homologação');
+  if (contrato.documento_texto && !contrato.contrato_assinado_em) lista.push('contrato');
+  return lista;
+}
+
+/** Link do WhatsApp com mensagem pré-formatada pro cliente (mesmo padrão
+    de `https://wa.me/55...` já usado em Orcamentos.tsx) — null quando o
+    lead não tem telefone cadastrado, pra desabilitar o botão em vez de
+    abrir um link quebrado. */
+function linkWhatsappCliente(contrato: ContratoComLead, link: string): string | null {
+  const tel = contrato.lead?.telefone?.replace(/\D/g, '');
+  if (!tel || !link) return null;
+  const msg = `Olá ${contrato.lead?.nome ?? ''}! Segue o link do seu portal para acompanhar e aprovar os detalhes do seu evento: ${link}`;
+  return `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
 }
 
 /** Visão do GESTOR sobre os portais de cliente (ver quem já homologou,
@@ -111,6 +146,19 @@ export default function PortalClienteAdmin() {
   const totalPendentes = totalPortais - totalHomologados;
   const totalMolduraAprovada = todosPortais.filter((p) => p.moldura_aprovada).length;
 
+  // Alerta D-7 (REVIEW_DECISOES_V2, Parte 15/16, P1) — portais ainda não
+  // concluídos com evento em até 7 dias, pra cobrar o cliente a tempo em
+  // vez de descobrir a pendência em cima da hora.
+  const portaisPendentesD7 = contratos
+    .map((c) => {
+      const p = todosPortais.find((portal) => portal.contrato_id === c.id);
+      const dias = diasAteEvento(c.data_evento);
+      const status = statusPortal(c, p);
+      return { contrato: c, portal: p, dias, status };
+    })
+    .filter(({ portal, dias, status }) => portal && dias >= 0 && dias <= 7 && status.texto !== 'Concluído')
+    .sort((a, b) => a.dias - b.dias);
+
   return (
     <>
       <Cabecalho titulo="Portal do Cliente" subtitulo="Acompanhe a homologação de cardápio, moldura e assinatura de cada contrato." />
@@ -124,6 +172,23 @@ export default function PortalClienteAdmin() {
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
+        {portaisPendentesD7.length > 0 && (
+          <AlertaBanner tom="pendente" titulo={`${portaisPendentesD7.length} portal(is) pendente(s) nos próximos 7 dias`} Icone={AlertTriangle} className="mb-4">
+            <ul className="flex flex-col gap-1">
+              {portaisPendentesD7.map(({ contrato: c, portal: p, dias }) => (
+                <li key={c.id} className="flex items-center justify-between gap-3">
+                  <button type="button" onClick={() => setContratoId(c.id)} className="truncate text-left text-pending underline-offset-2 hover:underline">
+                    {c.lead?.nome ?? 'Contrato'} — evento em {dias === 0 ? 'hoje' : `${dias} dia(s)`}
+                  </button>
+                  <span className="flex-shrink-0 text-[11.5px] text-text-dim">
+                    {p ? etapasPendentes(c, p).length : 0} etapa(s) pendente(s)
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </AlertaBanner>
+        )}
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
           <Panel>
             <PanelHeader titulo="Contratos" desc={carregando ? undefined : `${contratos.length} ativo(s)`} />
@@ -135,6 +200,7 @@ export default function PortalClienteAdmin() {
               <div className="flex max-h-[560px] flex-col gap-1.5 overflow-y-auto">
                 {contratos.map((c) => {
                   const portalDoContrato = todosPortais.find((p) => p.contrato_id === c.id);
+                  const status = statusPortal(c, portalDoContrato);
                   return (
                     <button
                       key={c.id}
@@ -146,14 +212,9 @@ export default function PortalClienteAdmin() {
                         {formatarData(c.data_evento)} — {c.lead?.nome ?? '—'}
                       </span>
                       {portalDoContrato && (
-                        <span className={`mt-0.5 flex items-center gap-1 text-[10px] font-semibold ${portalDoContrato.assinatura_em ? 'text-success' : 'text-pending'}`}>
-                          {portalDoContrato.assinatura_em ? (
-                            <>
-                              <CheckCircle2 className="h-2.5 w-2.5" strokeWidth={2.5} /> Assinado
-                            </>
-                          ) : (
-                            'Pendente'
-                          )}
+                        <span className={`mt-0.5 flex items-center gap-1 text-[10px] font-semibold ${status.tom === 'sucesso' ? 'text-success' : 'text-pending'}`}>
+                          {status.tom === 'sucesso' ? <CheckCircle2 className="h-2.5 w-2.5" strokeWidth={2.5} /> : null}
+                          {status.texto}
                         </span>
                       )}
                     </button>
@@ -168,11 +229,32 @@ export default function PortalClienteAdmin() {
               titulo={contratoAtual ? `${contratoAtual.lead?.nome ?? 'Contrato'} — ${formatarData(contratoAtual.data_evento)}` : 'Selecione um contrato'}
               desc={travado ? 'Trava D-15 ativa: o cliente já não consegue mais editar/aprovar nada.' : undefined}
               acao={
-                portal && (
-                  <button type="button" onClick={copiarLink} className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
-                    <Copy className="h-3.5 w-3.5" /> Copiar link do portal
-                  </button>
-                )
+                portal &&
+                contratoAtual &&
+                (() => {
+                  const status = statusPortal(contratoAtual, portal);
+                  const wa = linkWhatsappCliente(contratoAtual, linkPortal);
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Badge tom={status.tom} texto={status.texto} />
+                      <a
+                        href={wa ?? undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => {
+                          if (!wa) e.preventDefault();
+                        }}
+                        title={wa ? 'Enviar link pelo WhatsApp' : 'Lead sem telefone cadastrado'}
+                        className={`inline-flex items-center gap-1.5 rounded-sm border border-line px-3 py-2 text-[12.5px] font-semibold text-text-dim hover:bg-raised hover:text-text ${!wa ? 'pointer-events-none opacity-40' : ''}`}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                      </a>
+                      <button type="button" onClick={copiarLink} className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
+                        <Copy className="h-3.5 w-3.5" /> Copiar link do portal
+                      </button>
+                    </div>
+                  );
+                })()
               }
             />
 
