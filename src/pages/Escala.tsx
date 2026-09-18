@@ -16,6 +16,7 @@ import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { Checkbox } from '../components/ui/Checkbox';
+import { Drawer } from '../components/ui/Drawer';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { RevealGroup } from '../components/ui/RevealGroup';
@@ -47,6 +48,12 @@ export default function Escala() {
   const [salvandoMembro, setSalvandoMembro] = useState(false);
   const [convocarParaEvento, setConvocarParaEvento] = useState<EventoComLead | null>(null);
   const [horaExtraAberta, setHoraExtraAberta] = useState<{ escala: EscalaComMembro; evento: EventoComLead } | null>(null);
+  // Drawer do freelancer ao clicar no nome (REVIEW_DECISOES_V2, Parte 6/16,
+  // P2) — checklist + ações de convocação saem do card sempre-aberto e só
+  // aparecem ao abrir esse painel lateral, um por vez. Guarda só o id (não
+  // o objeto) pra nunca mostrar um status desatualizado depois de uma ação
+  // dentro do próprio drawer (ex.: mudar status recarrega `escalas`).
+  const [escaladoAbertoId, setEscaladoAbertoId] = useState<string | null>(null);
   // filtro rápido de período (pedido do usuário, 2026-09-09) — atalho, não
   // um seletor de data manual.
   const [filtroPeriodo, setFiltroPeriodo] = useState<'todos' | '7d' | '30d'>('todos');
@@ -190,6 +197,13 @@ export default function Escala() {
     const barbackAtual = ativos.filter((e) => e.membro && funcaoContaComo(e.membro.funcao) === 'barback').length;
     return bartenderAtual < necessario.bartender || barbackAtual < necessario.barback;
   }).length;
+
+  const escaladoAberto = useMemo(() => {
+    if (!escaladoAbertoId) return null;
+    const esc = escalas.find((e) => e.id === escaladoAbertoId);
+    const evento = esc ? eventos.find((ev) => ev.id === esc.evento_id) : undefined;
+    return esc && evento ? { escala: esc, evento } : null;
+  }, [escaladoAbertoId, escalas, eventos]);
 
   return (
     <>
@@ -417,83 +431,24 @@ export default function Escala() {
                   ) : (
                     <RevealGroup className="flex flex-col gap-2">
                       {desteEvento.map((esc) => (
-                        <div key={esc.id} className="rounded-sm border border-line bg-input p-3 text-sm">
-                          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <button
+                          key={esc.id}
+                          type="button"
+                          onClick={() => setEscaladoAbertoId(esc.id)}
+                          className="flex w-full flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input p-3 text-left text-sm transition-colors hover:bg-raised"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Avatar nome={esc.membro?.nome ?? '?'} categoria={esc.membro && funcaoContaComo(esc.membro.funcao) === 'barback' ? 'operacao' : 'pessoas'} tamanho={28} />
                             <div>
                               <strong className="text-text">{esc.membro?.nome ?? '—'}</strong>
                               <span className="ml-2 text-[11.5px] text-text-faint">{esc.membro ? (FUNCAO_EQUIPE_ROTULO[esc.membro.funcao] ?? esc.membro.funcao) : ''}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge tom={STATUS_ESCALA_INFO[esc.status].tom} texto={STATUS_ESCALA_INFO[esc.status].rotulo} />
-                              <div className="w-36">
-                                <Select categoria="pessoas" value={esc.status} onChange={(e) => aoMudarStatus(esc.id, e.target.value as StatusEscala)}>
-                                  <option value="convocado">Convocado</option>
-                                  <option value="confirmado">Confirmado</option>
-                                  <option value="recusado">Recusado</option>
-                                </Select>
-                              </div>
-                            </div>
                           </div>
-
-                          <div className="mb-2 flex flex-wrap items-center gap-4">
-                            <Checkbox rotulo="Traje OK" categoria="pessoas" marcado={esc.traje_ok} onMudar={(v) => aoMudarChecklist(esc.id, 'traje_ok', v)} />
-                            <Checkbox rotulo="EPI OK" categoria="pessoas" marcado={esc.epi_ok} onMudar={(v) => aoMudarChecklist(esc.id, 'epi_ok', v)} />
-                            <span className="ml-auto font-mono text-[12.5px] text-text-dim">diária {esc.diaria.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-[12.5px] text-text-dim">{esc.diaria.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            <Badge tom={STATUS_ESCALA_INFO[esc.status].tom} texto={STATUS_ESCALA_INFO[esc.status].rotulo} />
                           </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                esc.membro &&
-                                navigator.clipboard
-                                  .writeText(
-                                    montarMensagemConvocacao({
-                                      membro: esc.membro,
-                                      clienteNome: evento.contrato?.lead?.nome ?? 'evento',
-                                      dataEvento: evento.data_evento,
-                                      local: evento.local,
-                                      horaInicio: evento.hora_inicio,
-                                      diaria: esc.diaria,
-                                      linkConfirmacao: montarLinkConfirmacao(esc.token),
-                                    })
-                                  )
-                                  .then(() => toast.sucesso('Mensagem copiada — cole no WhatsApp.'))
-                                  .catch(() => toast.aviso('Não foi possível copiar automaticamente.'))
-                              }
-                              className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text"
-                            >
-                              Copiar convocação (WhatsApp)
-                            </button>
-                            <button
-                              type="button"
-                              disabled={enviandoEscalaId === esc.id}
-                              onClick={() => aoEnviarConvocacaoIndividual(esc, evento)}
-                              className="rounded-sm border border-people/40 bg-people/10 px-2.5 py-1 text-[11.5px] font-semibold text-people hover:bg-people/20 disabled:opacity-50"
-                            >
-                              {enviandoEscalaId === esc.id ? 'Enviando…' : 'Enviar via WhatsApp'}
-                            </button>
-                            <button
-                              type="button"
-                              title="Copia o link único de confirmação desta pessoa — dá pra mandar por qualquer canal (WhatsApp, SMS, etc.), não muda depois de gerado."
-                              onClick={() =>
-                                navigator.clipboard
-                                  .writeText(montarLinkConfirmacao(esc.token))
-                                  .then(() => toast.sucesso('Link de confirmação copiado.'))
-                                  .catch(() => toast.aviso('Não foi possível copiar automaticamente.'))
-                              }
-                              className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text"
-                            >
-                              Copiar link de confirmação
-                            </button>
-                            <button type="button" onClick={() => setHoraExtraAberta({ escala: esc, evento })} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
-                              Hora extra
-                            </button>
-                            <button type="button" onClick={() => removerEscala(esc.id).then(recarregarEscalas).catch(aoFalhar)} className="ml-auto text-[11.5px] font-medium text-danger hover:underline">
-                              Remover
-                            </button>
-                          </div>
-                        </div>
+                        </button>
                       ))}
                     </RevealGroup>
                   )}
@@ -510,6 +465,97 @@ export default function Escala() {
 
       {horaExtraAberta && (
         <ModalHoraExtra escala={horaExtraAberta.escala} horaFimPrevista={horaExtraAberta.evento.hora_fim_prevista} onFechar={() => setHoraExtraAberta(null)} />
+      )}
+
+      {escaladoAberto && (
+        <Drawer titulo={escaladoAberto.escala.membro?.nome ?? 'Freelancer'} onFechar={() => setEscaladoAbertoId(null)}>
+          <div className="flex flex-col gap-4 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11.5px] text-text-faint">
+                {escaladoAberto.escala.membro ? (FUNCAO_EQUIPE_ROTULO[escaladoAberto.escala.membro.funcao] ?? escaladoAberto.escala.membro.funcao) : ''} · {formatarData(escaladoAberto.evento.data_evento)}
+              </span>
+              <span className="font-mono text-[12.5px] text-text-dim">{escaladoAberto.escala.diaria.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            </div>
+
+            <div className="w-full">
+              <Select categoria="pessoas" value={escaladoAberto.escala.status} onChange={(e) => aoMudarStatus(escaladoAberto.escala.id, e.target.value as StatusEscala)}>
+                <option value="convocado">Convocado</option>
+                <option value="confirmado">Confirmado</option>
+                <option value="recusado">Recusado</option>
+              </Select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 border-t border-line pt-3">
+              <Checkbox rotulo="Traje OK" categoria="pessoas" marcado={escaladoAberto.escala.traje_ok} onMudar={(v) => aoMudarChecklist(escaladoAberto.escala.id, 'traje_ok', v)} />
+              <Checkbox rotulo="EPI OK" categoria="pessoas" marcado={escaladoAberto.escala.epi_ok} onMudar={(v) => aoMudarChecklist(escaladoAberto.escala.id, 'epi_ok', v)} />
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-line pt-3">
+              <button
+                type="button"
+                onClick={() =>
+                  escaladoAberto.escala.membro &&
+                  navigator.clipboard
+                    .writeText(
+                      montarMensagemConvocacao({
+                        membro: escaladoAberto.escala.membro,
+                        clienteNome: escaladoAberto.evento.contrato?.lead?.nome ?? 'evento',
+                        dataEvento: escaladoAberto.evento.data_evento,
+                        local: escaladoAberto.evento.local,
+                        horaInicio: escaladoAberto.evento.hora_inicio,
+                        diaria: escaladoAberto.escala.diaria,
+                        linkConfirmacao: montarLinkConfirmacao(escaladoAberto.escala.token),
+                      })
+                    )
+                    .then(() => toast.sucesso('Mensagem copiada — cole no WhatsApp.'))
+                    .catch(() => toast.aviso('Não foi possível copiar automaticamente.'))
+                }
+                className="rounded-sm border border-line px-2.5 py-1.5 text-[12px] text-text-dim hover:bg-raised hover:text-text"
+              >
+                Copiar convocação (WhatsApp)
+              </button>
+              <button
+                type="button"
+                disabled={enviandoEscalaId === escaladoAberto.escala.id}
+                onClick={() => aoEnviarConvocacaoIndividual(escaladoAberto.escala, escaladoAberto.evento)}
+                className="rounded-sm border border-people/40 bg-people/10 px-2.5 py-1.5 text-[12px] font-semibold text-people hover:bg-people/20 disabled:opacity-50"
+              >
+                {enviandoEscalaId === escaladoAberto.escala.id ? 'Enviando…' : 'Enviar via WhatsApp'}
+              </button>
+              <button
+                type="button"
+                title="Copia o link único de confirmação desta pessoa — dá pra mandar por qualquer canal (WhatsApp, SMS, etc.), não muda depois de gerado."
+                onClick={() =>
+                  navigator.clipboard
+                    .writeText(montarLinkConfirmacao(escaladoAberto.escala.token))
+                    .then(() => toast.sucesso('Link de confirmação copiado.'))
+                    .catch(() => toast.aviso('Não foi possível copiar automaticamente.'))
+                }
+                className="rounded-sm border border-line px-2.5 py-1.5 text-[12px] text-text-dim hover:bg-raised hover:text-text"
+              >
+                Copiar link de confirmação
+              </button>
+              <button
+                type="button"
+                onClick={() => setHoraExtraAberta({ escala: escaladoAberto.escala, evento: escaladoAberto.evento })}
+                className="rounded-sm border border-line px-2.5 py-1.5 text-[12px] text-text-dim hover:bg-raised hover:text-text"
+              >
+                Hora extra
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const id = escaladoAberto.escala.id;
+                  setEscaladoAbertoId(null);
+                  removerEscala(id).then(recarregarEscalas).catch(aoFalhar);
+                }}
+                className="text-left text-[12px] font-medium text-danger hover:underline"
+              >
+                Remover da escala
+              </button>
+            </div>
+          </div>
+        </Drawer>
       )}
     </>
   );
