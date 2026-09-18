@@ -283,50 +283,42 @@ export default function Auditoria() {
           <Panel className="mb-4">
             <PanelHeader titulo="Histórico de satisfação" desc={`Baseado em ${distribuicaoNps.total} evento(s) com nota registrada`} />
 
-            {/* NPS real (2026-09-18) — % promotores − % detratores, a
-                fórmula de verdade da metodologia. Fica separado da "Nota
-                média" abaixo de propósito (correção técnica registrada em
-                REVIEW_DECISOES_V2, Parte 6/13): os dois são números
-                diferentes, calculados de jeitos diferentes, nunca o mesmo
-                valor com rótulo trocado. */}
-            {npsReal != null && (
-              <div className="mb-3 flex items-center justify-between rounded-sm border border-line bg-input px-3 py-2.5">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">NPS</span>
-                  <p className="text-[11px] text-text-faint">% promotores − % detratores, últimos 90 dias</p>
-                </div>
-                <span className={`font-mono text-[22px] font-bold leading-none ${npsReal >= 50 ? 'text-success' : npsReal >= 0 ? 'text-pending' : 'text-danger'}`}>
-                  {npsReal > 0 ? '+' : ''}
-                  {npsReal}
+            {/* Hierarquia NPS/nota (2026-09-18, REVIEW_DECISOES_V2 Parte
+                6/13, P1) — "Nota média" em destaque GRANDE, distribuição
+                (promotores/neutros/detratores) e o NPS de verdade (%
+                promotores − % detratores, correção técnica desta mesma
+                Parte 6/13) como dados secundários, menores, abaixo. Antes
+                os 4 números tinham o mesmo peso visual num grid parelho —
+                nenhum se destacava como "o número principal da tela". */}
+            <div className="mb-4 flex flex-col items-center gap-0.5 py-1 text-center">
+              <span className={`font-mono text-[42px] font-black leading-none ${npsMedio90d == null ? 'text-text-faint' : npsMedio90d >= 9 ? 'text-success' : npsMedio90d >= 7 ? 'text-pending' : 'text-danger'}`}>
+                {npsMedio90d != null ? npsMedio90d.toFixed(1) : '—'}
+              </span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Nota média</span>
+              <span className="text-[10px] text-text-faint">últimos 90 dias</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="flex flex-col items-center gap-0.5 rounded-sm border border-success/20 bg-success/5 p-2.5 text-center">
+                <span className="font-mono text-[18px] font-bold leading-none text-success">{distribuicaoNps.promotores}</span>
+                <span className="text-[10px] text-text-faint">Promotores (9–10)</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5 rounded-sm border border-pending/20 bg-pending/5 p-2.5 text-center">
+                <span className="font-mono text-[18px] font-bold leading-none text-pending">{distribuicaoNps.neutros}</span>
+                <span className="text-[10px] text-text-faint">Neutros (7–8)</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5 rounded-sm border border-danger/20 bg-danger/5 p-2.5 text-center">
+                <span className="font-mono text-[18px] font-bold leading-none text-danger">{distribuicaoNps.detratores}</span>
+                <span className="text-[10px] text-text-faint">Detratores (0–6)</span>
+              </div>
+              {/* NPS real — % promotores − % detratores, a fórmula de
+                  verdade da metodologia; nunca o mesmo número que "Nota
+                  média" acima com rótulo trocado. */}
+              <div className="flex flex-col items-center gap-0.5 rounded-sm border border-line bg-input p-2.5 text-center">
+                <span className={`font-mono text-[18px] font-bold leading-none ${npsReal == null ? 'text-text-faint' : npsReal >= 50 ? 'text-success' : npsReal >= 0 ? 'text-pending' : 'text-danger'}`}>
+                  {npsReal != null ? `${npsReal > 0 ? '+' : ''}${npsReal}` : '—'}
                 </span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="flex flex-col items-center gap-1 rounded-sm border border-line bg-input p-3 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">Nota média</span>
-                <span className={`font-mono text-[28px] font-bold leading-none ${npsMedio90d == null ? 'text-text-faint' : npsMedio90d >= 9 ? 'text-success' : npsMedio90d >= 7 ? 'text-pending' : 'text-danger'}`}>
-                  {npsMedio90d != null ? npsMedio90d.toFixed(1) : '—'}
-                </span>
-                <span className="text-[10px] text-text-faint">últimos 90 dias</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-1 rounded-sm border border-success/20 bg-success/5 p-3 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">Promotores</span>
-                <span className="font-mono text-[28px] font-bold leading-none text-success">{distribuicaoNps.promotores}</span>
-                <span className="text-[10px] text-text-faint">nota 9–10</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-1 rounded-sm border border-pending/20 bg-pending/5 p-3 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">Neutros</span>
-                <span className="font-mono text-[28px] font-bold leading-none text-pending">{distribuicaoNps.neutros}</span>
-                <span className="text-[10px] text-text-faint">nota 7–8</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-1 rounded-sm border border-danger/20 bg-danger/5 p-3 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">Detratores</span>
-                <span className="font-mono text-[28px] font-bold leading-none text-danger">{distribuicaoNps.detratores}</span>
-                <span className="text-[10px] text-text-faint">nota 0–6</span>
+                <span className="text-[10px] text-text-faint">NPS real</span>
               </div>
             </div>
 
@@ -399,23 +391,46 @@ export default function Auditoria() {
               <div className="flex max-h-[560px] flex-col gap-1.5 overflow-y-auto">
                 {eventos.map((ev) => {
                   const auditoriaEvento = auditoriaPorEvento.get(ev.id);
-                  const insatisfeito = auditoriaEvento?.nps_nota != null && auditoriaEvento.nps_nota <= 4;
+                  const nota = auditoriaEvento?.nps_nota ?? null;
+                  const insatisfeito = nota != null && nota <= 4;
+                  // Cor da nota — mesmo corte de 3 faixas usado nos botões
+                  // de nota do formulário (0-4 vermelho, 5-7 âmbar, 8-10
+                  // verde), pra bater com o que o gestor já associa àquela
+                  // cor em outro lugar da mesma tela.
+                  const corNota = nota == null ? '' : nota <= 4 ? 'bg-danger' : nota <= 7 ? 'bg-pending' : 'bg-success';
                   return (
                     <button
                       key={ev.id}
                       type="button"
                       onClick={() => setEventoId(ev.id)}
-                      className={`flex items-center justify-between gap-2 rounded-sm border px-2.5 py-2 text-left text-[12.5px] transition-colors ${
+                      className={`flex flex-col gap-1.5 rounded-sm border px-2.5 py-2 text-left text-[12.5px] transition-colors ${
                         ev.id === eventoId ? 'border-neutral bg-raised text-text' : 'border-line bg-input text-text-dim hover:bg-raised'
                       }`}
                     >
-                      <span className="min-w-0 truncate">
-                        {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? '—'}
-                      </span>
-                      <span className="flex flex-shrink-0 items-center gap-1">
-                        {insatisfeito && <Badge tom="perigo" texto="Insatisfeito" />}
-                        {auditoriaEvento ? <Badge tom="sucesso" texto="Auditado" /> : <Badge tom="pendente" texto="Pendente" />}
-                      </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate">
+                          {formatarData(ev.data_evento)} — {ev.contrato?.lead?.nome ?? '—'}
+                        </span>
+                        <span className="flex flex-shrink-0 items-center gap-1">
+                          {insatisfeito && <Badge tom="perigo" texto="Insatisfeito" />}
+                          {auditoriaEvento ? <Badge tom="sucesso" texto="Auditado" /> : <Badge tom="pendente" texto="Pendente" />}
+                        </span>
+                      </div>
+                      {/* Lista melhorada (2026-09-18, REVIEW_DECISOES_V2
+                          Parte 6/13, P1) — convidados + nota visíveis sem
+                          precisar abrir o evento, com barra inline
+                          proporcional à nota (0-10). */}
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-text-faint">
+                        <span>{ev.convidados != null ? `${ev.convidados} convidados` : 'convidados não informado'}</span>
+                        {nota != null && (
+                          <span className="flex flex-shrink-0 items-center gap-1.5">
+                            <span className="h-1 w-10 overflow-hidden rounded-full bg-raised">
+                              <span className={`block h-full rounded-full ${corNota}`} style={{ width: `${(nota / 10) * 100}%` }} />
+                            </span>
+                            <span className="font-mono text-text-dim">{nota}</span>
+                          </span>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
