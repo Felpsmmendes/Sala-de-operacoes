@@ -106,6 +106,13 @@ export default function Financeiro() {
   const aPagar = lancamentos.filter((l) => l.tipo === 'despesa' && l.status === 'pendente').reduce((s, l) => s + l.valor, 0);
   const receitaMes = lancamentos.filter((l) => l.tipo === 'receita' && l.status === 'pago' && (l.data_pagamento ?? '').slice(0, 7) === mesAtual).reduce((s, l) => s + l.valor, 0);
   const despesaMes = lancamentos.filter((l) => l.tipo === 'despesa' && l.status === 'pago' && (l.data_pagamento ?? '').slice(0, 7) === mesAtual).reduce((s, l) => s + l.valor, 0);
+  // Saldo protagonista + projeção decomposta (2026-09-18,
+  // REVIEW_DECISOES_V2 Parte 6/10, P1) — mesmos números que já existiam
+  // em MetricCard (aReceber/aPagar/receitaMes), só reorganizados na
+  // hierarquia que o review pediu: nunca "recebido + pendente" somado
+  // escondendo o que ainda não é dinheiro em caixa de verdade.
+  const saldoMes = receitaMes - despesaMes;
+  const saldoProjetado = receitaMes + aReceber - aPagar;
 
   // filtro de mês (2026-09-13) — separado do filtro de status: pago usa
   // `data_pagamento` (data real do dinheiro entrando/saindo), pendente
@@ -237,6 +244,61 @@ export default function Financeiro() {
     <>
       <Cabecalho titulo="Finanças" subtitulo="Despesas de campo, entradas de sinal e conciliação rápida." />
       <Conteudo>
+        {/* Saldo como protagonista + Projeção decomposta (2026-09-18,
+            REVIEW_DECISOES_V2 Financeiro P1, "hierarquia numérica em vez
+            de alerta visual") — os números mais importantes da tela
+            (quanto já entrou/saiu, quanto ainda vai entrar/sair) em
+            destaque grande, antes de qualquer MetricCard ou alerta. */}
+        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Panel>
+            <PanelHeader titulo="Saldo do mês" desc={formatarMes(mesAtual)} />
+            <div className="flex flex-col gap-3">
+              {(
+                [
+                  { rotulo: 'Receitas', valor: receitaMes, texto: 'text-success', barra: 'bg-success' },
+                  { rotulo: 'Despesas', valor: despesaMes, texto: 'text-danger', barra: 'bg-danger' },
+                ] as const
+              ).map(({ rotulo, valor, texto, barra }) => (
+                <div key={rotulo}>
+                  <div className="mb-1 flex items-center justify-between text-[12.5px]">
+                    <span className="text-text-dim">{rotulo}</span>
+                    <span className={`font-mono font-semibold ${texto}`}>{formatarMoeda(valor)}</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-raised">
+                    <div className={`h-full rounded-full ${barra}`} style={{ width: `${Math.max(receitaMes, despesaMes, 1) > 0 ? (valor / Math.max(receitaMes, despesaMes, 1)) * 100 : 0}%`, transition: 'width 0.4s ease' }} />
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between border-t border-line pt-2.5">
+                <span className="text-[13.5px] font-semibold text-text">Saldo</span>
+                <span className={`font-mono text-[22px] font-bold ${saldoMes >= 0 ? 'text-success' : 'text-danger'}`}>{formatarMoeda(saldoMes)}</span>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel>
+            <PanelHeader titulo="Projeção" desc="Recebido + pendente − despesas previstas, sempre separado." />
+            <div className="flex flex-col gap-2 text-[13px]">
+              <div className="flex items-center justify-between text-text-dim">
+                <span>Receita recebida</span>
+                <span className="font-mono text-text">{formatarMoeda(receitaMes)}</span>
+              </div>
+              <div className="flex items-center justify-between text-text-dim">
+                <span>Receita pendente</span>
+                <span className="font-mono text-text">{formatarMoeda(aReceber)}</span>
+              </div>
+              <div className="flex items-center justify-between text-text-dim">
+                <span>Despesas previstas</span>
+                <span className="font-mono text-danger">− {formatarMoeda(aPagar)}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-line pt-2">
+                <strong className="text-[13.5px] text-text">Saldo projetado</strong>
+                <strong className={`font-mono text-[18px] ${saldoProjetado >= 0 ? 'text-success' : 'text-danger'}`}>{formatarMoeda(saldoProjetado)}</strong>
+              </div>
+            </div>
+          </Panel>
+        </div>
+
         <MetricGrid>
           <MetricCard Icone={ArrowUpCircle} rotulo="A receber" valor={formatarMoeda(aReceber)} legenda="Receitas pendentes" categoria="dinheiro" />
           <MetricCard Icone={ArrowDownCircle} rotulo="A pagar" valor={formatarMoeda(aPagar)} legenda="Despesas pendentes" categoria="dinheiro" />
