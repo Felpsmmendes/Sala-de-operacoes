@@ -47,6 +47,20 @@ function tempoRelativoAtividade(d: Date): string {
   return `${Math.floor(h / 24)}d`;
 }
 
+/** Granularidade de segundos (2026-09-18, REVIEW_DECISOES_V2 Parte 6/01)
+    — diferente de `tempoRelativoAtividade` acima (que começa em "0 min"),
+    esta é pro indicador "Atualizado há Xs" do monitor ao vivo, onde o
+    refresh é de 60 em 60s — sem segundos, ficaria preso em "0 min" quase
+    sempre. */
+function tempoRelativoSegundos(d: Date): string {
+  const seg = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (seg < 60) return `${seg}s`;
+  const min = Math.floor(seg / 60);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  return `${h}h`;
+}
+
 type Atividade = { texto: string; sub: string; quando: Date; link: string; cor: string };
 
 /** "Atividades recentes" (2026-09-17, "master redesign") — nunca um feed
@@ -158,6 +172,16 @@ export default function Dashboard() {
   const [registrosDrinkHoje, setRegistrosDrinkHoje] = useState<RegistroDrink[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  // "Atualizado há Xs" (2026-09-18, REVIEW_DECISOES_V2 Parte 6/01) — a
+  // hora do último `buscarTudo` bem-sucedido; `tick` só existe pra forçar
+  // rerender a cada 5s (o próprio valor nunca é lido), senão o texto
+  // relativo ficaria congelado no número calculado no momento do fetch.
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState<Date | null>(null);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 5_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // "Monitor ao vivo": pensado pra ficar aberto numa tela fixa na sala de
   // operações o dia todo, então buscar só uma vez no mount não basta — o
@@ -212,6 +236,7 @@ export default function Dashboard() {
         setOrcamentosComHoraExtra(comHoraExtra);
         setCompras(cp);
         setAuditorias(aud);
+        setUltimaAtualizacao(new Date());
       } catch (e) {
         if (!cancelado) setErro(mensagemDeErro(e));
       } finally {
@@ -565,12 +590,26 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* resumo rápido do dia (pedido do usuário, "continue o design" —
-            2026-09-10) — 3 fatos reais, nunca um "sem gargalos" fabricado:
-            o terceiro segmento só fica verde quando os 3 sinais que já
-            geram alerta no resto da tela (estoque crítico, contrato em
-            risco, NPS baixo) estão todos zerados. */}
+        {/* Estado global (2026-09-18, REVIEW_DECISOES_V2 Parte 6/01) — o
+            "● Operação normal"/"⚠ N itens" do topo do Dashboard, P1 do
+            review. Reaproveita `pontosDeAtencao` (2026-09-10, "continue o
+            design") — nunca um "tudo ok" fabricado: só fica verde quando
+            os 3 sinais que já geram alerta no resto da tela (estoque
+            crítico, contrato em risco, nota baixa) estão todos zerados.
+            "Atualizado há Xs" ao lado — mesmo padrão de "nunca esconder
+            que o monitor pode estar defasado" do resto do sistema. */}
         <div className="mb-4 flex flex-wrap items-center gap-2 text-[12.5px] text-text-dim">
+          {pontosDeAtencao === 0 ? (
+            <span className="flex items-center gap-1.5 font-semibold text-success">
+              <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-success" /> Operação normal
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 font-semibold text-pending">
+              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2} />
+              {pontosDeAtencao} {pontosDeAtencao === 1 ? 'item precisa' : 'itens precisam'} de atenção
+            </span>
+          )}
+          <span className="text-text-ultra">·</span>
           <span>
             <strong className="font-mono text-text">{eventosHoje.length}</strong> evento{eventosHoje.length === 1 ? '' : 's'} acontecendo hoje
           </span>
@@ -578,15 +617,11 @@ export default function Dashboard() {
           <span>
             <strong className="font-mono text-text">{totalConfirmadosHoje}</strong> de {presenca.length} escalados confirmados
           </span>
-          <span className="text-text-ultra">·</span>
-          {pontosDeAtencao === 0 ? (
-            <span className="flex items-center gap-1 text-success">
-              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} /> Sem gargalos ou incidentes
-            </span>
-          ) : (
-            <span className="text-pending">
-              {pontosDeAtencao} ponto{pontosDeAtencao === 1 ? '' : 's'} de atenção (estoque, contrato ou satisfação)
-            </span>
+          {ultimaAtualizacao && (
+            <>
+              <span className="ml-auto text-text-ultra">·</span>
+              <span className="font-mono text-[11px] text-text-ultra">Atualizado há {tempoRelativoSegundos(ultimaAtualizacao)}</span>
+            </>
           )}
         </div>
 
