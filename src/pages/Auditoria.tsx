@@ -142,7 +142,7 @@ export default function Auditoria() {
             observacoes: `NPS baixo registrado na auditoria do evento de ${eventoInfo ? formatarData(eventoInfo.data_evento) : 'data não informada'}.${dados.nps_comentario ? ` Comentário: "${dados.nps_comentario}"` : ''}`,
             leadId: eventoInfo?.contrato?.lead?.id ?? null,
           });
-          toast.aviso('NPS baixo — tarefa de follow-up criada automaticamente na Agenda.');
+          toast.aviso('Nota baixa — tarefa de follow-up criada automaticamente na Agenda.');
         } catch {
           // silencioso — não bloqueia o salvamento da auditoria, que já
           // foi confirmado acima; a tarefa é um bônus, não o registro em si.
@@ -159,6 +159,13 @@ export default function Auditoria() {
   const eventoPorId = useMemo(() => new Map(eventos.map((e) => [e.id, e])), [eventos]);
   const eventoAtual = eventos.find((e) => e.id === eventoId) ?? null;
   const pendentes = eventos.filter((e) => !auditoriaPorEvento.has(e.id)).length;
+  // "Nota média" — média simples das notas 0-10, NUNCA chamada de "NPS"
+  // (correção técnica, 2026-09-18, REVIEW_DECISOES_V2 Parte 6/13: NPS de
+  // verdade é % promotores − % detratores, não média de nota; misturar os
+  // dois sob o mesmo rótulo estava tecnicamente errado — ver `npsReal`
+  // abaixo, calculado direito e nunca com esse nome). O antigo rótulo
+  // "NPS médio" neste card virou "Nota média" só por isso, sem mudar o
+  // cálculo (continua sendo uma média mesmo).
   const mediaNps = useMemo(() => {
     const notas = auditorias.map((a) => a.nps_nota).filter((n): n is number => n != null);
     return notas.length > 0 ? (notas.reduce((s, n) => s + n, 0) / notas.length).toFixed(1) : '—';
@@ -166,7 +173,7 @@ export default function Auditoria() {
   const totalAvarias = useMemo(() => auditorias.reduce((s, a) => s + (a.avarias_valor ?? 0), 0), [auditorias]);
 
   // -------------------- Histórico de satisfação (2026-09-14) --------------------
-  // O MetricCard "NPS médio" acima é a média de TODA a base — útil como
+  // O MetricCard "Nota média" acima é a média de TODA a base — útil como
   // resumo geral, mas não distingue "melhorando" de "piorando" nem mostra
   // ONDE está o problema. Este painel é um recorte mais acionável: janela
   // recente (90 dias), distribuição promotor/neutro/detrator (a definição
@@ -180,6 +187,15 @@ export default function Auditoria() {
       total: comNota.length,
     };
   }, [auditorias]);
+  // NPS real (2026-09-18) — a fórmula de verdade da metodologia (%
+  // promotores − % detratores, nunca média de nota). Calculado à parte de
+  // `mediaNps`/`npsMedio90d` de propósito, pra nunca virar o mesmo número
+  // com rótulo trocado — os dois aparecem lado a lado no painel, cada um
+  // com o nome certo.
+  const npsReal = useMemo(() => {
+    if (distribuicaoNps.total === 0) return null;
+    return Math.round(((distribuicaoNps.promotores - distribuicaoNps.detratores) / distribuicaoNps.total) * 100);
+  }, [distribuicaoNps]);
   // Tendência de NPS mês a mês (2026-09-17, "P2/P3") — média das notas
   // de cada mês com auditoria registrada; só entra no gráfico quando há
   // 2+ meses (1 ponto só não mostra tendência nenhuma).
@@ -243,13 +259,13 @@ export default function Auditoria() {
         <MetricGrid>
           <MetricCard Icone={ClipboardCheck} rotulo="Eventos auditados" valor={String(auditorias.length)} legenda={`de ${eventos.length} eventos`} categoria="neutro" />
           <MetricCard Icone={AlertTriangle} rotulo="Auditoria pendente" valor={String(pendentes)} legenda="Eventos sem registro ainda" categoria="neutro" />
-          <MetricCard Icone={Star} rotulo="NPS médio" valor={mediaNps} legenda="Escala de 0 a 10" categoria="pessoas" />
+          <MetricCard Icone={Star} rotulo="Nota média" valor={mediaNps} legenda="Escala de 0 a 10" categoria="pessoas" />
           <MetricCard Icone={PackageCheck} rotulo="Avarias acumuladas" valor={formatarMoeda(totalAvarias)} legenda="Soma de todos os eventos" categoria="operacao" />
         </MetricGrid>
 
         {!carregando && npsRuim.length > 0 && (
           <AlertaBanner tom="pendente" Icone={Star} titulo={`${npsRuim.length} avaliação${npsRuim.length > 1 ? 'ões' : ''} negativa${npsRuim.length > 1 ? 's' : ''} nos últimos 30 dias`} className="mb-4" dispensavel>
-            Clientes com nota NPS 0–4 merecem retorno prioritário.
+            Clientes com nota 0–4 merecem retorno prioritário.
           </AlertaBanner>
         )}
 
@@ -257,18 +273,38 @@ export default function Auditoria() {
 
         {npsPorMes.categorias.length >= 2 && (
           <Panel className="mb-4">
-            <PanelHeader titulo="Tendência de NPS" desc="Média mensal de satisfação dos clientes — escala 0 a 10." />
-            <GraficoLinha categorias={npsPorMes.categorias} series={[{ rotulo: 'NPS médio', corClasse: 'text-people', pontos: npsPorMes.pontos }]} formatarValor={(v) => v.toFixed(1)} />
+            <PanelHeader titulo="Tendência de satisfação" desc="Média mensal de satisfação dos clientes — escala 0 a 10." />
+            <GraficoLinha categorias={npsPorMes.categorias} series={[{ rotulo: 'Nota média', corClasse: 'text-people', pontos: npsPorMes.pontos }]} formatarValor={(v) => v.toFixed(1)} />
           </Panel>
         )}
 
         <RevealGroup>
         {auditorias.length >= 3 && (
           <Panel className="mb-4">
-            <PanelHeader titulo="Histórico de satisfação" desc={`Baseado em ${distribuicaoNps.total} evento(s) com NPS registrado`} />
+            <PanelHeader titulo="Histórico de satisfação" desc={`Baseado em ${distribuicaoNps.total} evento(s) com nota registrada`} />
+
+            {/* NPS real (2026-09-18) — % promotores − % detratores, a
+                fórmula de verdade da metodologia. Fica separado da "Nota
+                média" abaixo de propósito (correção técnica registrada em
+                REVIEW_DECISOES_V2, Parte 6/13): os dois são números
+                diferentes, calculados de jeitos diferentes, nunca o mesmo
+                valor com rótulo trocado. */}
+            {npsReal != null && (
+              <div className="mb-3 flex items-center justify-between rounded-sm border border-line bg-input px-3 py-2.5">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">NPS</span>
+                  <p className="text-[11px] text-text-faint">% promotores − % detratores, últimos 90 dias</p>
+                </div>
+                <span className={`font-mono text-[22px] font-bold leading-none ${npsReal >= 50 ? 'text-success' : npsReal >= 0 ? 'text-pending' : 'text-danger'}`}>
+                  {npsReal > 0 ? '+' : ''}
+                  {npsReal}
+                </span>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div className="flex flex-col items-center gap-1 rounded-sm border border-line bg-input p-3 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">NPS médio</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-text-faint">Nota média</span>
                 <span className={`font-mono text-[28px] font-bold leading-none ${npsMedio90d == null ? 'text-text-faint' : npsMedio90d >= 9 ? 'text-success' : npsMedio90d >= 7 ? 'text-pending' : 'text-danger'}`}>
                   {npsMedio90d != null ? npsMedio90d.toFixed(1) : '—'}
                 </span>
@@ -331,7 +367,7 @@ export default function Auditoria() {
                   onClick={() =>
                     exportarCsv(
                       [
-                        ['Evento', 'Data', 'NPS', 'Avaria (R$)', 'Item Avariado', 'Comentário', 'Sobras Reintegradas'],
+                        ['Evento', 'Data', 'Nota', 'Avaria (R$)', 'Item Avariado', 'Comentário', 'Sobras Reintegradas'],
                         ...auditorias.map((a) => {
                           const ev = eventoPorId.get(a.evento_id);
                           return [
@@ -460,10 +496,10 @@ export default function Auditoria() {
                     mais um input numérico solto — mais rápido de preencher
                     no celular e a faixa de cor já avisa antes de salvar). */}
                 <div>
-                  <p className="mb-3 border-b border-line pb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Satisfação do Cliente (NPS)</p>
+                  <p className="mb-3 border-b border-line pb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Satisfação do Cliente</p>
                   <div className="flex flex-col gap-3">
                     <div>
-                      <RotuloCampo>Nota NPS (0 = péssimo · 10 = excelente)</RotuloCampo>
+                      <RotuloCampo>Nota do cliente (0 = péssimo · 10 = excelente)</RotuloCampo>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {Array.from({ length: 11 }, (_, i) => {
                           const marcado = npsNota === String(i);

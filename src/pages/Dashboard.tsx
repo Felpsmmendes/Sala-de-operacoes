@@ -412,7 +412,7 @@ export default function Dashboard() {
     });
 
     clientesInsatisfeitos.forEach(({ auditoria, evento }) => {
-      adicionarNotificacao({ tom: 'perigo', titulo: `NPS baixo: ${evento?.contrato?.lead?.nome ?? 'cliente'}`, descricao: `Nota ${auditoria.nps_nota}`, link: '/auditoria' });
+      adicionarNotificacao({ tom: 'perigo', titulo: `Nota baixa: ${evento?.contrato?.lead?.nome ?? 'cliente'}`, descricao: `Nota ${auditoria.nps_nota}`, link: '/auditoria' });
     });
   }, [carregando, eventosComPendencia, itensEstoque, leadsEsfriandoGlobal, sinaisPendentesGlobal, clientesInsatisfeitos, adicionarNotificacao]);
 
@@ -679,7 +679,7 @@ export default function Dashboard() {
                   { n: sinaisPendentesGlobal.length, label: 'Sinais pendentes', link: '/contratos' },
                   { n: itensCriticos, label: 'Estoque crítico', link: '/estoque' },
                   { n: eventosComPendencia.length, label: 'Eventos c/ pendência', link: '/agenda' },
-                  { n: clientesInsatisfeitos.length, label: 'NPS baixo', link: '/auditoria' },
+                  { n: clientesInsatisfeitos.length, label: 'Nota baixa', link: '/auditoria' },
                 ]
                   .filter((item) => item.n > 0)
                   .map((item) => (

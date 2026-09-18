@@ -28,7 +28,10 @@ export type DadosRelatorioExecutivo = {
   leadsGanhosTotal: number;
   leadsPerdidosTotal: number;
   /** null quando nenhum evento do mês foi auditado ainda — nunca fabricar
-      um NPS médio de zero pontos. */
+      uma nota média de zero pontos. Média de nota 0-10, não NPS de
+      verdade (que seria % promotores − % detratores) — nome do campo
+      mantido (só usado internamente) mas o rótulo exibido é "Nota
+      média", nunca "NPS" (correção técnica, 2026-09-18). */
   npsMedioNoMes: number | null;
   eventosAuditadosNoMes: number;
   contratosTravadosD15: number;
@@ -121,7 +124,7 @@ export function gerarRelatorioExecutivoPdf(d: DadosRelatorioExecutivo): void {
 
   tituloSecao(doc, 'Satisfação', y);
   y += 11;
-  linha(doc, 'NPS médio dos eventos auditados no mês', d.npsMedioNoMes != null ? d.npsMedioNoMes.toFixed(1) : 'sem dado no mês', y);
+  linha(doc, 'Nota média dos eventos auditados no mês', d.npsMedioNoMes != null ? d.npsMedioNoMes.toFixed(1) : 'sem dado no mês', y);
   y += 7;
   linha(doc, 'Cobertura de auditoria pós-evento', `${d.eventosAuditadosNoMes} de ${d.eventosNoMes} evento(s)`, y);
 
