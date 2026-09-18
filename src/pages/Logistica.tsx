@@ -39,6 +39,12 @@ export default function Logistica() {
   // no banco: é informação operacional do MOMENTO (dia do evento), não
   // histórico. Some ao recarregar a página, comportamento esperado.
   const [statusFrota, setStatusFrota] = useState<Record<string, string>>({});
+  // status geral do VEÍCULO (2026-09-18, "P2/P3" — não confundir com
+  // `statusFrota` acima, que é por EVENTO de hoje/aguardando-preparação-
+  // trânsito; isso aqui é disponível/alocado/manutenção do veículo em si,
+  // visão de cadastro, não de um evento específico). Também só em
+  // memória — o modelo `Veiculo` não tem essa coluna no banco.
+  const [statusVeiculos, setStatusVeiculos] = useState<Record<string, 'disponivel' | 'alocado' | 'manutencao'>>({});
 
   // calculadora de frete — sem vínculo com evento/romaneio (decisão do
   // usuário, 2026-09-09): só estima, não grava nada. Reaproveita a MESMA
@@ -159,6 +165,25 @@ export default function Logistica() {
           <MetricCard Icone={AlertTriangle} rotulo="Datas com frota insuficiente" valor={String(datasComFrotaInsuficiente.length)} legenda={`de ${veiculos.length} veículo(s)`} categoria="operacao" />
         </MetricGrid>
 
+        {/* Resumo de status da frota (2026-09-18) — disponível/alocado/
+            manutenção, visão de cadastro (não confundir com "Frota hoje"
+            abaixo, que é por evento do dia). */}
+        {veiculos.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(['disponivel', 'alocado', 'manutencao'] as const).map((s) => {
+              const qtd = veiculos.filter((v) => (statusVeiculos[v.id] ?? 'disponivel') === s).length;
+              const label = s === 'disponivel' ? 'Disponíveis' : s === 'alocado' ? 'Alocados' : 'Em manutenção';
+              const cor = s === 'disponivel' ? 'border-execucao/25 bg-execucao/8 text-execucao' : s === 'alocado' ? 'border-people/25 bg-people/8 text-people' : 'border-pending/25 bg-pending/8 text-pending';
+              return (
+                <div key={s} className={`flex items-center gap-2 rounded-md border px-3 py-2 ${cor}`}>
+                  <span className="font-mono text-[18px] font-black">{qtd}</span>
+                  <span className="text-[11.5px] font-medium">{label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
         {datasComFrotaInsuficiente.length > 0 && (
@@ -229,19 +254,40 @@ export default function Logistica() {
           <VeiculoForm onSalvar={aoCriarVeiculo} salvando={salvandoVeiculo} />
           {veiculos.length > 0 && (
             <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
-              {veiculos.map((v) => (
-                <div key={v.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2 text-sm">
-                  <div>
-                    <strong className="text-text">{v.nome}</strong>
-                    <span className="ml-2 text-[11.5px] text-text-faint">{v.tipo}</span>
-                    {v.placa && <span className="ml-2 text-[11.5px] text-text-dim">{v.placa}</span>}
-                    {v.consumo_medio && <span className="ml-2 font-mono text-[11.5px] text-text-faint">{v.consumo_medio} km/l</span>}
+              {veiculos.map((v) => {
+                const status = statusVeiculos[v.id] ?? 'disponivel';
+                const corStatus = status === 'disponivel' ? 'text-execucao' : status === 'alocado' ? 'text-people' : 'text-pending';
+                const bgStatus = status === 'disponivel' ? 'bg-execucao/10 border-execucao/25' : status === 'alocado' ? 'bg-people/10 border-people/25' : 'bg-pending/10 border-pending/25';
+                return (
+                  <div key={v.id} className="flex flex-wrap items-center gap-3 rounded-sm border border-line bg-input px-3 py-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <strong className="text-text">{v.nome}</strong>
+                      <span className="ml-2 text-[11.5px] text-text-faint">{v.tipo}</span>
+                      {v.placa && <span className="ml-2 text-[11.5px] text-text-dim">{v.placa}</span>}
+                      {v.consumo_medio && <span className="ml-2 font-mono text-[11.5px] text-text-faint">{v.consumo_medio} km/l</span>}
+                    </div>
+
+                    {/* status do veículo — disponível/alocado/manutenção,
+                        só em memória (ver comentário no state acima) */}
+                    <div className="flex flex-shrink-0 gap-1">
+                      {(['disponivel', 'alocado', 'manutencao'] as const).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setStatusVeiculos((atual) => ({ ...atual, [v.id]: s }))}
+                          className={`rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors ${status === s ? `${bgStatus} ${corStatus}` : 'border-line bg-raised text-text-ultra hover:text-text-dim'}`}
+                        >
+                          {s === 'disponivel' ? 'Disponível' : s === 'alocado' ? 'Alocado' : 'Manutenção'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button type="button" onClick={() => excluirVeiculo(v.id).then(carregar).catch(aoFalhar)} className="flex-shrink-0 text-[11.5px] font-medium text-danger hover:underline">
+                      Excluir
+                    </button>
                   </div>
-                  <button type="button" onClick={() => excluirVeiculo(v.id).then(carregar).catch(aoFalhar)} className="text-[11.5px] font-medium text-danger hover:underline">
-                    Excluir
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Panel>
