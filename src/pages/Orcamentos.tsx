@@ -175,6 +175,21 @@ export default function Orcamentos() {
 
   const leadSelecionado = useMemo(() => leads.find((l) => l.id === leadId) ?? null, [leads, leadId]);
 
+  // Indicador de progresso (REVIEW_DECISOES_V2, Parte 4/16) — resolve o
+  // "wizard obrigatório" que foi explicitamente rejeitado (Parte 7): o
+  // formulário continua sendo uma página só, sem travar navegação entre
+  // seções, só sinaliza em que pé a pessoa está.
+  const etapasOrcamento = useMemo(() => {
+    const passos = [
+      { rotulo: 'Cliente', feita: !!leadId },
+      { rotulo: 'Evento', feita: !!dataEvento && !!convidados },
+      { rotulo: 'Serviços', feita: itens.length > 0 },
+      { rotulo: 'Revisão', feita: mensagem != null },
+    ];
+    const indiceAtual = passos.findIndex((p) => !p.feita);
+    return passos.map((p, i) => ({ ...p, estado: p.feita ? ('concluida' as const) : i === indiceAtual ? ('atual' as const) : ('futura' as const) }));
+  }, [leadId, dataEvento, convidados, itens.length, mensagem]);
+
   // Breakdown por categoria (2026-09-17, "P2/P3") — mesma soma de cada
   // item (valor + hora adicional) que já alimenta `totalServicos`, só
   // separada por categoria de serviço pra dar contexto no resumo.
@@ -330,6 +345,29 @@ export default function Orcamentos() {
       <Conteudo>
         {carregando && <SkeletonLinhas />}
         {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
+
+        {!carregando && !erro && (
+          <div className="mb-4 flex items-center gap-1.5 overflow-x-auto py-1">
+            {etapasOrcamento.map((e, i) => (
+              <div key={e.rotulo} className="flex items-center gap-1.5">
+                {i > 0 && <span className="h-px w-5 flex-shrink-0 bg-line" />}
+                <span
+                  className={`flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                    e.estado === 'concluida'
+                      ? 'border-success/30 bg-success/10 text-success'
+                      : e.estado === 'atual'
+                        ? erroSalvar
+                          ? 'border-danger/40 bg-danger/15 text-danger'
+                          : 'border-pending/40 bg-pending/15 text-pending'
+                        : 'border-line bg-input text-text-faint'
+                  }`}
+                >
+                  {e.estado === 'concluida' ? '✓' : e.estado === 'atual' ? '●' : '○'} {e.rotulo}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {!carregando && !erro && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
