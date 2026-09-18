@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar, CheckCircle2, Copy, GlassWater, Users } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle2, Copy, GlassWater, MessageCircle, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
@@ -77,6 +77,18 @@ export default function Ponto() {
       .catch(() => toast.aviso('Não foi possível copiar automaticamente. Link: ' + link));
   }
 
+  /** Abre o WhatsApp com o link de confirmação já na mensagem, sem número
+      fixo (`wa.me/?text=`, mesmo padrão oficial do WhatsApp pra "compartilhar
+      com qualquer contato") — o gestor manda pro grupo da equipe que
+      escolher, não pra uma pessoa só (REVIEW_DECISOES_V2, Parte 16/16, P1). */
+  function linkWhatsappPonto(): string | null {
+    if (!eventoId || !eventoAtual) return null;
+    const link = `${window.location.origin}/ponto/${eventoId}`;
+    const nomeEvento = eventoAtual.contrato?.lead?.nome ?? 'evento';
+    const msg = `Confirmação de chegada — ${nomeEvento} (${formatarData(eventoAtual.data_evento)}): ${link}`;
+    return `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  }
+
   function copiarLinkDrinks() {
     if (!eventoId) return;
     const link = `${window.location.origin}/drinks/${eventoId}`;
@@ -100,6 +112,12 @@ export default function Ponto() {
   }, [eventos, resumo]);
 
   const chegaram = presenca.filter((p) => p.chegada_em).length;
+
+  // Lista dividida — não mista (REVIEW_DECISOES_V2, Parte 16/16, P1):
+  // "quem já chegou" e "quem ainda tá faltando" são perguntas diferentes,
+  // misturadas na mesma lista escondiam a resposta de cada uma.
+  const presentes = presenca.filter((p) => p.chegada_em);
+  const aguardando = presenca.filter((p) => !p.chegada_em);
 
   return (
     <>
@@ -139,6 +157,17 @@ export default function Ponto() {
                 <button type="button" onClick={copiarLink} disabled={!eventoId} className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
                   <Copy className="h-3.5 w-3.5" /> Copiar link
                 </button>
+                <a
+                  href={linkWhatsappPonto() ?? undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => {
+                    if (!linkWhatsappPonto()) e.preventDefault();
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-sm border border-line px-3 py-2 text-[12.5px] text-text-dim hover:bg-raised hover:text-text transition-colors ${!eventoId ? 'pointer-events-none opacity-50' : ''}`}
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                </a>
                 <button
                   type="button"
                   onClick={copiarLinkDrinks}
@@ -157,21 +186,43 @@ export default function Ponto() {
             <EstadoVazio Icone={Calendar} titulo="Nenhum evento futuro ainda" />
           ) : presenca.length === 0 ? (
             <EstadoVazio Icone={Users} titulo="Ninguém escalado pra este evento ainda" descricao="Vá em Escala & Equipe primeiro." />
+          ) : aguardando.length === 0 ? (
+            <EstadoVazio Icone={CheckCircle2} titulo="Equipe completa — todos confirmaram chegada" />
           ) : (
-            <div className="flex flex-col gap-2">
-              {presenca.map((p) => (
-                <div key={p.escala_id} className="list-row flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                  <div>
-                    <strong className="text-text">{p.membro_nome}</strong>
-                    <span className="ml-2 text-[11.5px] text-text-faint">{FUNCAO_EQUIPE_ROTULO[p.membro_funcao] ?? p.membro_funcao}</span>
+            <div className="flex flex-col gap-4">
+              {presentes.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Presentes · {presentes.length}</p>
+                  <div className="flex flex-col gap-2">
+                    {presentes.map((p) => (
+                      <div key={p.escala_id} className="list-row flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                        <div>
+                          <strong className="text-text">{p.membro_nome}</strong>
+                          <span className="ml-2 text-[11.5px] text-text-faint">{FUNCAO_EQUIPE_ROTULO[p.membro_funcao] ?? p.membro_funcao}</span>
+                        </div>
+                        <Badge tom="sucesso" texto={`Chegou ${new Date(p.chegada_em!).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`} />
+                      </div>
+                    ))}
                   </div>
-                  {p.chegada_em ? (
-                    <Badge tom="sucesso" texto={`Chegou ${new Date(p.chegada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`} />
-                  ) : (
-                    <Badge tom="pendente" texto="Ainda não chegou" />
-                  )}
                 </div>
-              ))}
+              )}
+
+              {aguardando.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Aguardando · {aguardando.length}</p>
+                  <div className="flex flex-col gap-2">
+                    {aguardando.map((p) => (
+                      <div key={p.escala_id} className="list-row flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                        <div>
+                          <strong className="text-text">{p.membro_nome}</strong>
+                          <span className="ml-2 text-[11.5px] text-text-faint">{FUNCAO_EQUIPE_ROTULO[p.membro_funcao] ?? p.membro_funcao}</span>
+                        </div>
+                        <Badge tom="pendente" texto="Ainda não chegou" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Panel>
