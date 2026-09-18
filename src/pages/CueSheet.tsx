@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, ListChecks } from 'lucide-react';
+import { CheckCircle2, Clock3, ListChecks, Maximize2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
@@ -106,6 +106,14 @@ export default function CueSheet() {
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [viewCue, setViewCue] = useState<'lista' | 'timeline'>('lista');
+  // Modo campo (2026-09-18, REVIEW_DECISOES_V2 Parte 6/09, P1) — tela
+  // cheia por cima de tudo (sidebar inclusa), fonte grande, botão único
+  // dominante. `cueAtualCampoId` é próprio (não reaproveita `cueAtualId`
+  // abaixo, que é por HORÁRIO): aqui o avanço é manual — clicar "Concluir
+  // cue" marca concluído E pula pro próximo da lista na hora, sem
+  // esperar o relógio bater o horário do próximo.
+  const [modoCampo, setModoCampo] = useState(false);
+  const [cueAtualCampoId, setCueAtualCampoId] = useState<string | null>(null);
 
   async function carregarBase() {
     setCarregando(true);
@@ -186,10 +194,54 @@ export default function CueSheet() {
     return passados.length > 0 ? passados[passados.length - 1].id : null;
   }, [cues]);
 
+  function aoAbrirModoCampo() {
+    setCueAtualCampoId(cueAtualId ?? cues.find((c) => !c.concluido)?.id ?? null);
+    setModoCampo(true);
+  }
+
+  /** Concluir cue no modo campo — marca concluído (mesma função de
+      sempre) e avança pro PRÓXIMO DA LISTA na hora, não pro próximo cujo
+      horário já chegou (que pode ser só daqui a 40 min). */
+  function aoConcluirCueCampo(cue: CueSheetItem) {
+    aoMarcarConcluido(cue.id, true);
+    const indice = cues.findIndex((c) => c.id === cue.id);
+    setCueAtualCampoId(cues[indice + 1]?.id ?? null);
+  }
+
+  const cueCampo = cueAtualCampoId ? (cues.find((c) => c.id === cueAtualCampoId) ?? null) : null;
+  const indiceCueCampo = cueCampo ? cues.findIndex((c) => c.id === cueCampo.id) : -1;
+  const proximoCueCampo = indiceCueCampo >= 0 ? (cues[indiceCueCampo + 1] ?? null) : null;
+
   return (
     <>
       <Cabecalho titulo="Roteiro do Evento" subtitulo="Cronograma minuto a minuto da equipe em campo, passo a passo." />
       <Conteudo>
+        {/* Cabeçalho rico do evento (2026-09-18, REVIEW_DECISOES_V2 Parte
+            6/09, P1) — nome + data/horário + local/rádio + contagem de
+            concluído/atual/próximos num bloco só, antes dos MetricCards
+            genéricos (que continuam, cada card é útil sozinho — isso aqui
+            é o resumo de leitura rápida). */}
+        {eventoAtual && (
+          <div className="mb-4 rounded-md border border-line bg-panel px-4 py-3.5">
+            <p className="text-[15px] font-bold text-text">{eventoAtual.contrato?.lead?.nome ?? 'Evento sem nome'}</p>
+            <p className="mt-0.5 text-[12.5px] text-text-dim">
+              {formatarData(eventoAtual.data_evento).toUpperCase()}
+              {eventoAtual.hora_inicio ? ` · ${eventoAtual.hora_inicio.slice(0, 5)}${eventoAtual.hora_fim_prevista ? `—${eventoAtual.hora_fim_prevista.slice(0, 5)}` : ''}` : ''}
+            </p>
+            <p className="mt-0.5 text-[12.5px] text-text-faint">
+              {eventoAtual.local || 'local não informado'}
+              {eventoAtual.canal_radio ? ` · Rádio Canal ${eventoAtual.canal_radio}` : ''}
+            </p>
+            {cues.length > 0 && (
+              <p className="mt-2 text-[12px] text-text-dim">
+                <strong className="text-success">{concluidos}</strong> concluído{concluidos === 1 ? '' : 's'} ·{' '}
+                <strong className="text-accent">{cueAtualId ? 1 : 0}</strong> em andamento ·{' '}
+                <strong className="text-text">{Math.max(0, cues.length - concluidos - (cueAtualId ? 1 : 0))}</strong> próximo{cues.length - concluidos - (cueAtualId ? 1 : 0) === 1 ? '' : 's'}
+              </p>
+            )}
+          </div>
+        )}
+
         <MetricGrid>
           <MetricCard Icone={ListChecks} rotulo="Cues do evento" valor={String(cues.length)} legenda={eventoAtual ? formatarData(eventoAtual.data_evento) : '—'} categoria="agenda" />
           <MetricCard Icone={CheckCircle2} rotulo="Concluídos" valor={String(concluidos)} legenda={`de ${cues.length} cues`} categoria="agenda" />
@@ -245,20 +297,32 @@ export default function CueSheet() {
               desc={cues.length === 0 ? undefined : `${concluidos} de ${cues.length} concluídos`}
               acao={
                 cues.length > 0 && (
-                  <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
-                    {(['lista', 'timeline'] as const).map((v) => (
-                      <button key={v} type="button" onClick={() => setViewCue(v)} className={`flex items-center gap-1.5 rounded-[5px] px-3 py-1.5 text-[12px] font-medium transition-colors ${viewCue === v ? 'bg-raised text-schedule' : 'text-text-dim hover:text-text'}`}>
-                        {v === 'lista' ? (
-                          <>
-                            <ListChecks className="h-3 w-3" strokeWidth={2} /> Lista
-                          </>
-                        ) : (
-                          <>
-                            <Clock3 className="h-3 w-3" strokeWidth={2} /> Timeline
-                          </>
-                        )}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
+                      {(['lista', 'timeline'] as const).map((v) => (
+                        <button key={v} type="button" onClick={() => setViewCue(v)} className={`flex items-center gap-1.5 rounded-[5px] px-3 py-1.5 text-[12px] font-medium transition-colors ${viewCue === v ? 'bg-raised text-schedule' : 'text-text-dim hover:text-text'}`}>
+                          {v === 'lista' ? (
+                            <>
+                              <ListChecks className="h-3 w-3" strokeWidth={2} /> Lista
+                            </>
+                          ) : (
+                            <>
+                              <Clock3 className="h-3 w-3" strokeWidth={2} /> Timeline
+                            </>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Modo campo (P1) — pensado pra quem está no evento,
+                        no celular, sem paciência pra rolar lista: tela
+                        cheia, fonte grande, um botão só. */}
+                    <button
+                      type="button"
+                      onClick={aoAbrirModoCampo}
+                      className="flex items-center gap-1.5 rounded-sm bg-accent px-3 py-1.5 text-[12px] font-semibold text-accent-ink transition-colors hover:bg-accent-strong"
+                    >
+                      <Maximize2 className="h-3 w-3" strokeWidth={2} /> Modo campo
+                    </button>
                   </div>
                 )
               }
@@ -286,7 +350,7 @@ export default function CueSheet() {
                           {c.id === cueAtualId && <DotLive categoria="agenda" />}
                           <span className="ml-2 font-mono text-pending">{c.horario.slice(0, 5)}</span>
                           <strong className="ml-2 text-text">{c.titulo}</strong>
-                          {c.origem === 'automatico' && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-text-faint">auto</span>}
+                          <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-text-faint">{c.origem === 'automatico' ? 'AUTO' : 'MANUAL'}</span>
                         </span>
                         <button type="button" onClick={() => excluirCue(c.id).then(() => carregarCues(eventoId)).catch(aoFalhar)} className="text-[11.5px] font-medium text-danger hover:underline">
                           Excluir
@@ -301,6 +365,72 @@ export default function CueSheet() {
           </Panel>
         )}
       </Conteudo>
+
+      {/* Modo campo (2026-09-18, REVIEW_DECISOES_V2 Parte 6/09, P1) —
+          overlay de tela cheia por CIMA da sidebar/topbar (não dá pra
+          "remover" a sidebar de dentro desta página sem reestruturar o
+          Layout inteiro pra isso; cobrir com z-index é o jeito direto de
+          chegar no mesmo resultado visual — mobile-first, fonte grande,
+          um botão só). Fecha com o X, sem perder nada: `carregarCues` não
+          é rechamado, o estado de "concluído" já foi salvo a cada clique. */}
+      {modoCampo && eventoAtual && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-bg">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-bold text-text">{eventoAtual.contrato?.lead?.nome ?? 'Evento'}</p>
+              <p className="font-mono text-[11px] text-text-faint">
+                {concluidos}/{cues.length} concluídos
+              </p>
+            </div>
+            <button type="button" onClick={() => setModoCampo(false)} className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-line text-text-faint hover:text-text">
+              <X className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </div>
+
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-8 text-center">
+            {!cueCampo ? (
+              <>
+                <CheckCircle2 className="h-14 w-14 text-success" strokeWidth={1.5} />
+                <p className="text-[20px] font-bold text-text">Roteiro concluído</p>
+                <p className="text-[13px] text-text-dim">Todos os cues deste evento já foram marcados.</p>
+              </>
+            ) : (
+              <>
+                {(() => {
+                  const agora = new Date();
+                  const [h, m] = cueCampo.horario.slice(0, 5).split(':').map(Number);
+                  const minCue = h * 60 + m;
+                  const minAgora = agora.getHours() * 60 + agora.getMinutes();
+                  const atrasoMin = minAgora - minCue;
+                  if (atrasoMin <= 0) return null;
+                  return <p className="text-[12.5px] text-pending">{atrasoMin} min de atraso</p>;
+                })()}
+
+                <div>
+                  <p className="font-mono text-[15px] font-semibold text-text-faint">{cueCampo.horario.slice(0, 5)}</p>
+                  <p className="mt-1 text-[32px] font-black leading-tight text-text">{cueCampo.titulo}</p>
+                  {cueCampo.descricao && <p className="mt-2 text-[14px] text-text-dim">{cueCampo.descricao}</p>}
+                  <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-text-faint">{cueCampo.origem === 'automatico' ? 'AUTO' : 'MANUAL'}</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => aoConcluirCueCampo(cueCampo)}
+                  className="flex w-full max-w-sm items-center justify-center gap-2 rounded-md bg-accent py-5 text-[16px] font-bold text-accent-ink transition-colors hover:bg-accent-strong active:scale-[0.98]"
+                >
+                  <CheckCircle2 className="h-5 w-5" strokeWidth={2.5} /> CONCLUIR CUE
+                </button>
+
+                {proximoCueCampo && (
+                  <p className="text-[12.5px] text-text-faint">
+                    → Próximo · <span className="font-mono">{proximoCueCampo.horario.slice(0, 5)}</span> {proximoCueCampo.titulo}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
