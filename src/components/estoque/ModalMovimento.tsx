@@ -6,8 +6,21 @@ import { Select } from '../ui/Select';
 
 const TIPO_ROTULO: Record<TipoMovimento, string> = { entrada: 'Entrada', saida: 'Saída', avaria: 'Avaria/quebra', reintegracao: 'Reintegração (sobra devolvida)' };
 
-export function ModalMovimento({ item, onFechar, onConfirmar }: { item: ItemEstoque; onFechar: () => void; onConfirmar: (tipo: TipoMovimento, quantidade: number, observacao: string) => void }) {
-  const [tipo, setTipo] = useState<TipoMovimento>('saida');
+export function ModalMovimento({
+  item,
+  tipoInicial,
+  onFechar,
+  onConfirmar,
+}: {
+  item: ItemEstoque;
+  /** Pré-seleciona o tipo (2026-09-18, "ações rápidas" — [+ Entrada]/
+      [− Saída] no topo de Estoque.tsx já sabem o que o gestor quer,
+      não faz sentido abrir sempre em "Saída" e obrigar a trocar). */
+  tipoInicial?: TipoMovimento;
+  onFechar: () => void;
+  onConfirmar: (tipo: TipoMovimento, quantidade: number, observacao: string) => void;
+}) {
+  const [tipo, setTipo] = useState<TipoMovimento>(tipoInicial ?? 'saida');
   const [quantidade, setQuantidade] = useState('');
   const [observacao, setObservacao] = useState('');
 

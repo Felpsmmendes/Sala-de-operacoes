@@ -1,6 +1,6 @@
-import { AlertTriangle, Calculator, ClipboardList, Link2, Package, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, Calculator, CheckCircle2, ClipboardList, Link2, Package, ShoppingCart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { listarContratos } from '../lib/api/contratos';
+import { diasAteEvento, listarContratos } from '../lib/api/contratos';
 import {
   criarCompra,
   criarItem,
@@ -40,6 +40,17 @@ import type { ContratoComLead } from '../lib/types';
 function ehCritico(item: ItemEstoque) {
   return item.estoque_atual <= item.estoque_minimo;
 }
+// "Zerado" (2026-09-18, REVIEW_DECISOES_V2 Parte 6/07) é o caso extremo
+// de crítico — nunca uma seção à parte no dado, só um recorte visual
+// mais urgente. `ehCritico` acima continua com o significado de sempre
+// (usado na borda vermelha/badge do item); esta função só existe pra
+// separar os 3 blocos do painel de situação e o filtro sem contar o
+// mesmo item duas vezes.
+function ehZerado(item: ItemEstoque) {
+  return item.estoque_atual <= 0;
+}
+
+type FiltroSituacao = 'todos' | 'zerados' | 'criticos' | 'saudaveis';
 
 // "Itens" virou "avancado" (pedido do usuário, 2026-09-09): cadastro de
 // produto por produto e calculadora preditiva pausados por enquanto —
@@ -74,6 +85,17 @@ export default function Estoque() {
   const [convidadosCalc, setConvidadosCalc] = useState('');
   const [naoVinculados, setNaoVinculados] = useState<string[]>([]);
   const [vinculando, setVinculando] = useState<string | null>(null);
+  // painel de situação + filtro (2026-09-18, REVIEW_DECISOES_V2 Estoque
+  // P1) — UM estado só, reaproveitado tanto pelos 3 blocos clicáveis
+  // (visíveis em qualquer aba) quanto pelo segmented control da lista em
+  // "Avançado": clicar num bloco já muda de aba E filtra, sem duplicar
+  // a ideia de filtro em dois lugares diferentes.
+  const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacao>('todos');
+  // "Ações rápidas" (2026-09-18) — ação primeiro (+ Entrada/− Saída já
+  // visíveis no topo), item depois: escolhe no seletor e o modal de
+  // movimentação já abre com o tipo certo pré-selecionado.
+  const [itemRapidoId, setItemRapidoId] = useState('');
+  const [tipoMovimentoInicial, setTipoMovimentoInicial] = useState<TipoMovimento>('saida');
   const confirmar = useConfirmDialog();
 
   /** Achado de UX (2026-09-13) — excluir item de estoque não tinha
@@ -141,6 +163,7 @@ export default function Estoque() {
     try {
       await registrarMovimento({ itemId: movimentoAberto.id, tipo, quantidade, observacao: observacao || null });
       setMovimentoAberto(null);
+      setItemRapidoId('');
       await carregar();
     } catch (e) {
       toast.erro(mensagemDeErro(e));
@@ -160,6 +183,52 @@ export default function Estoque() {
 
   const itensCriticos = itens.filter(ehCritico);
   const comprasPendentes = compras.filter((c) => c.status === 'pendente');
+
+  // 3 blocos mutuamente exclusivos (2026-09-18) — todo item cai em
+  // exatamente um, nunca em dois (zerado não soma em crítico de novo).
+  const itensZerados = useMemo(() => itens.filter(ehZerado), [itens]);
+  const itensCriticosNaoZerados = useMemo(() => itens.filter((i) => ehCritico(i) && !ehZerado(i)), [itens]);
+  const itensSaudaveis = useMemo(() => itens.filter((i) => !ehCritico(i)), [itens]);
+
+  const itensFiltrados = useMemo(() => {
+    const base = itens.filter((i) => {
+      if (filtroSituacao === 'zerados') return ehZerado(i);
+      if (filtroSituacao === 'criticos') return ehCritico(i) && !ehZerado(i);
+      if (filtroSituacao === 'saudaveis') return !ehCritico(i);
+      return true;
+    });
+    // Ordenação padrão (REVIEW_DECISOES_V2): zerados → críticos →
+    // saudáveis, alfabético dentro de cada grupo — nunca uma lista sem
+    // critério de ordem.
+    const grupo = (i: ItemEstoque) => (ehZerado(i) ? 0 : ehCritico(i) ? 1 : 2);
+    return [...base].sort((a, b) => grupo(a) - grupo(b) || a.nome.localeCompare(b.nome));
+  }, [itens, filtroSituacao]);
+
+  // "Impacto nos próximos eventos" (2026-09-18) — mesma conta da
+  // Calculadora preditiva (consumo_por_pax × convidados), só que
+  // automática pra cada evento dos próximos 7 dias, sem precisar digitar
+  // nada. Avalia cada evento contra o estoque ATUAL, um de cada vez —
+  // não soma a demanda de dois eventos na mesma semana (mesma limitação
+  // já aceita na calculadora manual, não é escopo novo).
+  const impactoEventos = useMemo(() => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const em7dias = new Date();
+    em7dias.setDate(em7dias.getDate() + 7);
+    const em7diasStr = em7dias.toISOString().slice(0, 10);
+    const proximos = contratos.filter((c) => c.data_evento >= hoje && c.data_evento <= em7diasStr).sort((a, b) => a.data_evento.localeCompare(b.data_evento));
+
+    const linhas: { item: ItemEstoque; evento: ContratoComLead; necessario: number; deficit: number }[] = [];
+    for (const ev of proximos) {
+      if (!ev.convidados) continue;
+      for (const item of itens) {
+        if (item.consumo_por_pax == null) continue;
+        const necessario = Math.round(item.consumo_por_pax * ev.convidados * 100) / 100;
+        const deficit = Math.round((necessario - item.estoque_atual) * 100) / 100;
+        if (deficit > 0) linhas.push({ item, evento: ev, necessario, deficit });
+      }
+    }
+    return linhas;
+  }, [contratos, itens]);
 
   const previsao = useMemo(() => {
     const convidados = Number(convidadosCalc) || 0;
@@ -183,26 +252,114 @@ export default function Estoque() {
           <MetricCard Icone={AlertTriangle} rotulo="Avarias registradas" valor={String(avarias.length)} legenda="Últimos 50 registros" categoria="operacao" />
         </MetricGrid>
 
-        {/* Banner consolidado (2026-09-14) — o card "Nível crítico" acima só
-            dá o número; sem entrar na aba "Avançado" não dava pra saber
-            QUAIS itens, e "Checklists" (a aba padrão) não mostra a lista de
-            itens nenhuma. Aparece em qualquer aba, sempre que há crítico. */}
-        {!carregando && itensCriticos.length > 0 && (
-          <div className="mb-4 flex items-start gap-3 rounded-sm border border-danger/30 bg-danger/8 px-4 py-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-danger" strokeWidth={2} />
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-danger">
-                {itensCriticos.length === 1 ? '1 item abaixo do mínimo' : `${itensCriticos.length} itens abaixo do mínimo`}
-              </p>
-              <p className="mt-0.5 text-[12px] text-text-dim">
-                {itensCriticos
-                  .slice(0, 3)
-                  .map((i) => i.nome)
-                  .join(', ')}
-                {itensCriticos.length > 3 ? ` e mais ${itensCriticos.length - 3}` : ''} — repor antes do próximo evento.
-              </p>
+        {/* Painel de situação + ações rápidas (2026-09-18,
+            REVIEW_DECISOES_V2 Estoque P1) — substitui o banner que só
+            aparecia com crítico; agora dá a foto inteira (inclusive "tá
+            tudo OK") e é clicável em qualquer aba: clicar num bloco já
+            muda pra "Avançado" com o filtro certo aplicado. */}
+        {!carregando && itens.length > 0 && (
+          <Panel className="mb-4">
+            <PanelHeader titulo="Situação do estoque" desc="Clique num bloco pra ver a lista filtrada." />
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { f: 'saudaveis' as const, n: itensSaudaveis.length, rotulo: 'OK', cor: 'border-execucao/25 bg-execucao/8 text-execucao' },
+                  { f: 'criticos' as const, n: itensCriticosNaoZerados.length, rotulo: 'Críticos', cor: 'border-pending/25 bg-pending/8 text-pending' },
+                  { f: 'zerados' as const, n: itensZerados.length, rotulo: 'Zerados', cor: 'border-danger/25 bg-danger/8 text-danger' },
+                ] as const
+              ).map(({ f, n, rotulo, cor }) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => {
+                    setFiltroSituacao(f);
+                    setAba('avancado');
+                  }}
+                  className={`flex flex-col items-center gap-0.5 rounded-md border px-3 py-2.5 transition-colors hover:border-line-strong ${cor}`}
+                >
+                  <span className="font-mono text-[22px] font-black leading-none">{n}</span>
+                  <span className="text-[11px] font-semibold">{rotulo}</span>
+                </button>
+              ))}
             </div>
-          </div>
+
+            {/* Ações rápidas — ação primeiro, item depois: escolhe no
+                seletor e já abre o modal de movimentação com o tipo certo. */}
+            <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-line pt-4">
+              <div className="min-w-[200px] flex-1">
+                <Select rotulo="Ação rápida" categoria="operacao" value={itemRapidoId} onChange={(e) => setItemRapidoId(e.target.value)}>
+                  <option value="">Selecione um item…</option>
+                  {itens.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.nome} ({item.estoque_atual} {item.unidade})
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <button
+                type="button"
+                disabled={!itemRapidoId}
+                onClick={() => {
+                  const item = itens.find((i) => i.id === itemRapidoId);
+                  if (!item) return;
+                  setTipoMovimentoInicial('entrada');
+                  setMovimentoAberto(item);
+                }}
+                className="rounded-sm border border-execucao/30 bg-execucao/10 px-3 py-2 text-[12.5px] font-semibold text-execucao hover:bg-execucao/20 disabled:opacity-40"
+              >
+                + Entrada
+              </button>
+              <button
+                type="button"
+                disabled={!itemRapidoId}
+                onClick={() => {
+                  const item = itens.find((i) => i.id === itemRapidoId);
+                  if (!item) return;
+                  setTipoMovimentoInicial('saida');
+                  setMovimentoAberto(item);
+                }}
+                className="rounded-sm border border-line bg-raised px-3 py-2 text-[12.5px] font-semibold text-text-dim hover:bg-input hover:text-text disabled:opacity-40"
+              >
+                − Saída
+              </button>
+            </div>
+          </Panel>
+        )}
+
+        {/* "Impacto nos próximos eventos" (2026-09-18) — mesmo cálculo da
+            Calculadora preditiva, automático pros eventos dos próximos 7
+            dias, sem precisar digitar nada. */}
+        {!carregando && (
+          <Panel className="mb-4">
+            <PanelHeader titulo="Impacto nos próximos eventos" desc="Itens que não cobrem a demanda projetada de um evento nos próximos 7 dias." />
+            {impactoEventos.length === 0 ? (
+              <p className="flex items-center gap-1.5 text-[12.5px] text-success">
+                <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2} />
+                Nenhum impacto operacional nos próximos 7 dias
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {impactoEventos.map(({ item, evento, necessario, deficit }) => (
+                  <div key={`${item.id}-${evento.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-danger/25 bg-danger/5 px-3 py-2.5 text-sm">
+                    <div className="min-w-0">
+                      <strong className="text-text">{item.nome}</strong>
+                      <p className="text-[11.5px] text-text-dim">
+                        Estoque: <span className="font-mono">{item.estoque_atual}</span>
+                        {item.unidade} · {evento.lead?.nome ?? 'Evento'} — em {diasAteEvento(evento.data_evento)} dia(s)
+                      </p>
+                      <p className="text-[11.5px] text-text-faint">
+                        Necessário: <span className="font-mono text-text">{necessario}</span> · Disponível: <span className="font-mono text-text">{item.estoque_atual}</span> · Déficit:{' '}
+                        <span className="font-mono font-semibold text-danger">{deficit}</span> {item.unidade}
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setCompraAberta(item)} className="flex-shrink-0 rounded-sm bg-accent px-3 py-1.5 text-[11.5px] font-semibold text-accent-ink hover:bg-accent-strong">
+                      Gerar compra
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
         )}
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -293,14 +450,42 @@ export default function Estoque() {
             </Panel>
 
             <Panel>
-              <PanelHeader titulo="Itens do galpão" desc={carregando ? undefined : `${itens.length} item(ns)`} />
+              <PanelHeader
+                titulo="Itens em estoque"
+                desc={carregando ? undefined : `${itensFiltrados.length} de ${itens.length} item(ns)`}
+                acao={
+                  itens.length > 0 && (
+                    <div className="inline-flex flex-wrap gap-0.5 rounded-sm border border-line bg-input p-0.5">
+                      {(
+                        [
+                          { f: 'todos' as const, rotulo: 'Todos' },
+                          { f: 'zerados' as const, rotulo: `Zerados ${itensZerados.length}` },
+                          { f: 'criticos' as const, rotulo: `Críticos ${itensCriticosNaoZerados.length}` },
+                          { f: 'saudaveis' as const, rotulo: `Saudáveis ${itensSaudaveis.length}` },
+                        ] as const
+                      ).map(({ f, rotulo }) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setFiltroSituacao(f)}
+                          className={`rounded-[5px] px-2.5 py-1 text-[11.5px] font-medium transition-colors ${filtroSituacao === f ? 'bg-raised text-ops' : 'text-text-dim hover:text-text'}`}
+                        >
+                          {rotulo}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                }
+              />
               {carregando ? (
                 <SkeletonLinhas />
               ) : itens.length === 0 ? (
                 <EstadoVazio Icone={Package} titulo="Nenhum item cadastrado ainda" descricao="Cadastre bebidas, insumos, gelo ou descartáveis do galpão acima." />
+              ) : itensFiltrados.length === 0 ? (
+                <EstadoVazio Icone={Package} titulo="Nenhum item nesse filtro" />
               ) : (
                 <div className="flex flex-col gap-2">
-                  {itens.map((item) => (
+                  {itensFiltrados.map((item) => (
                     <div
                       key={item.id}
                       className={`flex flex-col gap-2 rounded-sm border border-line bg-input px-3 py-2.5 text-sm ${ehCritico(item) ? 'border-l-2 border-l-danger' : ''}`}
@@ -315,7 +500,14 @@ export default function Estoque() {
                             {item.estoque_atual} / {item.estoque_minimo} {item.unidade}
                           </span>
                           {ehCritico(item) ? <Badge tom="perigo" texto="Crítico" /> : <Badge tom="sucesso" texto="OK" />}
-                          <button type="button" onClick={() => setMovimentoAberto(item)} className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTipoMovimentoInicial('saida');
+                              setMovimentoAberto(item);
+                            }}
+                            className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text"
+                          >
                             Movimentar
                           </button>
                           {ehCritico(item) && (
@@ -400,7 +592,7 @@ export default function Estoque() {
         )}
       </Conteudo>
 
-      {movimentoAberto && <ModalMovimento item={movimentoAberto} onFechar={() => setMovimentoAberto(null)} onConfirmar={aoConfirmarMovimento} />}
+      {movimentoAberto && <ModalMovimento item={movimentoAberto} tipoInicial={tipoMovimentoInicial} onFechar={() => setMovimentoAberto(null)} onConfirmar={aoConfirmarMovimento} />}
       {compraAberta && <ModalCompra item={compraAberta} onFechar={() => setCompraAberta(null)} onConfirmar={aoConfirmarCompra} />}
       {confirmar.dialogo}
     </>
