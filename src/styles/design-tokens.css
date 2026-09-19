@@ -111,13 +111,14 @@
 :root[data-theme='light'] {
   /* 4 camadas com contraste real (2026-09-19, SPEC_MODO_CLARO): antes bg/
      sidebar/panel eram quase o mesmo branco (#f7f7f9/#fff/#fff) e o card
-     não se destacava. Agora: fundo cinza médio → cards brancos → sub-box e
-     input em cinza claro, espelhando a hierarquia do escuro. */
-  --color-bg: #eef0f3;
-  --color-sidebar: #f5f6f8;
-  --color-panel: #ffffff;
-  --color-raised: #f0f1f4;
-  --color-input: #f0f2f5;
+     não se destacava. Depois (mesmo dia, pedido "menos branco"): nenhuma
+     superfície é branco puro — fundo cinza-azulado → card off-white →
+     sub-box e input em cinza um pouco mais escuro que o card. */
+  --color-bg: #e4e7ec;
+  --color-sidebar: #eaedf1;
+  --color-panel: #f6f7f9;
+  --color-raised: #eceef2;
+  --color-input: #e8ebf0;
 
   --color-line: rgba(15, 23, 42, 0.1);
   --color-line-strong: rgba(15, 23, 42, 0.18);
