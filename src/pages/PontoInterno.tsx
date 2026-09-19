@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { Check, Clock, Download, LogIn, LogOut, Settings, ShieldOff, UserCheck, Users } from 'lucide-react';
+import { Check, Clock, Download, LogIn, LogOut, MoreVertical, Settings, ShieldOff, UserCheck, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { atualizarJornadaFuncionario, baterPonto, cadastrarMeuNome, definirAtivoFuncionario, listarFuncionariosInternos, listarMeusRegistrosHoje, listarRegistrosDeHoje, listarRegistrosPorPeriodo, obterMeuFuncionario } from '../lib/api/pontoInterno';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
@@ -281,6 +281,11 @@ export default function PontoInterno() {
   const [nomeCadastro, setNomeCadastro] = useState('');
   const [cadastrando, setCadastrando] = useState(false);
   const [erroCadastro, setErroCadastro] = useState<string | null>(null);
+  // Gestor sem cadastro de funcionário não vê o "Primeiro acesso" logo de
+  // cara (ele veio pelo panorama) — mas pode optar por registrar o próprio
+  // ponto, porque o gestor também é funcionário fixo (ver doc do componente).
+  const [cadastrarComoGestor, setCadastrarComoGestor] = useState(false);
+  const [menuAbertoId, setMenuAbertoId] = useState<string | null>(null);
 
   const [batendo, setBatendo] = useState(false);
   const [confirmacao, setConfirmacao] = useState<{ tipo: TipoPontoInterno; horario: string } | null>(null);
@@ -342,10 +347,26 @@ export default function PontoInterno() {
       setRegistrosHoje([]);
       setConfirmacao(null);
       setEquipe(null);
+      setCadastrarComoGestor(false);
+      setMenuAbertoId(null);
       pararContagem();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
+
+  // Fecha o menu ⋮ ao clicar fora ou apertar Esc. O botão ⋮ dá stopPropagation
+  // pra o clique que ABRE não cair aqui e fechar na hora.
+  useEffect(() => {
+    if (!menuAbertoId) return;
+    const fechar = () => setMenuAbertoId(null);
+    const aoTeclar = (e: KeyboardEvent) => e.key === 'Escape' && fechar();
+    document.addEventListener('click', fechar);
+    document.addEventListener('keydown', aoTeclar);
+    return () => {
+      document.removeEventListener('click', fechar);
+      document.removeEventListener('keydown', aoTeclar);
+    };
+  }, [menuAbertoId]);
 
   useEffect(() => {
     if (!ehGestor || !session) return;
@@ -421,6 +442,19 @@ export default function PontoInterno() {
       toast.erro(mensagemDeErro(e));
     } finally {
       setSalvandoJornada(false);
+    }
+  }
+
+  /** Ativar/desativar acesso — usado pelo menu ⋮, pela lista de desativados
+      e pelo Drawer (antes cada um tinha sua cópia, todas sem tratar erro). */
+  async function aoAlternarAtivo(f: FuncionarioInterno): Promise<boolean> {
+    try {
+      await definirAtivoFuncionario(f.id, !f.ativo);
+      setEquipe(await listarFuncionariosInternos());
+      return true;
+    } catch (e) {
+      toast.erro(mensagemDeErro(e));
+      return false;
     }
   }
 
@@ -516,6 +550,20 @@ export default function PontoInterno() {
             </div>
           ) : meuFuncionario === undefined ? (
             <SkeletonLinhas />
+          ) : meuFuncionario === null && ehGestor === null ? (
+            <SkeletonLinhas />
+          ) : meuFuncionario === null && ehGestor && !cadastrarComoGestor ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-text-dim">Você entrou como gestor — o panorama da equipe está logo abaixo.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setCadastrarComoGestor(true)} className="rounded-sm border border-line px-3 py-2 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text">
+                  Registrar meu próprio ponto
+                </button>
+                <button type="button" onClick={sair} className="rounded-sm border border-transparent px-3 py-2 text-[12.5px] font-medium text-text-faint hover:text-text-dim hover:underline">
+                  Sair
+                </button>
+              </div>
+            </div>
           ) : meuFuncionario === null ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-text-dim">Primeiro acesso — qual é o seu nome?</p>
@@ -648,9 +696,48 @@ export default function PontoInterno() {
                                   </span>
                                 )}
                               </span>
-                              <button type="button" onClick={() => aoAbrirConfigJornada(f)} className="flex flex-shrink-0 items-center gap-1 text-[11.5px] font-medium text-text-dim hover:underline">
-                                <Settings className="h-3 w-3" strokeWidth={2} /> Configurar
-                              </button>
+                              <div className="relative flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuAbertoId(menuAbertoId === f.id ? null : f.id);
+                                  }}
+                                  aria-label={`Ações de ${f.nome}`}
+                                  aria-haspopup="menu"
+                                  aria-expanded={menuAbertoId === f.id}
+                                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-dim transition-colors hover:bg-raised hover:text-text"
+                                >
+                                  <MoreVertical className="h-4 w-4" strokeWidth={1.75} />
+                                </button>
+                                {menuAbertoId === f.id && (
+                                  <div role="menu" className="absolute right-0 top-8 z-10 min-w-[190px] rounded-lg border border-line bg-panel py-1 shadow-lg">
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => {
+                                        aoAbrirConfigJornada(f);
+                                        setMenuAbertoId(null);
+                                      }}
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-text hover:bg-raised"
+                                    >
+                                      <Settings className="h-3.5 w-3.5 text-text-dim" strokeWidth={1.75} />
+                                      Configurar jornada
+                                    </button>
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => {
+                                        setMenuAbertoId(null);
+                                        aoAlternarAtivo(f);
+                                      }}
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-danger hover:bg-raised"
+                                    >
+                                      Desativar funcionário
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -671,7 +758,7 @@ export default function PontoInterno() {
                           <strong className="truncate text-text-faint line-through">{f.nome}</strong>
                           <button
                             type="button"
-                            onClick={() => definirAtivoFuncionario(f.id, true).then(() => listarFuncionariosInternos().then(setEquipe))}
+                            onClick={() => aoAlternarAtivo(f)}
                             className="flex-shrink-0 text-[11.5px] font-medium text-text-dim hover:underline"
                           >
                             Reativar
@@ -714,11 +801,9 @@ export default function PontoInterno() {
               {equipe?.find((f) => f.id === configurandoId) && (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     const f = equipe.find((x) => x.id === configurandoId)!;
-                    definirAtivoFuncionario(f.id, !f.ativo)
-                      .then(() => listarFuncionariosInternos().then(setEquipe))
-                      .then(() => setConfigurandoId(null));
+                    if (await aoAlternarAtivo(f)) setConfigurandoId(null);
                   }}
                   className="text-center text-[11.5px] font-medium text-text-faint hover:text-danger hover:underline"
                 >
@@ -822,7 +907,8 @@ export default function PontoInterno() {
                           </div>
                           <div>
                             <p className="text-[10px] uppercase tracking-wide text-text-faint">A pagar</p>
-                            <p className="font-mono font-semibold text-success">{r.valorAPagar != null ? formatarMoeda(r.valorAPagar) : '—'}</p>
+                            {/* verde só quando há valor de fato — zero/sem jornada não é "positivo" */}
+                            <p className={`font-mono font-semibold ${r.valorAPagar != null && r.valorAPagar > 0 ? 'text-success' : 'text-text-faint'}`}>{r.valorAPagar != null ? formatarMoeda(r.valorAPagar) : '—'}</p>
                           </div>
                         </div>
                         {!r.jornadaConfigurada && <p className="mt-1.5 text-[11px] text-pending">Jornada/valor-hora não configurado — clique em "Configurar" acima pra separar hora extra e calcular pagamento.</p>}
