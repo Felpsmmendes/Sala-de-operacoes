@@ -39,6 +39,7 @@ const NaoEncontrado = lazy(() => import('./pages/NaoEncontrado'));
 const Orcamentos = lazy(() => import('./pages/Orcamentos'));
 const Ponto = lazy(() => import('./pages/Ponto'));
 const PontoInterno = lazy(() => import('./pages/PontoInterno'));
+const PontoInternoEquipe = lazy(() => import('./pages/PontoInternoEquipe'));
 const PontoPublico = lazy(() => import('./pages/PontoPublico'));
 const PortalClienteAdmin = lazy(() => import('./pages/PortalClienteAdmin'));
 const PortalClientePublico = lazy(() => import('./pages/PortalClientePublico'));
@@ -132,6 +133,8 @@ export default function App() {
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/roteiro" element={<CueSheet />} />
                 <Route path="/ponto" element={<Ponto />} />
+                {/* painel do gestor do Ponto Interno — dentro do Layout; o kiosk (login + bater ponto) continua em /ponto-interno, fora dele */}
+                <Route path="/ponto-interno/equipe" element={<PontoInternoEquipe />} />
                 <Route path="/auditoria" element={<Auditoria />} />
                 {/* Financeiro em 4 sub-rotas (2026-09-19, SPEC_CAMADA2 2E) —
                     `/financeiro` continua sendo a Visão Geral (alias),

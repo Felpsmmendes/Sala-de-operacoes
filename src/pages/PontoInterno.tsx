@@ -1,18 +1,13 @@
 import type { Session } from '@supabase/supabase-js';
-import { Check, Clock, Download, LogIn, LogOut, MoreVertical, Settings, ShieldOff, UserCheck, Users } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { atualizarJornadaFuncionario, baterPonto, cadastrarMeuNome, definirAtivoFuncionario, listarFuncionariosInternos, listarMeusRegistrosHoje, listarRegistrosDeHoje, listarRegistrosPorPeriodo, obterMeuFuncionario } from '../lib/api/pontoInterno';
-import { MetricCard, MetricGrid } from '../components/MetricCard';
+import { Check, Clock, LayoutDashboard, LogIn, LogOut, ShieldOff } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { baterPonto, cadastrarMeuNome, listarMeusRegistrosHoje, obterMeuFuncionario } from '../lib/api/pontoInterno';
 import { SkeletonLinhas } from '../components/Skeleton';
-import { Avatar } from '../components/ui/Avatar';
-import { Drawer } from '../components/ui/Drawer';
-import { EstadoVazio } from '../components/ui/EmptyState';
-import { Input, InputMoeda } from '../components/ui/Input';
-import { ProgressBar } from '../components/ui/ProgressBar';
+import { Input } from '../components/ui/Input';
 import { mensagemDeErro } from '../lib/erroAmigavel';
+import { horaCurta } from '../lib/pontoInternoCalculos';
 import { toast } from '../lib/toast';
-import { exportarCsv } from '../lib/exportarCsv';
-import { formatarMoeda } from '../lib/status';
 import { supabasePontoInterno } from '../lib/supabasePontoInterno';
 import type { FuncionarioInterno, PontoInternoRegistro, TipoPontoInterno } from '../lib/types';
 
@@ -39,164 +34,6 @@ function useRelogio(): string {
 }
 
 const SEGUNDOS_ATE_SAIR = 8;
-
-function horaCurta(iso: string) {
-  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function horaParaMinutos(hora: string): number {
-  const [h, m] = hora.slice(0, 5).split(':').map(Number);
-  return h * 60 + m;
-}
-
-/** Data LOCAL (não UTC) de um timestamp — agrupar por `.slice(0,10)` do
-    ISO cru mistura dias errado pra quem bate ponto perto da meia-noite
-    em UTC-3 (ex.: 21h de Brasília já é dia seguinte em UTC). */
-function dataLocal(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function formatarMinutos(min: number): string {
-  if (min <= 0) return '—';
-  return `${Math.floor(min / 60)}h${Math.round(min % 60) > 0 ? ` ${Math.round(min % 60)}min` : ''}`;
-}
-
-type ResumoJornada = {
-  funcionario: FuncionarioInterno;
-  minutosNormais: number;
-  minutosExtras: number;
-  atrasoMin: number;
-  diasTrabalhados: number;
-  registros: number;
-  jornadaConfigurada: boolean;
-  valorAPagar: number | null;
-};
-
-/** Agrupa por DIA (jornada/hora extra são um conceito diário — "8h hoje
-    + 10h ontem" não é "9h extra hoje"), soma pares entrada→saída de cada
-    dia (par quebrado, ex. jornada em andamento, simplesmente não soma
-    esse dia — não trava o resto), e compara contra a jornada esperada do
-    funcionário pra separar normal de extra. Sem jornada configurada,
-    tudo conta como "normal" (não dá pra saber o que seria extra) e
-    "valorAPagar" fica null. Sem tolerância (decisão do usuário): 1
-    minuto além do horário já conta. */
-function calcularResumoJornada(registros: PontoInternoRegistro[], funcionarios: FuncionarioInterno[]): ResumoJornada[] {
-  return funcionarios.map((f) => {
-    const regs = registros.filter((r) => r.funcionario_id === f.id).sort((a, b) => a.horario.localeCompare(b.horario));
-
-    const porDia = new Map<string, PontoInternoRegistro[]>();
-    for (const r of regs) {
-      const dia = dataLocal(r.horario);
-      if (!porDia.has(dia)) porDia.set(dia, []);
-      porDia.get(dia)!.push(r);
-    }
-
-    const entradaPadraoMin = f.horario_entrada_padrao ? horaParaMinutos(f.horario_entrada_padrao) : null;
-    const saidaPadraoMin = f.horario_saida_padrao ? horaParaMinutos(f.horario_saida_padrao) : null;
-    const minutosEsperadosDia = entradaPadraoMin != null && saidaPadraoMin != null ? saidaPadraoMin - entradaPadraoMin : null;
-    // jornada virada (saída "antes" da entrada, ex. turno noturno cruzando
-    // meia-noite) não é suportada ainda — trata como não configurada em
-    // vez de gerar hora extra negativa sem sentido.
-    const jornadaConfigurada = minutosEsperadosDia != null && minutosEsperadosDia > 0;
-
-    let minutosNormais = 0;
-    let minutosExtras = 0;
-    let atrasoMin = 0;
-    let diasTrabalhados = 0;
-
-    for (const regsDoDia of porDia.values()) {
-      const ordenados = regsDoDia.slice().sort((a, b) => a.horario.localeCompare(b.horario));
-      let minutosDoDia = 0;
-      let i = 0;
-      while (i < ordenados.length - 1) {
-        if (ordenados[i].tipo === 'entrada' && ordenados[i + 1].tipo === 'saida') {
-          minutosDoDia += (new Date(ordenados[i + 1].horario).getTime() - new Date(ordenados[i].horario).getTime()) / 60_000;
-          i += 2;
-        } else {
-          i++;
-        }
-      }
-      if (minutosDoDia <= 0) continue;
-      diasTrabalhados++;
-
-      if (jornadaConfigurada) {
-        minutosNormais += Math.min(minutosDoDia, minutosEsperadosDia!);
-        minutosExtras += Math.max(0, minutosDoDia - minutosEsperadosDia!);
-      } else {
-        minutosNormais += minutosDoDia;
-      }
-
-      if (entradaPadraoMin != null) {
-        const primeiraEntrada = ordenados.find((r) => r.tipo === 'entrada');
-        if (primeiraEntrada) {
-          const d = new Date(primeiraEntrada.horario);
-          const minEntrada = d.getHours() * 60 + d.getMinutes();
-          if (minEntrada > entradaPadraoMin) atrasoMin += minEntrada - entradaPadraoMin;
-        }
-      }
-    }
-
-    const valorAPagar = f.valor_hora != null ? (minutosNormais / 60) * f.valor_hora + (minutosExtras / 60) * (f.valor_hora_extra ?? f.valor_hora) : null;
-
-    return { funcionario: f, minutosNormais, minutosExtras, atrasoMin, diasTrabalhados, registros: regs.length, jornadaConfigurada, valorAPagar };
-  });
-}
-
-type EstadoDiaGrade = 'N' | 'A' | 'E' | 'F';
-
-/** Grade de presença (REVIEW_DECISOES_V2, Parte 12/16, P2) — um estado
-    por funcionário/dia: N=normal, A=atraso (bateu entrada depois do
-    horário padrão), E=trabalhou mais que a jornada esperada, F=sem
-    registro nenhum naquele dia. Sem um "—=folga" (mockup do documento
-    tem esse 5º estado): o sistema não tem cadastro de dias de folga
-    por funcionário, e feriados de fim de semana não servem de proxy
-    aqui — evento é fim de semana, é quando MAIS gente desta equipe
-    trabalha. Marcar sábado/domingo como folga seria inventar um dado
-    errado pro próprio negócio. */
-function calcularGradePresenca(registros: PontoInternoRegistro[], funcionarios: FuncionarioInterno[], dias: string[]): Map<string, Map<string, EstadoDiaGrade>> {
-  const porFuncionario = new Map<string, Map<string, EstadoDiaGrade>>();
-  for (const f of funcionarios) {
-    const regsF = registros.filter((r) => r.funcionario_id === f.id);
-    const porDia = new Map<string, PontoInternoRegistro[]>();
-    for (const r of regsF) {
-      const d = dataLocal(r.horario);
-      if (!porDia.has(d)) porDia.set(d, []);
-      porDia.get(d)!.push(r);
-    }
-    const entradaPadraoMin = f.horario_entrada_padrao ? horaParaMinutos(f.horario_entrada_padrao) : null;
-    const saidaPadraoMin = f.horario_saida_padrao ? horaParaMinutos(f.horario_saida_padrao) : null;
-    const minutosEsperados = entradaPadraoMin != null && saidaPadraoMin != null && saidaPadraoMin > entradaPadraoMin ? saidaPadraoMin - entradaPadraoMin : null;
-
-    const estados = new Map<string, EstadoDiaGrade>();
-    for (const dia of dias) {
-      const regsDoDia = (porDia.get(dia) ?? []).slice().sort((a, b) => a.horario.localeCompare(b.horario));
-      if (regsDoDia.length === 0) {
-        estados.set(dia, 'F');
-        continue;
-      }
-      let minutosDoDia = 0;
-      let i = 0;
-      while (i < regsDoDia.length - 1) {
-        if (regsDoDia[i].tipo === 'entrada' && regsDoDia[i + 1].tipo === 'saida') {
-          minutosDoDia += (new Date(regsDoDia[i + 1].horario).getTime() - new Date(regsDoDia[i].horario).getTime()) / 60_000;
-          i += 2;
-        } else i++;
-      }
-      let atrasado = false;
-      if (entradaPadraoMin != null) {
-        const primeiraEntrada = regsDoDia.find((r) => r.tipo === 'entrada');
-        if (primeiraEntrada) {
-          const d = new Date(primeiraEntrada.horario);
-          if (d.getHours() * 60 + d.getMinutes() > entradaPadraoMin) atrasado = true;
-        }
-      }
-      estados.set(dia, atrasado ? 'A' : minutosEsperados != null && minutosDoDia > minutosEsperados ? 'E' : 'N');
-    }
-    porFuncionario.set(f.id, estados);
-  }
-  return porFuncionario;
-}
 
 /**
  * Ponto Eletrônico DE VERDADE — só pros funcionários fixos da empresa (hoje
@@ -285,26 +122,12 @@ export default function PontoInterno() {
   // cara (ele veio pelo panorama) — mas pode optar por registrar o próprio
   // ponto, porque o gestor também é funcionário fixo (ver doc do componente).
   const [cadastrarComoGestor, setCadastrarComoGestor] = useState(false);
-  const [menuAbertoId, setMenuAbertoId] = useState<string | null>(null);
 
   const [batendo, setBatendo] = useState(false);
   const [confirmacao, setConfirmacao] = useState<{ tipo: TipoPontoInterno; horario: string } | null>(null);
   const [contagem, setContagem] = useState<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
   const intervaloRef = useRef<number | null>(null);
-
-  const [equipe, setEquipe] = useState<FuncionarioInterno[] | null>(null);
-  const [registrosEquipe, setRegistrosEquipe] = useState<PontoInternoRegistro[]>([]);
-  // "Hoje" adicionado (REVIEW_DECISOES_V2, Parte 12/16, P2 — "Filtros:
-  // Hoje / Semana / Mês no topo") ao lado dos dois que já existiam.
-  const [periodoRelatorio, setPeriodoRelatorio] = useState<'hoje' | 'semana' | 'mes'>('semana');
-  const [registrosPeriodo, setRegistrosPeriodo] = useState<PontoInternoRegistro[]>([]);
-  const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
-  const [configurandoId, setConfigurandoId] = useState<string | null>(null);
-  // formulário sempre em string (inclusive os valores) — os campos viram
-  // number|null só na hora de salvar (ver aoSalvarJornada).
-  const [formJornada, setFormJornada] = useState({ horario_entrada_padrao: '', horario_saida_padrao: '', valor_hora: '', valor_hora_extra: '' });
-  const [salvandoJornada, setSalvandoJornada] = useState(false);
 
   function pararContagem() {
     if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
@@ -346,117 +169,11 @@ export default function PontoInterno() {
       setMeuFuncionario(undefined);
       setRegistrosHoje([]);
       setConfirmacao(null);
-      setEquipe(null);
       setCadastrarComoGestor(false);
-      setMenuAbertoId(null);
       pararContagem();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
-
-  // Fecha o menu ⋮ ao clicar fora ou apertar Esc. O botão ⋮ dá stopPropagation
-  // pra o clique que ABRE não cair aqui e fechar na hora.
-  useEffect(() => {
-    if (!menuAbertoId) return;
-    const fechar = () => setMenuAbertoId(null);
-    const aoTeclar = (e: KeyboardEvent) => e.key === 'Escape' && fechar();
-    document.addEventListener('click', fechar);
-    document.addEventListener('keydown', aoTeclar);
-    return () => {
-      document.removeEventListener('click', fechar);
-      document.removeEventListener('keydown', aoTeclar);
-    };
-  }, [menuAbertoId]);
-
-  useEffect(() => {
-    if (!ehGestor || !session) return;
-    Promise.all([listarFuncionariosInternos(), listarRegistrosDeHoje()])
-      .then(([f, r]) => {
-        setEquipe(f);
-        setRegistrosEquipe(r);
-      })
-      .catch(() => {});
-  }, [ehGestor, session, confirmacao]);
-
-  /** Relatório de horas (2026-09-13) — período separado do "hoje" acima,
-      só recarrega quando o gestor troca semana/mês, não a cada ponto
-      batido. */
-  useEffect(() => {
-    if (!ehGestor || !session) return;
-    setCarregandoRelatorio(true);
-    const fim = new Date().toISOString().slice(0, 10);
-    const inicio = new Date();
-    if (periodoRelatorio === 'hoje') {
-      // fica no mesmo dia — não muda `inicio`.
-    } else if (periodoRelatorio === 'semana') inicio.setDate(inicio.getDate() - 7);
-    else inicio.setDate(1);
-    listarRegistrosPorPeriodo(inicio.toISOString().slice(0, 10), fim)
-      .then(setRegistrosPeriodo)
-      .catch(() => setRegistrosPeriodo([]))
-      .finally(() => setCarregandoRelatorio(false));
-  }, [ehGestor, session, periodoRelatorio]);
-
-  // Dias do período pra Grade de presença (P2) — mesma janela da busca
-  // acima, só como lista de strings YYYY-MM-DD (uma coluna por dia).
-  const diasGrade = useMemo(() => {
-    const hoje = new Date();
-    const dias: string[] = [];
-    if (periodoRelatorio === 'hoje') {
-      dias.push(hoje.toISOString().slice(0, 10));
-    } else if (periodoRelatorio === 'semana') {
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(hoje);
-        d.setDate(d.getDate() - i);
-        dias.push(d.toISOString().slice(0, 10));
-      }
-    } else {
-      for (let dia = 1; dia <= hoje.getDate(); dia++) {
-        dias.push(new Date(hoje.getFullYear(), hoje.getMonth(), dia).toISOString().slice(0, 10));
-      }
-    }
-    return dias;
-  }, [periodoRelatorio]);
-
-  function aoAbrirConfigJornada(f: FuncionarioInterno) {
-    setConfigurandoId(f.id);
-    setFormJornada({
-      horario_entrada_padrao: f.horario_entrada_padrao?.slice(0, 5) ?? '',
-      horario_saida_padrao: f.horario_saida_padrao?.slice(0, 5) ?? '',
-      valor_hora: f.valor_hora != null ? String(f.valor_hora) : '',
-      valor_hora_extra: f.valor_hora_extra != null ? String(f.valor_hora_extra) : '',
-    });
-  }
-
-  async function aoSalvarJornada(id: string) {
-    setSalvandoJornada(true);
-    try {
-      await atualizarJornadaFuncionario(id, {
-        horario_entrada_padrao: formJornada.horario_entrada_padrao || null,
-        horario_saida_padrao: formJornada.horario_saida_padrao || null,
-        valor_hora: formJornada.valor_hora ? Number(formJornada.valor_hora) : null,
-        valor_hora_extra: formJornada.valor_hora_extra ? Number(formJornada.valor_hora_extra) : null,
-      });
-      setEquipe(await listarFuncionariosInternos());
-      setConfigurandoId(null);
-    } catch (e) {
-      toast.erro(mensagemDeErro(e));
-    } finally {
-      setSalvandoJornada(false);
-    }
-  }
-
-  /** Ativar/desativar acesso — usado pelo menu ⋮, pela lista de desativados
-      e pelo Drawer (antes cada um tinha sua cópia, todas sem tratar erro). */
-  async function aoAlternarAtivo(f: FuncionarioInterno): Promise<boolean> {
-    try {
-      await definirAtivoFuncionario(f.id, !f.ativo);
-      setEquipe(await listarFuncionariosInternos());
-      return true;
-    } catch (e) {
-      toast.erro(mensagemDeErro(e));
-      return false;
-    }
-  }
 
   async function aoEntrar(ev: FormEvent) {
     ev.preventDefault();
@@ -483,18 +200,6 @@ export default function PontoInterno() {
 
   const ultimoTipo = registrosHoje[registrosHoje.length - 1]?.tipo ?? null;
   const proximoTipo: TipoPontoInterno = ultimoTipo === 'entrada' ? 'saida' : 'entrada';
-
-  // Presentes/Sem registro hoje (2026-09-18, REVIEW_DECISOES_V2 Parte
-  // 6/12, P1) — só entre os ATIVOS: desativado não é "sem registro", é
-  // outra situação (fica numa seção própria, separada, mais abaixo).
-  const equipeAtiva = equipe?.filter((f) => f.ativo) ?? [];
-  const equipeInativa = equipe?.filter((f) => !f.ativo) ?? [];
-  function ultimoRegistroHoje(funcionarioId: string) {
-    const regs = registrosEquipe.filter((r) => r.funcionario_id === funcionarioId);
-    return regs[regs.length - 1] ?? null;
-  }
-  const presentesHoje = equipeAtiva.filter((f) => ultimoRegistroHoje(f.id) != null);
-  const semRegistroHoje = equipeAtiva.filter((f) => ultimoRegistroHoje(f.id) == null);
 
   async function aoBaterPonto() {
     if (!meuFuncionario) return;
@@ -554,8 +259,11 @@ export default function PontoInterno() {
             <SkeletonLinhas />
           ) : meuFuncionario === null && ehGestor && !cadastrarComoGestor ? (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-text-dim">Você entrou como gestor — o panorama da equipe está logo abaixo.</p>
+              <p className="text-sm text-text-dim">Você entrou como gestor — a presença e as horas da equipe ficam no painel do sistema.</p>
               <div className="flex flex-wrap gap-2">
+                <Link to="/ponto-interno/equipe" className="flex items-center gap-1.5 rounded-sm bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
+                  <LayoutDashboard className="h-3.5 w-3.5" strokeWidth={2} /> Ver painel da equipe
+                </Link>
                 <button type="button" onClick={() => setCadastrarComoGestor(true)} className="rounded-sm border border-line px-3 py-2 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text">
                   Registrar meu próprio ponto
                 </button>
@@ -641,346 +349,16 @@ export default function PontoInterno() {
                   <button type="button" onClick={sair} className="text-center text-[11.5px] text-text-faint hover:text-text-dim hover:underline">
                     Sair sem bater ponto
                   </button>
+                  {ehGestor && (
+                    <Link to="/ponto-interno/equipe" className="text-center text-[11.5px] text-text-faint hover:text-text-dim hover:underline">
+                      Ver painel da equipe
+                    </Link>
+                  )}
                 </>
               )}
             </div>
           )}
         </div>
-
-        {/* painel do gestor: panorama de todo mundo — RLS já garante que só
-            a conta travada em eh_gestor() recebe esses dados.
-            REVIEW_DECISOES_V2 Parte 6/12, P1: MetricGrid só de hoje +
-            Presentes/Sem registro separados (nunca "falta" — o sistema
-            não sabe o motivo de quem não bateu ponto ainda). */}
-        {ehGestor && equipe && (
-          <div className="rounded-lg border border-line bg-panel p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <Users className="h-4 w-4 text-text-faint" strokeWidth={2} />
-              <p className="text-[13px] font-semibold text-text">Equipe interna hoje</p>
-            </div>
-            {equipe.length === 0 ? (
-              <EstadoVazio Icone={Users} titulo="Nenhum funcionário cadastrado ainda" descricao="A pessoa aparece aqui no primeiro login dela." />
-            ) : (
-              <>
-                <MetricGrid>
-                  <MetricCard Icone={Users} rotulo="Funcionários" valor={String(equipeAtiva.length)} legenda="Ativos" categoria="pessoas" />
-                  <MetricCard Icone={UserCheck} rotulo="Presentes" valor={String(presentesHoje.length)} legenda="Bateram ponto hoje" categoria="pessoas" />
-                  <MetricCard Icone={Clock} rotulo="Sem registro" valor={String(semRegistroHoje.length)} legenda="Ainda não bateram hoje" categoria="pessoas" />
-                </MetricGrid>
-
-                {([
-                  { titulo: 'Presentes', lista: presentesHoje },
-                  { titulo: 'Sem registro', lista: semRegistroHoje },
-                ] as const).map(({ titulo, lista }) => (
-                  <div key={titulo} className="mt-4">
-                    <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
-                      {titulo} — {lista.length}
-                    </p>
-                    {lista.length === 0 ? (
-                      <p className="text-[12px] text-text-faint">Ninguém nesse grupo agora.</p>
-                    ) : (
-                      <div className="flex flex-col gap-1.5">
-                        {lista.map((f) => {
-                          const ultimo = ultimoRegistroHoje(f.id);
-                          const status = !ultimo ? 'Sem registro' : ultimo.tipo === 'entrada' ? `Entrada ${horaCurta(ultimo.horario)}` : `Saiu ${horaCurta(ultimo.horario)}`;
-                          const jornadaConfigurada = f.horario_entrada_padrao && f.horario_saida_padrao;
-                          return (
-                            <div key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-line bg-input px-3 py-1.5 text-[12.5px]">
-                              <span className="flex min-w-0 items-center gap-2">
-                                <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${ultimo ? 'bg-success' : 'border border-line'}`} />
-                                <strong className="truncate text-text">{f.nome}</strong>
-                                <span className="flex-shrink-0 font-mono text-text-faint">{status}</span>
-                                {jornadaConfigurada && (
-                                  <span className="hidden flex-shrink-0 font-mono text-[11px] text-text-faint sm:inline">
-                                    {f.horario_entrada_padrao!.slice(0, 5)}–{f.horario_saida_padrao!.slice(0, 5)}
-                                  </span>
-                                )}
-                              </span>
-                              <div className="relative flex-shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMenuAbertoId(menuAbertoId === f.id ? null : f.id);
-                                  }}
-                                  aria-label={`Ações de ${f.nome}`}
-                                  aria-haspopup="menu"
-                                  aria-expanded={menuAbertoId === f.id}
-                                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-dim transition-colors hover:bg-raised hover:text-text"
-                                >
-                                  <MoreVertical className="h-4 w-4" strokeWidth={1.75} />
-                                </button>
-                                {menuAbertoId === f.id && (
-                                  <div role="menu" className="absolute right-0 top-8 z-10 min-w-[190px] rounded-lg border border-line bg-panel py-1 shadow-lg">
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={() => {
-                                        aoAbrirConfigJornada(f);
-                                        setMenuAbertoId(null);
-                                      }}
-                                      className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-text hover:bg-raised"
-                                    >
-                                      <Settings className="h-3.5 w-3.5 text-text-dim" strokeWidth={1.75} />
-                                      Configurar jornada
-                                    </button>
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={() => {
-                                        setMenuAbertoId(null);
-                                        aoAlternarAtivo(f);
-                                      }}
-                                      className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-danger hover:bg-raised"
-                                    >
-                                      Desativar funcionário
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Desativados — não entra na conta de presente/sem registro
-                    (não é a mesma pergunta: aqui é "essa pessoa ainda
-                    trabalha aqui", não "bateu ponto hoje"). */}
-                {equipeInativa.length > 0 && (
-                  <div className="mt-4 border-t border-line pt-3">
-                    <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Desativados — {equipeInativa.length}</p>
-                    <div className="flex flex-col gap-1.5">
-                      {equipeInativa.map((f) => (
-                        <div key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-line bg-input px-3 py-1.5 text-[12.5px]">
-                          <strong className="truncate text-text-faint line-through">{f.nome}</strong>
-                          <button
-                            type="button"
-                            onClick={() => aoAlternarAtivo(f)}
-                            className="flex-shrink-0 text-[11.5px] font-medium text-text-dim hover:underline"
-                          >
-                            Reativar
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Drawer de configuração de jornada (2026-09-18,
-            REVIEW_DECISOES_V2 Parte 6/12, P1 — "Drawer para configuração
-            de jornada") — antes era um form inline que expandia dentro da
-            própria linha; virou painel lateral, mesmo padrão que a Parte
-            5 do review pede pra configuração por item em qualquer tela. */}
-        {configurandoId && (
-          <Drawer titulo={`Jornada — ${equipe?.find((f) => f.id === configurandoId)?.nome ?? ''}`} onFechar={() => setConfigurandoId(null)}>
-            <div className="flex flex-col gap-3">
-              <Input rotulo="Entrada padrão" type="time" value={formJornada.horario_entrada_padrao} onChange={(e) => setFormJornada((v) => ({ ...v, horario_entrada_padrao: e.target.value }))} />
-              <Input rotulo="Saída padrão" type="time" value={formJornada.horario_saida_padrao} onChange={(e) => setFormJornada((v) => ({ ...v, horario_saida_padrao: e.target.value }))} />
-              <InputMoeda rotulo="Valor/hora normal" value={formJornada.valor_hora} onChange={(e) => setFormJornada((v) => ({ ...v, valor_hora: e.target.value }))} />
-              <InputMoeda rotulo="Valor/hora extra" value={formJornada.valor_hora_extra} onChange={(e) => setFormJornada((v) => ({ ...v, valor_hora_extra: e.target.value }))} />
-              <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={salvandoJornada}
-                  onClick={() => aoSalvarJornada(configurandoId)}
-                  className="flex-1 rounded-sm bg-accent px-3 py-2.5 text-[13px] font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"
-                >
-                  {salvandoJornada ? 'Salvando…' : 'Salvar jornada'}
-                </button>
-                <button type="button" onClick={() => setConfigurandoId(null)} className="rounded-sm border border-line px-3 py-2.5 text-[13px] text-text-dim hover:bg-raised">
-                  Cancelar
-                </button>
-              </div>
-              {equipe?.find((f) => f.id === configurandoId) && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const f = equipe.find((x) => x.id === configurandoId)!;
-                    if (await aoAlternarAtivo(f)) setConfigurandoId(null);
-                  }}
-                  className="text-center text-[11.5px] font-medium text-text-faint hover:text-danger hover:underline"
-                >
-                  {equipe.find((f) => f.id === configurandoId)!.ativo ? 'Desativar acesso desta pessoa' : 'Reativar acesso desta pessoa'}
-                </button>
-              )}
-            </div>
-          </Drawer>
-        )}
-
-        {/* relatório de horas por período (2026-09-13) — separado do
-            "hoje" acima: soma pares entrada/saída dentro da janela
-            escolhida, não trava se alguém esqueceu de bater a saída. */}
-        {ehGestor && equipe && (
-          <div className="mt-4 rounded-lg border border-line bg-panel p-5">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[13px] font-semibold text-text">Horas trabalhadas</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex gap-0.5 rounded-sm border border-line bg-input p-0.5">
-                  {(['hoje', 'semana', 'mes'] as const).map((p) => (
-                    <button key={p} type="button" onClick={() => setPeriodoRelatorio(p)} className={`rounded-[5px] px-3 py-1 text-[12px] font-medium transition-colors ${periodoRelatorio === p ? 'bg-raised text-text' : 'text-text-dim hover:text-text'}`}>
-                      {p === 'hoje' ? 'Hoje' : p === 'semana' ? 'Últimos 7 dias' : 'Este mês'}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  disabled={registrosPeriodo.length === 0}
-                  onClick={() =>
-                    exportarCsv(
-                      [
-                        ['Funcionário', 'Dias trabalhados', 'Registros', 'Horas normais', 'Horas extras', 'Atraso acumulado', 'A pagar'],
-                        ...calcularResumoJornada(registrosPeriodo, equipe).map((r) => [
-                          r.funcionario.nome,
-                          String(r.diasTrabalhados),
-                          String(r.registros),
-                          formatarMinutos(r.minutosNormais),
-                          formatarMinutos(r.minutosExtras),
-                          formatarMinutos(r.atrasoMin),
-                          r.valorAPagar != null ? formatarMoeda(r.valorAPagar) : '—',
-                        ]),
-                      ],
-                      `ponto-interno-${periodoRelatorio}`
-                    )
-                  }
-                  className="flex items-center gap-1.5 rounded-sm border border-line px-2.5 py-1.5 text-[11.5px] text-text-dim hover:bg-raised hover:text-text disabled:opacity-40"
-                >
-                  <Download className="h-3 w-3" strokeWidth={2} />
-                  Exportar CSV
-                </button>
-              </div>
-            </div>
-
-            {carregandoRelatorio ? (
-              <SkeletonLinhas />
-            ) : equipe.length === 0 ? (
-              <p className="text-[12.5px] text-text-dim">Nenhum funcionário ainda.</p>
-            ) : (
-              (() => {
-                const resumos = calcularResumoJornada(registrosPeriodo, equipe);
-                const totalAPagar = resumos.reduce((s, r) => s + (r.valorAPagar ?? 0), 0);
-                // dias do período em janela (2026-09-17, "P2/P3") — mesma
-                // janela usada na busca acima (`inicio`): 7 dias fixos, ou
-                // do dia 1 até hoje ("mes" não é o mês inteiro, é o
-                // decorrido dele).
-                const diasNoPeriodo = periodoRelatorio === 'hoje' ? 1 : periodoRelatorio === 'semana' ? 7 : new Date().getDate();
-                return (
-                  <div className="flex flex-col gap-2">
-                    {resumos.map((r) => {
-                      const taxaPresenca = Math.round((r.diasTrabalhados / diasNoPeriodo) * 100);
-                      return (
-                      <div key={r.funcionario.id} className="rounded-sm border border-line bg-input px-3 py-2.5 text-[12.5px]">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="flex items-center gap-2">
-                            <Avatar nome={r.funcionario.nome} categoria="pessoas" tamanho={26} />
-                            <span className={r.funcionario.ativo ? 'font-medium text-text' : 'text-text-faint line-through'}>{r.funcionario.nome}</span>
-                          </span>
-                          <span className="text-[11px] text-text-faint">
-                            {r.diasTrabalhados} dia(s) · {r.registros} registro(s)
-                          </span>
-                        </div>
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="w-24 flex-shrink-0 text-[10px] uppercase tracking-wide text-text-faint">Presença no período</span>
-                          <div className="flex-1">
-                            <ProgressBar valor={taxaPresenca} categoria={taxaPresenca >= 80 ? 'execucao' : taxaPresenca >= 60 ? 'acao' : 'acao'} />
-                          </div>
-                          <span className={`font-mono text-[11px] font-semibold ${taxaPresenca >= 80 ? 'text-execucao' : taxaPresenca >= 60 ? 'text-pending' : 'text-danger'}`}>{taxaPresenca}%</span>
-                        </div>
-                        <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wide text-text-faint">Normais</p>
-                            <p className="font-mono text-text">{formatarMinutos(r.minutosNormais)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wide text-text-faint">Extras</p>
-                            <p className={`font-mono ${r.minutosExtras > 0 ? 'font-semibold text-pending' : 'text-text-faint'}`}>{formatarMinutos(r.minutosExtras)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wide text-text-faint">Atraso acumulado</p>
-                            <p className={`font-mono ${r.atrasoMin > 0 ? 'font-semibold text-danger' : 'text-text-faint'}`}>{formatarMinutos(r.atrasoMin)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wide text-text-faint">A pagar</p>
-                            {/* verde só quando há valor de fato — zero/sem jornada não é "positivo" */}
-                            <p className={`font-mono font-semibold ${r.valorAPagar != null && r.valorAPagar > 0 ? 'text-success' : 'text-text-faint'}`}>{r.valorAPagar != null ? formatarMoeda(r.valorAPagar) : '—'}</p>
-                          </div>
-                        </div>
-                        {!r.jornadaConfigurada && <p className="mt-1.5 text-[11px] text-pending">Jornada/valor-hora não configurado — clique em "Configurar" acima pra separar hora extra e calcular pagamento.</p>}
-                      </div>
-                      );
-                    })}
-                    {totalAPagar > 0 && (
-                      <div className="flex items-center justify-between rounded-sm border border-success/25 bg-success/10 px-3 py-2.5 text-[12.5px]">
-                        <strong className="text-text">Total a pagar no período</strong>
-                        <strong className="font-mono text-success">{formatarMoeda(totalAPagar)}</strong>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        )}
-
-        {/* Grade de presença (REVIEW_DECISOES_V2, Parte 12/16, P2) — um
-            estado por funcionário/dia (ver `calcularGradePresenca`
-            acima). Sem estado de folga (mockup do documento tem um
-            5º "—"): a semana desta equipe não segue seg-sex, então
-            marcar fim de semana como folga inventaria dado errado. */}
-        {ehGestor && equipe && equipeAtiva.length > 0 && (
-          <div className="mt-4 rounded-lg border border-line bg-panel p-5">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[13px] font-semibold text-text">Grade de presença</p>
-              <div className="flex items-center gap-3 text-[10.5px] text-text-faint">
-                <span><span className="font-mono font-semibold text-execucao">N</span> normal</span>
-                <span><span className="font-mono font-semibold text-danger">A</span> atraso</span>
-                <span><span className="font-mono font-semibold text-pending">E</span> extra</span>
-                <span><span className="font-mono font-semibold text-text-faint">F</span> sem registro</span>
-              </div>
-            </div>
-            {carregandoRelatorio ? (
-              <SkeletonLinhas />
-            ) : (
-              (() => {
-                const grade = calcularGradePresenca(registrosPeriodo, equipeAtiva, diasGrade);
-                return (
-                  <div className="overflow-x-auto">
-                    <div className="flex flex-col gap-1" style={{ minWidth: `${140 + diasGrade.length * 30}px` }}>
-                      <div className="flex items-center gap-1">
-                        <span className="w-32 flex-shrink-0" />
-                        {diasGrade.map((dia) => (
-                          <span key={dia} className="w-[26px] flex-shrink-0 text-center font-mono text-[9.5px] text-text-faint">
-                            {dia.slice(8, 10)}
-                          </span>
-                        ))}
-                      </div>
-                      {equipeAtiva.map((f) => (
-                        <div key={f.id} className="flex items-center gap-1">
-                          <span className="w-32 flex-shrink-0 truncate text-[12px] text-text-dim">{f.nome}</span>
-                          {diasGrade.map((dia) => {
-                            const estado = grade.get(f.id)?.get(dia) ?? 'F';
-                            const cor = estado === 'N' ? 'text-execucao' : estado === 'A' ? 'text-danger' : estado === 'E' ? 'text-pending' : 'text-text-faint';
-                            return (
-                              <span key={dia} className={`w-[26px] flex-shrink-0 text-center font-mono text-[11px] font-semibold ${cor}`}>
-                                {estado}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

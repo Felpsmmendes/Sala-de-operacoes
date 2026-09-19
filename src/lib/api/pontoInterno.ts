@@ -1,3 +1,4 @@
+import { supabase as supabaseGestor } from '../supabase';
 import { supabasePontoInterno as supabase } from '../supabasePontoInterno';
 import type { FuncionarioInterno, PontoInternoRegistro, TipoPontoInterno } from '../types';
 
@@ -43,8 +44,12 @@ export async function baterPonto(funcionarioId: string, tipo: TipoPontoInterno):
 
 /* -------------------- Gestão (só a conta `eh_gestor()` enxerga, via RLS) -------------------- */
 
+/* Usam o client PRINCIPAL (sessão do gestor logado no app), não o do kiosk:
+   a página `PontoInternoEquipe` roda dentro do Layout, sem sessão do kiosk. A
+   RLS `gestor_tudo` (`eh_gestor()`) vale igual pras duas sessões. */
+
 export async function listarFuncionariosInternos(): Promise<FuncionarioInterno[]> {
-  const { data, error } = await supabase.from('funcionarios_internos').select('*').order('nome');
+  const { data, error } = await supabaseGestor.from('funcionarios_internos').select('*').order('nome');
   if (error) throw new Error(error.message);
   return data as FuncionarioInterno[];
 }
@@ -54,7 +59,7 @@ export async function listarFuncionariosInternos(): Promise<FuncionarioInterno[]
     de quem tem acesso reconhecido ao kiosk — usado quando um funcionário
     sai da empresa. */
 export async function definirAtivoFuncionario(id: string, ativo: boolean): Promise<void> {
-  const { error } = await supabase.from('funcionarios_internos').update({ ativo }).eq('id', id);
+  const { error } = await supabaseGestor.from('funcionarios_internos').update({ ativo }).eq('id', id);
   if (error) throw new Error(error.message);
 }
 
@@ -64,7 +69,7 @@ export async function definirAtivoFuncionario(id: string, ativo: boolean): Promi
 export type ConfigJornada = { horario_entrada_padrao: string | null; horario_saida_padrao: string | null; valor_hora: number | null; valor_hora_extra: number | null };
 
 export async function atualizarJornadaFuncionario(id: string, dados: ConfigJornada): Promise<void> {
-  const { error } = await supabase.from('funcionarios_internos').update(dados).eq('id', id);
+  const { error } = await supabaseGestor.from('funcionarios_internos').update(dados).eq('id', id);
   if (error) throw new Error(error.message);
 }
 
@@ -74,16 +79,17 @@ export async function atualizarJornadaFuncionario(id: string, dados: ConfigJorna
 export async function listarRegistrosDeHoje(): Promise<PontoInternoRegistro[]> {
   const inicioHoje = new Date();
   inicioHoje.setHours(0, 0, 0, 0);
-  const { data, error } = await supabase.from('ponto_interno_registros').select('*').gte('horario', inicioHoje.toISOString()).order('horario', { ascending: true });
+  const { data, error } = await supabaseGestor.from('ponto_interno_registros').select('*').gte('horario', inicioHoje.toISOString()).order('horario', { ascending: true });
   if (error) throw new Error(error.message);
   return data as PontoInternoRegistro[];
 }
 
 /** Todos os registros de um período — pro relatório de horas do gestor
     (2026-09-13). `inicio`/`fim` são datas 'YYYY-MM-DD'; `fim` inclui o
-    dia inteiro (até 23:59:59). */
+    dia inteiro (até 23:59:59). Limites em horário LOCAL: sem fuso, o Postgres
+    lia `T00:00:00` como UTC e o dia "escorregava" 3h em Brasília. */
 export async function listarRegistrosPorPeriodo(inicio: string, fim: string): Promise<PontoInternoRegistro[]> {
-  const { data, error } = await supabase.from('ponto_interno_registros').select('*').gte('horario', `${inicio}T00:00:00`).lte('horario', `${fim}T23:59:59`).order('horario', { ascending: true });
+  const { data, error } = await supabaseGestor.from('ponto_interno_registros').select('*').gte('horario', new Date(`${inicio}T00:00:00`).toISOString()).lte('horario', new Date(`${fim}T23:59:59.999`).toISOString()).order('horario', { ascending: true });
   if (error) throw new Error(error.message);
   return data as PontoInternoRegistro[];
 }

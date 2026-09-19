@@ -87,12 +87,11 @@ export const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
       { to: '/roteiro', rotulo: 'Sala de Operações', Icone: ListChecks },
       { to: '/checklists', rotulo: 'Checklists', Icone: ClipboardCheck },
       { to: '/ponto', rotulo: 'Ponto de Chegada', Icone: Fingerprint },
-      // Ponto Eletrônico interno (2026-09-13) — tela própria, FORA do
-      // Layout (login separado, pensado pra tablet fixo — ver
-      // PontoInterno.tsx), então clicar aqui sai da sidebar de
-      // propósito. Ainda assim precisa aparecer em algum lugar pra não
-      // depender só de saber a URL de cor.
-      { to: '/ponto-interno', rotulo: 'Ponto Eletrônico', Icone: Clock },
+      // Ponto Interno (2026-09-19) — painel do gestor, dentro do Layout. O
+      // kiosk de bater ponto (login próprio, tablet fixo — ver PontoInterno.tsx)
+      // continua em /ponto-interno, FORA do Layout: abre pelo botão "Tela de
+      // bater ponto" do próprio painel.
+      { to: '/ponto-interno/equipe', rotulo: 'Ponto Interno', Icone: Clock },
     ],
   },
   {
