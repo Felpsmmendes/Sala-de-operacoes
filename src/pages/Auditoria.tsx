@@ -6,6 +6,7 @@ import { buscarChecklistPadrao, listarChecklistExtra } from '../lib/api/estoque'
 import { listarEventos } from '../lib/api/eventos';
 import { criarTarefa } from '../lib/api/tarefasAgenda';
 import { AlertaBanner } from '../components/AlertaBanner';
+import { carregarAlertaSatisfacaoNota } from '../lib/configAlertas';
 import { Badge } from '../components/Badge';
 import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { Cabecalho, Conteudo } from '../components/Layout';
@@ -123,16 +124,19 @@ export default function Auditoria() {
       nps_comentario: npsComentario || null,
     };
     // guarda o NPS ANTES de salvar — a tarefa de follow-up só é criada na
-    // transição pra "insatisfeito" (nota ≤4), nunca de novo a cada re-save
-    // da mesma auditoria (ex.: gestor volta só pra editar a descrição da
-    // avaria) — senão duplicaria tarefa toda vez que salvasse de novo.
-    const npsJaEraBaixo = atual?.nps_nota != null && atual.nps_nota <= 4;
+    // transição pra "insatisfeito" (nota ≤ limiar configurado em
+    // Configurações > Operacional, REVIEW_DECISOES_V2 Parte 14/16 P2),
+    // nunca de novo a cada re-save da mesma auditoria (ex.: gestor volta
+    // só pra editar a descrição da avaria) — senão duplicaria tarefa
+    // toda vez que salvasse de novo.
+    const limiarSatisfacao = carregarAlertaSatisfacaoNota();
+    const npsJaEraBaixo = atual?.nps_nota != null && atual.nps_nota <= limiarSatisfacao;
     try {
       await salvarAuditoria(eventoId, dados);
       await carregarBase();
       toast.sucesso('Auditoria salva.');
 
-      if (dados.nps_nota != null && dados.nps_nota <= 4 && !npsJaEraBaixo) {
+      if (dados.nps_nota != null && dados.nps_nota <= limiarSatisfacao && !npsJaEraBaixo) {
         const eventoInfo = eventoPorId.get(eventoId);
         try {
           await criarTarefa({
@@ -258,7 +262,11 @@ export default function Auditoria() {
         .slice(0, 2),
     [auditorias]
   );
-  // Avaliações realmente negativas (NPS 0-4, não os 5-6 "neutro-baixo" de
+  // Threshold configurável em Configurações > Operacional
+  // (REVIEW_DECISOES_V2 Parte 14/16, P2) — mesmo valor usado no
+  // gatilho de follow-up automático em `aoSalvar` acima.
+  const limiarSatisfacaoAlerta = carregarAlertaSatisfacaoNota();
+  // Avaliações realmente negativas (não os "neutro-baixo" de
   // `feedbacksNegativos` acima) nos últimos 30 dias — mesmo recorte do
   // Dashboard (`clientesInsatisfeitos`), só que local a esta tela
   // (2026-09-17, "topbar + notificações").
@@ -266,8 +274,8 @@ export default function Auditoria() {
     const limite = new Date();
     limite.setDate(limite.getDate() - 30);
     const limiteStr = limite.toISOString().slice(0, 10);
-    return auditorias.filter((a) => a.nps_nota != null && a.nps_nota <= 4 && a.criado_em >= limiteStr);
-  }, [auditorias]);
+    return auditorias.filter((a) => a.nps_nota != null && a.nps_nota <= limiarSatisfacaoAlerta && a.criado_em >= limiteStr);
+  }, [auditorias, limiarSatisfacaoAlerta]);
 
   return (
     <>
@@ -372,7 +380,7 @@ export default function Auditoria() {
                         </p>
                         <p className="mt-1 text-[12px] italic text-text-dim">"{a.nps_comentario}"</p>
                         <div className="mt-1.5 flex items-center justify-between gap-2">
-                          {a.nps_nota != null && a.nps_nota <= 4 ? (
+                          {a.nps_nota != null && a.nps_nota <= limiarSatisfacaoAlerta ? (
                             <span className="flex items-center gap-1.5 text-[11px] font-medium text-success">
                               <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-success" /> Follow-up criado
                             </span>

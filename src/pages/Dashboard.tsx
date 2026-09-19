@@ -28,6 +28,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Reveal } from '../components/ui/Reveal';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { useNotificacoes } from '../lib/NotificacoesContext';
+import { carregarAlertaSatisfacaoNota } from '../lib/configAlertas';
 import { toast } from '../lib/toast';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
 import { STATUS_EVENTO_INFO, corFunilPorIndice, formatarData, formatarMoeda } from '../lib/status';
@@ -273,15 +274,19 @@ export default function Dashboard() {
   // de "Após o Evento" (nota NPS 0-4), só os últimos 30 dias pra não
   // ressuscitar reclamação antiga pra sempre no topo do Dashboard.
   const eventoPorId = useMemo(() => new Map(eventos.map((e) => [e.id, e])), [eventos]);
+  // Threshold configurável em Configurações > Operacional (REVIEW_DECISOES_V2
+  // Parte 14/16, P2) — lido 1x por render, não precisa reagir a mudança
+  // ao vivo (só muda quando o gestor salva a config e a página recarrega).
+  const alertaSatisfacaoNota = carregarAlertaSatisfacaoNota();
   const clientesInsatisfeitos = useMemo(() => {
     const limite = new Date();
     limite.setDate(limite.getDate() - 30);
     const limiteStr = limite.toISOString().slice(0, 10);
     return auditorias
-      .filter((a) => a.nps_nota != null && a.nps_nota <= 4 && a.criado_em.slice(0, 10) >= limiteStr)
+      .filter((a) => a.nps_nota != null && a.nps_nota <= alertaSatisfacaoNota && a.criado_em.slice(0, 10) >= limiteStr)
       .map((a) => ({ auditoria: a, evento: eventoPorId.get(a.evento_id) ?? null }))
       .sort((a, b) => b.auditoria.criado_em.localeCompare(a.auditoria.criado_em));
-  }, [auditorias, eventoPorId]);
+  }, [auditorias, eventoPorId, alertaSatisfacaoNota]);
   const proximosEventos = useMemo(() => eventos.filter((e) => e.data_evento > hoje && e.status !== 'cancelado').slice(0, 6), [eventos, hoje]);
 
   const faturamentoMes = useMemo(() => contratos.filter((c) => c.data_evento.slice(0, 7) === mesAtual && c.status !== 'cancelado').reduce((s, c) => s + c.valor_total, 0), [contratos, mesAtual]);
