@@ -579,6 +579,36 @@ export type Database = {
         Update: { id?: string; evento_id?: string; veiculo_id?: string; criado_em?: string };
         Relationships: [];
       };
+      disponibilidade_equipe: {
+        Row: { id: string; membro_id: string; data: string; disponivel: boolean; observacao: string | null; criado_em: string };
+        Insert: { id?: string; membro_id: string; data: string; disponivel?: boolean; observacao?: string | null; criado_em?: string };
+        Update: { id?: string; membro_id?: string; data?: string; disponivel?: boolean; observacao?: string | null; criado_em?: string };
+        Relationships: [];
+      };
+      checklist_templates: {
+        Row: { id: string; nome: string; descricao: string | null; criado_em: string };
+        Insert: { id?: string; nome: string; descricao?: string | null; criado_em?: string };
+        Update: { id?: string; nome?: string; descricao?: string | null; criado_em?: string };
+        Relationships: [];
+      };
+      checklist_template_itens: {
+        Row: { id: string; template_id: string; descricao: string; quantidade: number; ordem: number };
+        Insert: { id?: string; template_id: string; descricao: string; quantidade?: number; ordem?: number };
+        Update: { id?: string; template_id?: string; descricao?: string; quantidade?: number; ordem?: number };
+        Relationships: [];
+      };
+      checklist_evento: {
+        Row: { id: string; evento_id: string; template_id: string | null; nome: string; criado_em: string };
+        Insert: { id?: string; evento_id: string; template_id?: string | null; nome: string; criado_em?: string };
+        Update: { id?: string; evento_id?: string; template_id?: string | null; nome?: string; criado_em?: string };
+        Relationships: [];
+      };
+      checklist_evento_itens: {
+        Row: { id: string; checklist_evento_id: string; descricao: string; quantidade: number; concluido: boolean; concluido_em: string | null; ordem: number };
+        Insert: { id?: string; checklist_evento_id: string; descricao: string; quantidade?: number; concluido?: boolean; concluido_em?: string | null; ordem?: number };
+        Update: { id?: string; checklist_evento_id?: string; descricao?: string; quantidade?: number; concluido?: boolean; concluido_em?: string | null; ordem?: number };
+        Relationships: [];
+      };
       ponto_registros: {
         Row: {
           id: string;

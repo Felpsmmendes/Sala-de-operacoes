@@ -121,7 +121,7 @@ export default function Ponto() {
 
   return (
     <>
-      <Cabecalho titulo="Confirmação de Chegada" subtitulo="Quem já chegou em cada evento, por um link público — sem senha nem localização por GPS. (O ponto oficial dos funcionários internos é outra tela: Ponto Eletrônico.)" />
+      <Cabecalho titulo="Ponto de Chegada" subtitulo="Quem já chegou em cada evento, por um link público — sem senha nem localização por GPS. (O ponto oficial dos funcionários internos é outra tela: Ponto Eletrônico.)" />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Users} rotulo="Escalados no evento" valor={String(presenca.length)} legenda={eventoAtual ? formatarData(eventoAtual.data_evento) : '—'} categoria="pessoas" />

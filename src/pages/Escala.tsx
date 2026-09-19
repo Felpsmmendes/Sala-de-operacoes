@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { listarEventos } from '../lib/api/eventos';
 import { atualizarChecklistEscala, atualizarStatusEscala, convocarMembro, listarEscalasDosEventos, removerEscala } from '../lib/api/escalas';
-import { criarMembro, inativarMembro, listarEquipe } from '../lib/api/equipe';
+import { criarMembro, inativarMembro, listarDisponibilidade, listarEquipe, salvarDisponibilidade } from '../lib/api/equipe';
 import { listarOrcamentoIdsComHoraAdicional } from '../lib/api/orcamentos';
 import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
@@ -29,7 +29,7 @@ import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { FUNCAO_EQUIPE_ROTULO, STATUS_ESCALA_INFO, formatarData, formatarMoeda } from '../lib/status';
 import { exportarCsv } from '../lib/exportarCsv';
-import type { EscalaComMembro, EventoComLead, MembroEquipe, NovoMembroEquipe, StatusEscala } from '../lib/types';
+import type { DisponibilidadeMembro, EscalaComMembro, EventoComLead, MembroEquipe, NovoMembroEquipe, StatusEscala } from '../lib/types';
 
 /** Sem `.catch` toda ação vira rejeição de promise silenciosa quando o
     banco rejeita (ver lição documentada no Estoque). */
@@ -54,6 +54,11 @@ export default function Escala() {
   // o objeto) pra nunca mostrar um status desatualizado depois de uma ação
   // dentro do próprio drawer (ex.: mudar status recarrega `escalas`).
   const [escaladoAbertoId, setEscaladoAbertoId] = useState<string | null>(null);
+  // Disponibilidade do freelancer aberto no drawer (2026-09-19, SPEC_CAMADA2
+  // 2D) — janela fixa dos próximos 14 dias a partir de hoje, buscada de novo
+  // toda vez que MUDA de membro (não recarrega ao trocar status/checklist
+  // do mesmo drawer aberto).
+  const [disponibilidadeMembro, setDisponibilidadeMembro] = useState<DisponibilidadeMembro[]>([]);
   // filtro rápido de período (pedido do usuário, 2026-09-09) — atalho, não
   // um seletor de data manual.
   const [filtroPeriodo, setFiltroPeriodo] = useState<'todos' | '7d' | '30d'>('todos');
@@ -229,9 +234,67 @@ export default function Escala() {
     return esc && evento ? { escala: esc, evento } : null;
   }, [escaladoAbertoId, escalas, eventos]);
 
+  // Janela fixa dos próximos 14 dias (2026-09-19, SPEC_CAMADA2 2D) — mesma
+  // janela pra buscar do banco e pra desenhar o mini-calendário abaixo.
+  const janela14Dias = useMemo(() => {
+    const hoje = new Date();
+    return Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(hoje);
+      d.setDate(d.getDate() + i);
+      return d.toISOString().slice(0, 10);
+    });
+  }, []);
+
+  useEffect(() => {
+    const membroId = escaladoAberto?.escala.membro_id;
+    if (!membroId) {
+      setDisponibilidadeMembro([]);
+      return;
+    }
+    listarDisponibilidade(membroId, janela14Dias[0], janela14Dias[janela14Dias.length - 1])
+      .then(setDisponibilidadeMembro)
+      .catch(aoFalhar);
+  }, [escaladoAberto?.escala.membro_id, janela14Dias]);
+
+  function aoAlternarDisponibilidade(dataStr: string) {
+    const membroId = escaladoAberto?.escala.membro_id;
+    if (!membroId) return;
+    const atual = disponibilidadeMembro.find((d) => d.data === dataStr);
+    const novoValor = !(atual?.disponivel ?? true);
+    setDisponibilidadeMembro((lista) => {
+      const semEssaData = lista.filter((d) => d.data !== dataStr);
+      return [...semEssaData, { id: atual?.id ?? dataStr, membro_id: membroId, data: dataStr, disponivel: novoValor, observacao: atual?.observacao ?? null, criado_em: atual?.criado_em ?? new Date().toISOString() }];
+    });
+    salvarDisponibilidade(membroId, dataStr, novoValor).catch((e) => {
+      aoFalhar(e);
+      listarDisponibilidade(membroId, janela14Dias[0], janela14Dias[janela14Dias.length - 1]).then(setDisponibilidadeMembro);
+    });
+  }
+
+  // Histórico agregado do freelancer (2026-09-19, SPEC_CAMADA2 2D-2, sem
+  // banco novo) — sobre as MESMAS `escalas` já carregadas pra tela inteira
+  // (todos os eventos não cancelados), filtradas pelo membro do drawer.
+  const historicoMembro = useMemo(() => {
+    const membroId = escaladoAberto?.escala.membro_id;
+    if (!membroId) return null;
+    const doMembro = escalas.filter((e) => e.membro_id === membroId);
+    const confirmados = doMembro.filter((e) => e.status === 'confirmado').length;
+    const ultimos3 = doMembro
+      .map((e) => ({ escala: e, evento: eventos.find((ev) => ev.id === e.evento_id) }))
+      .filter((x): x is { escala: EscalaComMembro; evento: EventoComLead } => !!x.evento)
+      .sort((a, b) => b.evento.data_evento.localeCompare(a.evento.data_evento))
+      .slice(0, 3);
+    return {
+      eventosParticipados: doMembro.length,
+      somaDiarias: doMembro.reduce((s, e) => s + e.diaria, 0),
+      taxaConfirmacao: doMembro.length > 0 ? (confirmados / doMembro.length) * 100 : null,
+      ultimos3,
+    };
+  }, [escaladoAberto?.escala.membro_id, escalas, eventos]);
+
   return (
     <>
-      <Cabecalho titulo="Equipe do Evento" subtitulo="Convocação de freelancers, checklist de uniforme e equipamento de segurança, e simulador de hora extra." />
+      <Cabecalho titulo="Equipe & Escalas" subtitulo="Convocação de freelancers, checklist de uniforme e equipamento de segurança, e simulador de hora extra." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Users} rotulo="Equipe cadastrada" valor={String(equipe.length)} legenda="Freelancers ativos" categoria="pessoas" />
@@ -532,6 +595,69 @@ export default function Escala() {
               <Checkbox rotulo="Traje OK" categoria="pessoas" marcado={escaladoAberto.escala.traje_ok} onMudar={(v) => aoMudarChecklist(escaladoAberto.escala.id, 'traje_ok', v)} />
               <Checkbox rotulo="EPI OK" categoria="pessoas" marcado={escaladoAberto.escala.epi_ok} onMudar={(v) => aoMudarChecklist(escaladoAberto.escala.id, 'epi_ok', v)} />
             </div>
+
+            {/* Mini-calendário de disponibilidade (2026-09-19, SPEC_CAMADA2
+                2D) — 14 dias a partir de hoje, clicar alterna
+                disponível/indisponível. Sem registro = disponível
+                (default), então o dia só fica marcado quando o gestor
+                mexeu nele. */}
+            <div className="border-t border-line pt-3">
+              <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Disponibilidade (próximos 14 dias)</p>
+              <div className="grid grid-cols-7 gap-1.5">
+                {janela14Dias.map((dataStr) => {
+                  const registro = disponibilidadeMembro.find((d) => d.data === dataStr);
+                  const disponivel = registro?.disponivel ?? true;
+                  const d = new Date(`${dataStr}T00:00:00`);
+                  return (
+                    <button
+                      key={dataStr}
+                      type="button"
+                      title={`${d.toLocaleDateString('pt-BR')} — ${disponivel ? 'Disponível' : 'Indisponível'} (clique pra alternar)`}
+                      onClick={() => aoAlternarDisponibilidade(dataStr)}
+                      className={`flex flex-col items-center rounded-sm border px-1 py-1.5 text-[10.5px] font-medium transition-colors ${
+                        disponivel ? 'border-line text-text-dim hover:bg-raised' : 'border-danger/40 bg-danger/10 text-danger'
+                      }`}
+                    >
+                      <span className="text-[9px] uppercase text-text-faint">{d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</span>
+                      <span>{d.getDate()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Histórico agregado (2D-2, sem banco novo) — todos os eventos
+                (não cancelados) já carregados nesta tela, filtrados por
+                este membro. */}
+            {historicoMembro && historicoMembro.eventosParticipados > 0 && (
+              <div className="border-t border-line pt-3">
+                <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Histórico</p>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="font-mono text-[16px] font-bold text-text">{historicoMembro.eventosParticipados}</p>
+                    <p className="text-[10.5px] text-text-faint">eventos</p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[13px] font-bold text-text">{formatarMoeda(historicoMembro.somaDiarias)}</p>
+                    <p className="text-[10.5px] text-text-faint">em diárias</p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[16px] font-bold text-text">{historicoMembro.taxaConfirmacao != null ? `${historicoMembro.taxaConfirmacao.toFixed(0)}%` : '—'}</p>
+                    <p className="text-[10.5px] text-text-faint">confirmação</p>
+                  </div>
+                </div>
+                {historicoMembro.ultimos3.length > 0 && (
+                  <div className="mt-2 flex flex-col gap-1">
+                    {historicoMembro.ultimos3.map(({ escala, evento }) => (
+                      <div key={escala.id} className="flex items-center justify-between text-[11.5px] text-text-dim">
+                        <span>{formatarData(evento.data_evento)} — {evento.contrato?.lead?.nome ?? 'sem nome'}</span>
+                        <Badge tom={STATUS_ESCALA_INFO[escala.status].tom} texto={STATUS_ESCALA_INFO[escala.status].rotulo} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-col gap-2 border-t border-line pt-3">
               <button

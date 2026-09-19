@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   Calendar,
   ChevronDown,
@@ -8,15 +9,19 @@ import {
   Filter,
   Fingerprint,
   LayoutDashboard,
+  LineChart,
   Link2,
   ListChecks,
   Menu,
   Moon,
   Package,
+  PieChart,
   Plus,
   Receipt,
   Search,
   Sun,
+  TrendingDown,
+  TrendingUp,
   Truck,
   User,
   Users,
@@ -39,64 +44,83 @@ export type ItemNav = { to: string; rotulo: string; Icone: typeof LayoutDashboar
 const CHAVE_SIDEBAR_COLAPSADA = 'emcena_sidebar_colapsada';
 
 /* -- Painel fica sozinho no topo, fora dos núcleos — é a tela-lar ("/"),
-   não faz sentido enterrada dentro de um núcleo lá embaixo. */
-const PAINEL: ItemNav = { to: '/', rotulo: 'Sala de Operações', Icone: LayoutDashboard };
+   não faz sentido enterrada dentro de um núcleo lá embaixo. Rotulo
+   "Dashboard" (2026-09-19, SPEC_CAMADA1) — antes era "Sala de
+   Operações", nome que migrou pro núcleo de Operação (`/roteiro`, ver
+   NUCLEOS abaixo) pra não ter dois itens de menu com o mesmo nome. */
+const PAINEL: ItemNav = { to: '/', rotulo: 'Dashboard', Icone: LayoutDashboard };
 
 /* -- Rotina Diária (2026-09-19, "rotina diária") — fica junto do Painel,
    fora dos núcleos: é a tela de abertura do dia, não pertence a um
    núcleo operacional específico. -- */
 const ROTINA: ItemNav = { to: '/rotina', rotulo: 'Rotina Diária', Icone: ClipboardList };
 
-/* -- núcleos operacionais (ver PRD, seção 3), na ordem do fluxo real do
-   negócio. Ícone e texto SEMPRE neutros (prompt master, seção 2.1/3: "cor
-   do núcleo NÃO aparece em ícones da sidebar") — só o item ATIVO ganha a
-   cor de marca (âmbar), nunca a cor do módulo. */
+/* -- núcleos operacionais (2026-09-19, SPEC_CAMADA1_REORGANIZACAO —
+   nomes mais curtos, agrupamento por fluxo real do negócio em vez de
+   "Comercial & Cliente"/"Planejamento & Pré-Produção" etc.). Ícone e
+   texto SEMPRE neutros (prompt master, seção 2.1/3: "cor do núcleo NÃO
+   aparece em ícones da sidebar") — só o item ATIVO ganha a cor de marca
+   (âmbar), nunca a cor do módulo. */
 export const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
   {
-    titulo: 'Comercial & Cliente',
+    titulo: 'Comercial',
     itens: [
       { to: '/crm', rotulo: 'CRM & Pipeline', Icone: Filter },
-      { to: '/orcamentos', rotulo: 'Gerador de Orçamentos', Icone: Receipt },
+      { to: '/orcamentos', rotulo: 'Orçamentos', Icone: Receipt },
       { to: '/contratos', rotulo: 'Contratos', Icone: ClipboardCheck },
-      { to: '/portal-cliente', rotulo: 'Portal do Cliente', Icone: Link2 },
     ],
   },
   {
-    titulo: 'Planejamento & Pré-Produção',
+    titulo: 'Planejamento',
     itens: [
-      { to: '/agenda', rotulo: 'Agenda Operacional', Icone: Calendar },
-      { to: '/escala', rotulo: 'Equipe do Evento', Icone: Users },
+      { to: '/agenda', rotulo: 'Agenda', Icone: Calendar },
+      { to: '/escala', rotulo: 'Equipe & Escalas', Icone: Users },
       { to: '/estoque', rotulo: 'Estoque', Icone: Package },
-      { to: '/logistica', rotulo: 'Frota e Entregas', Icone: Truck },
+      { to: '/logistica', rotulo: 'Logística', Icone: Truck },
     ],
   },
   {
-    titulo: 'Execução em Tempo Real',
+    titulo: 'Operação',
     itens: [
-      { to: '/roteiro', rotulo: 'Roteiro do Evento', Icone: ListChecks },
-      { to: '/ponto', rotulo: 'Confirmação de Chegada', Icone: Fingerprint },
+      { to: '/roteiro', rotulo: 'Sala de Operações', Icone: ListChecks },
+      { to: '/checklists', rotulo: 'Checklists', Icone: ClipboardCheck },
+      { to: '/ponto', rotulo: 'Ponto de Chegada', Icone: Fingerprint },
       // Ponto Eletrônico interno (2026-09-13) — tela própria, FORA do
       // Layout (login separado, pensado pra tablet fixo — ver
       // PontoInterno.tsx), então clicar aqui sai da sidebar de
       // propósito. Ainda assim precisa aparecer em algum lugar pra não
       // depender só de saber a URL de cor.
-      { to: '/ponto-interno', rotulo: 'Ponto Eletrônico (Interno)', Icone: Clock },
+      { to: '/ponto-interno', rotulo: 'Ponto Eletrônico', Icone: Clock },
     ],
   },
   {
-    titulo: 'Encerramento & Controladoria',
+    titulo: 'Controladoria',
     itens: [
-      { to: '/auditoria', rotulo: 'Após o Evento', Icone: ClipboardCheck },
-      { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
+      { to: '/financeiro', rotulo: 'Financeiro', Icone: Wallet },
+      { to: '/financeiro/receber', rotulo: 'Contas a Receber', Icone: TrendingUp },
+      { to: '/financeiro/pagar', rotulo: 'Contas a Pagar', Icone: TrendingDown },
+      { to: '/financeiro/dre', rotulo: 'DRE', Icone: PieChart },
       { to: '/fechamento', rotulo: 'Fechamento Mensal', Icone: BarChart3 },
+      { to: '/relatorios', rotulo: 'Relatórios', Icone: LineChart },
+      { to: '/auditoria', rotulo: 'Pós-Evento', Icone: ClipboardCheck },
     ],
+  },
+  {
+    titulo: 'Clientes',
+    itens: [{ to: '/portal-cliente', rotulo: 'Portal do Cliente', Icone: Link2 }],
   },
 ];
 
 /** Lista achatada de toda tela navegável (Painel + núcleos +
     Configurações) — fonte única reaproveitada pelo CommandPalette
     (Cmd/Ctrl+K), pra nunca ficar desalinhada da sidebar de verdade. */
-export const ITENS_BUSCAVEIS: ItemNav[] = [PAINEL, ROTINA, ...NUCLEOS.flatMap((n) => n.itens), { to: '/configuracoes', rotulo: 'Configurações', Icone: User }];
+export const ITENS_BUSCAVEIS: ItemNav[] = [
+  PAINEL,
+  ROTINA,
+  ...NUCLEOS.flatMap((n) => n.itens),
+  { to: '/configuracoes', rotulo: 'Configurações', Icone: User },
+  { to: '/status', rotulo: 'Status do Sistema', Icone: Activity },
+];
 
 /* -- barra inferior mobile (2026-09-19, "reorganização + navegação
    mobile"): só os 4 mais usados ficam fixos — os outros 13 módulos
@@ -105,9 +129,9 @@ export const ITENS_BUSCAVEIS: ItemNav[] = [PAINEL, ROTINA, ...NUCLEOS.flatMap((n
    de ~55px em 390px de tela) e ainda deixavam Configurações inacessível
    no mobile; 4 + Menu resolve os dois problemas de uma vez. -- */
 const BOTTOMBAR: ItemNav[] = [
-  { to: '/', rotulo: 'Painel', Icone: LayoutDashboard },
+  { to: '/', rotulo: 'Dashboard', Icone: LayoutDashboard },
+  { to: '/rotina', rotulo: 'Rotina', Icone: ClipboardList },
   { to: '/agenda', rotulo: 'Agenda', Icone: Calendar },
-  { to: '/roteiro', rotulo: 'Roteiro', Icone: ListChecks },
   { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
 ];
 
@@ -319,6 +343,15 @@ export default function Layout() {
               Operação Normal
             </div>
           )}
+          <NavLink
+            to="/status"
+            title={colapsada ? 'Status do Sistema' : undefined}
+            className={({ isActive }) => `nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'is-active' : ''}`}
+          >
+            <Activity className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
+            {!colapsada && <span className="truncate">Status</span>}
+            {colapsada && <TooltipColapsado texto="Status do Sistema" />}
+          </NavLink>
           <NavLink
             to="/configuracoes"
             title={colapsada ? 'Configurações' : undefined}

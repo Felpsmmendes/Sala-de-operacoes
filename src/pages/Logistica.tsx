@@ -289,7 +289,7 @@ export default function Logistica() {
 
   return (
     <>
-      <Cabecalho titulo="Frota e Entregas" subtitulo="Cadastro de veículos e regiões, calculadora de frete e compras a caminho." />
+      <Cabecalho titulo="Logística" subtitulo="Cadastro de veículos e regiões, calculadora de frete e compras a caminho." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Truck} rotulo="Veículos cadastrados" valor={String(veiculos.length)} legenda="Frota disponível" categoria="operacao" />

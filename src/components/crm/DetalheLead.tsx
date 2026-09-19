@@ -1,4 +1,6 @@
+import { ExternalLink } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { FunilLead, Lead, NovoLead } from '../../lib/types';
 import { Badge } from '../Badge';
 import { funilDoLead, formatarMoeda, formatarData } from '../../lib/status';
@@ -60,7 +62,15 @@ export function DetalheLead({
     <div>
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-base font-semibold text-text">{lead.nome}</h3>
-        <Badge tom={info.tom} texto={info.rotulo} />
+        <div className="flex items-center gap-2">
+          <Badge tom={info.tom} texto={info.rotulo} />
+          {/* Página completa (2026-09-19, SPEC_CAMADA2 2A) — timeline de
+              interações + orçamentos/contrato vinculados, que este painel
+              rápido de edição não mostra. */}
+          <Link to={`/crm/leads/${lead.id}`} title="Ver página completa do lead" className="text-text-faint hover:text-accent">
+            <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
+          </Link>
+        </div>
       </div>
 
       {/* via alternativa a arrastar o card no Kanban — achado da auditoria

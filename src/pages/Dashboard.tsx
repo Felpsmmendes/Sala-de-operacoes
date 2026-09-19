@@ -461,7 +461,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Cabecalho titulo="Sala de Operações" subtitulo="Visão geral do negócio + monitor ao vivo dos eventos de hoje e cobertura de equipe." />
+      <Cabecalho titulo="Dashboard" subtitulo="Visão geral do negócio + monitor ao vivo dos eventos de hoje e cobertura de equipe." />
       <Conteudo>
         {/* banner "evento ao vivo" (checklist externo, 2026-09-13) — só
             aparece quando tem evento rolando hoje, pra chamar atenção pro
@@ -498,7 +498,9 @@ export default function Dashboard() {
               {eventosComPendencia.map(({ ev, pendencias }) => (
                 <div key={ev.id} className="flex flex-wrap items-center gap-2 py-1 text-[12.5px]">
                   <span className="flex-shrink-0 font-mono text-text-faint">{formatarData(ev.data_evento)}</span>
-                  <span className="min-w-0 truncate font-medium text-text">{ev.contrato?.lead?.nome ?? 'Evento sem nome'}</span>
+                  <Link to={`/eventos/${ev.id}`} className="min-w-0 truncate font-medium text-text hover:text-accent hover:underline">
+                    {ev.contrato?.lead?.nome ?? 'Evento sem nome'}
+                  </Link>
                   <span className="flex-shrink-0 text-text-faint">—</span>
                   <span className="min-w-0 truncate text-danger">{pendencias.join(', ')}</span>
                   <div className="ml-auto flex flex-shrink-0 gap-2">
@@ -697,7 +699,9 @@ export default function Dashboard() {
                     <article key={ev.id} className="rounded-lg border border-line bg-input p-4">
                       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <strong className="block truncate text-[15px] text-text">{ev.contrato?.lead?.nome ?? 'Evento sem nome'}</strong>
+                          <Link to={`/eventos/${ev.id}`} className="block truncate text-[15px] font-semibold text-text hover:text-accent hover:underline">
+                            {ev.contrato?.lead?.nome ?? 'Evento sem nome'}
+                          </Link>
                           <p className="truncate text-[12.5px] text-text-dim" title={ev.local || 'local não informado'}>
                             {ev.local || 'local não informado'}
                           </p>

@@ -17,15 +17,22 @@ const Agenda = lazy(() => import('./pages/Agenda'));
 const Auditoria = lazy(() => import('./pages/Auditoria'));
 const Configuracoes = lazy(() => import('./pages/Configuracoes'));
 const ConfirmarEscala = lazy(() => import('./pages/ConfirmarEscala'));
+const ChecklistTemplates = lazy(() => import('./pages/ChecklistTemplates'));
+const Checklists = lazy(() => import('./pages/Checklists'));
+const ContasPagar = lazy(() => import('./pages/ContasPagar'));
+const ContasReceber = lazy(() => import('./pages/ContasReceber'));
 const Contratos = lazy(() => import('./pages/Contratos'));
 const Crm = lazy(() => import('./pages/Crm'));
 const CueSheet = lazy(() => import('./pages/CueSheet'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DetalheEvento = lazy(() => import('./pages/DetalheEvento'));
+const LeadDetalhe = lazy(() => import('./pages/LeadDetalhe'));
+const Dre = lazy(() => import('./pages/Dre'));
 const DrinksPublico = lazy(() => import('./pages/DrinksPublico'));
 const Escala = lazy(() => import('./pages/Escala'));
 const Estoque = lazy(() => import('./pages/Estoque'));
 const Fechamento = lazy(() => import('./pages/Fechamento'));
-const Financeiro = lazy(() => import('./pages/Financeiro'));
+const FinanceiroVisaoGeral = lazy(() => import('./pages/FinanceiroVisaoGeral'));
 const Login = lazy(() => import('./pages/Login'));
 const Logistica = lazy(() => import('./pages/Logistica'));
 const NaoEncontrado = lazy(() => import('./pages/NaoEncontrado'));
@@ -36,7 +43,9 @@ const PontoPublico = lazy(() => import('./pages/PontoPublico'));
 const PortalClienteAdmin = lazy(() => import('./pages/PortalClienteAdmin'));
 const PortalClientePublico = lazy(() => import('./pages/PortalClientePublico'));
 const RedefinirSenha = lazy(() => import('./pages/RedefinirSenha'));
+const Relatorios = lazy(() => import('./pages/Relatorios'));
 const RotinaDiaria = lazy(() => import('./pages/RotinaDiaria'));
+const StatusSistema = lazy(() => import('./pages/StatusSistema'));
 
 /** Fallback do Suspense mais externo — pega o carregamento do chunk de
     QUALQUER rota de primeiro nível (2026-09-14, trocando o "Carregando…"
@@ -113,6 +122,7 @@ export default function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/rotina" element={<RotinaDiaria />} />
                 <Route path="/crm" element={<Crm />} />
+                <Route path="/crm/leads/:id" element={<LeadDetalhe />} />
                 <Route path="/orcamentos" element={<Orcamentos />} />
                 <Route path="/contratos" element={<Contratos />} />
                 <Route path="/portal-cliente" element={<PortalClienteAdmin />} />
@@ -123,9 +133,20 @@ export default function App() {
                 <Route path="/roteiro" element={<CueSheet />} />
                 <Route path="/ponto" element={<Ponto />} />
                 <Route path="/auditoria" element={<Auditoria />} />
-                <Route path="/financeiro" element={<Financeiro />} />
+                {/* Financeiro em 4 sub-rotas (2026-09-19, SPEC_CAMADA2 2E) —
+                    `/financeiro` continua sendo a Visão Geral (alias),
+                    nunca quebra link/atalho antigo pra essa URL. */}
+                <Route path="/financeiro" element={<FinanceiroVisaoGeral />} />
+                <Route path="/financeiro/receber" element={<ContasReceber />} />
+                <Route path="/financeiro/pagar" element={<ContasPagar />} />
+                <Route path="/financeiro/dre" element={<Dre />} />
                 <Route path="/fechamento" element={<Fechamento />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
+                <Route path="/status" element={<StatusSistema />} />
+                <Route path="/relatorios" element={<Relatorios />} />
+                <Route path="/checklists" element={<Checklists />} />
+                <Route path="/checklists/templates" element={<ChecklistTemplates />} />
+                <Route path="/eventos/:id" element={<DetalheEvento />} />
               </Route>
 
               {/* sempre por último — qualquer rota que não bateu em nada acima */}

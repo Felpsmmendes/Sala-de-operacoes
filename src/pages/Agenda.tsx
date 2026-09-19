@@ -230,7 +230,9 @@ export default function Agenda() {
                     {proximos.map((ev) => (
                       <div key={ev.id} className="rounded-sm border border-line bg-input p-3">
                         <div className="mb-1.5 flex items-start justify-between gap-2">
-                          <strong className="text-[13px] text-text">{ev.contrato?.lead?.nome ?? '—'}</strong>
+                          <Link to={`/eventos/${ev.id}`} className="text-[13px] font-semibold text-text hover:text-accent hover:underline">
+                            {ev.contrato?.lead?.nome ?? '—'}
+                          </Link>
                           <Badge tom={STATUS_EVENTO_INFO[ev.status].tom} texto={STATUS_EVENTO_INFO[ev.status].rotulo} />
                         </div>
                         <p className="mb-2 text-[11.5px] text-text-dim">

@@ -207,6 +207,18 @@ export type MembroEquipe = {
 
 export type NovoMembroEquipe = Omit<MembroEquipe, 'id'>;
 
+/** 1 linha por dia marcado (2026-09-19, ver migration_036) — dia sem
+    linha é disponível por padrão; só existe registro quando o gestor
+    mexeu explicitamente naquele dia. */
+export type DisponibilidadeMembro = {
+  id: string;
+  membro_id: string;
+  data: string;
+  disponivel: boolean;
+  observacao: string | null;
+  criado_em: string;
+};
+
 export type StatusEscala = 'convocado' | 'confirmado' | 'recusado';
 
 export type Escala = {
@@ -281,6 +293,49 @@ export type ChecklistPadraoItem = {
   quantidade: number;
   unidade: string | null;
 };
+
+/* -------------------- Checklists como módulo (2026-09-19, SPEC_CAMADA2 2F,
+   ver migration_037) — checklist de PROCESSO (montagem/desmontagem/
+   procedimento), diferente do checklist de CARGA acima (ligado a
+   serviço/contrato pra saber O QUE LEVAR). Template + itens do template,
+   instância aplicada num evento + itens da instância. -------------------- */
+
+export type ChecklistTemplate = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  criado_em: string;
+};
+
+export type ChecklistTemplateItem = {
+  id: string;
+  template_id: string;
+  descricao: string;
+  quantidade: number;
+  ordem: number;
+};
+
+export type ChecklistTemplateCompleto = ChecklistTemplate & { itens: ChecklistTemplateItem[] };
+
+export type ChecklistEvento = {
+  id: string;
+  evento_id: string;
+  template_id: string | null;
+  nome: string;
+  criado_em: string;
+};
+
+export type ChecklistEventoItem = {
+  id: string;
+  checklist_evento_id: string;
+  descricao: string;
+  quantidade: number;
+  concluido: boolean;
+  concluido_em: string | null;
+  ordem: number;
+};
+
+export type ChecklistEventoCompleto = ChecklistEvento & { itens: ChecklistEventoItem[] };
 
 /* -------------------- Núcleo 3: Execução em Tempo Real -------------------- */
 

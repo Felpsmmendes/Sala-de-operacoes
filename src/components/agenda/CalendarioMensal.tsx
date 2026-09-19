@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Lock, Plus, Trash2, User } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CATEGORIA_BLOQUEIO_ROTULO, STATUS_EVENTO_INFO, formatarData } from '../../lib/status';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -305,7 +306,9 @@ export function CalendarioMensal({
             <div className="mb-3 flex flex-col gap-2">
               {eventosDoDia.map((ev) => (
                 <div key={ev.id} className="rounded-sm border border-line bg-input p-2.5">
-                  <strong className="block text-[13px] text-text">{ev.contrato?.lead?.nome ?? '—'}</strong>
+                  <Link to={`/eventos/${ev.id}`} className="block text-[13px] font-semibold text-text hover:text-accent hover:underline">
+                    {ev.contrato?.lead?.nome ?? '—'}
+                  </Link>
                   <span className="text-[11.5px] text-text-dim">{ev.local || 'Local não informado'}</span>
                 </div>
               ))}

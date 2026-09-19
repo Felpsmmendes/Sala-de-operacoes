@@ -1,14 +1,17 @@
-import { AlertTriangle, Calculator, CheckCircle2, ClipboardList, Link2, Package, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, Calculator, CheckCircle2, ClipboardList, Link2, Package, ShoppingCart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { diasAteEvento, listarContratos } from '../lib/api/contratos';
 import {
+  cancelarCompra,
   criarCompra,
   criarItem,
+  definirDataChegadaCompra,
   excluirItem,
   listarCompras,
   listarDescricoesChecklistNaoVinculadas,
   listarItens,
   listarMovimentos,
+  receberCompra,
   registrarMovimento,
   vincularDescricaoAoEstoque,
   type CompraComItem,
@@ -56,10 +59,14 @@ function ehZerado(item: ItemEstoque) {
 
 type FiltroSituacao = 'todos' | 'zerados' | 'criticos' | 'saudaveis';
 
-// "Itens" virou "avancado" (pedido do usuário, 2026-09-09): cadastro de
-// produto por produto e calculadora preditiva pausados por enquanto —
-// código mantido, só saiu da aba principal (que agora é "Checklists").
-type Aba = 'checklists' | 'avancado' | 'avarias' | 'vinculos';
+// Abas (2026-09-19, SPEC_CAMADA2 2C — "Estoque como módulo"): "avancado"
+// voltou a se chamar "Itens" (nome original, ver histórico) e ganhou
+// duas vizinhas novas — Movimentações (histórico completo, antes só via
+// drawer por item) e Compras (antes só existia em Logística; aqui é a
+// MESMA função `listarCompras`/`receberCompra`/`cancelarCompra`, nunca
+// uma segunda fonte de verdade). Checklists/Avarias/Vínculos ficam como
+// já eram — o documento de reorganização não pedia pra tirar nenhuma.
+type Aba = 'checklists' | 'itens' | 'movimentacoes' | 'compras' | 'avarias' | 'vinculos';
 
 /** Toda ação de uma linha (excluir/receber/cancelar) precisa tratar erro —
     sem isso, uma restrição do banco (ex.: item com movimentação não pode
@@ -93,6 +100,12 @@ export default function Estoque() {
   const [historicoItem, setHistoricoItem] = useState<ItemEstoque | null>(null);
   const [historicoMovimentos, setHistoricoMovimentos] = useState<MovimentoComItem[]>([]);
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
+  // Movimentações (aba nova, SPEC_CAMADA2 2C) — carregado sob demanda no
+  // primeiro clique na aba, não junto com o resto (histórico completo de
+  // TODO item não tem uso na maior parte do tempo, mesmo raciocínio do
+  // drawer por item acima).
+  const [movimentos, setMovimentos] = useState<MovimentoComItem[] | null>(null);
+  const [carregandoMovimentos, setCarregandoMovimentos] = useState(false);
   const [convidadosCalc, setConvidadosCalc] = useState('');
   // Seletor de evento (REVIEW_DECISOES_V2, Parte 7/16, P2) — antes só
   // dava pra digitar um número solto de convidados; escolher um evento
@@ -197,6 +210,19 @@ export default function Estoque() {
     }
   }
 
+  function aoAbrirAbaMovimentacoes() {
+    setAba('movimentacoes');
+    if (movimentos != null || carregandoMovimentos) return;
+    setCarregandoMovimentos(true);
+    listarMovimentos()
+      .then(setMovimentos)
+      .catch((e) => {
+        aoFalhar(e);
+        setMovimentos([]);
+      })
+      .finally(() => setCarregandoMovimentos(false));
+  }
+
   async function aoAbrirHistorico(item: ItemEstoque) {
     setHistoricoItem(item);
     setCarregandoHistorico(true);
@@ -279,7 +305,7 @@ export default function Estoque() {
 
   return (
     <>
-      <Cabecalho titulo="Estoque" subtitulo="Checklist de carga por evento — cadastro de itens e calculadora ficam em Avançado." />
+      <Cabecalho titulo="Estoque" subtitulo="Checklist de carga por evento, cadastro de itens, movimentações e compras do galpão." />
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Package} rotulo="Itens cadastrados" valor={String(itens.length)} legenda="No galpão" categoria="operacao" />
@@ -309,7 +335,7 @@ export default function Estoque() {
                   type="button"
                   onClick={() => {
                     setFiltroSituacao(f);
-                    setAba('avancado');
+                    setAba('itens');
                   }}
                   className={`flex flex-col items-center gap-0.5 rounded-md border px-3 py-2.5 transition-colors hover:border-line-strong ${cor}`}
                 >
@@ -405,7 +431,9 @@ export default function Estoque() {
           {(
             [
               { id: 'checklists', rotulo: 'Checklists', Icone: ClipboardList, contagem: contratos.length },
-              { id: 'avancado', rotulo: 'Avançado', Icone: Package },
+              { id: 'itens', rotulo: 'Itens', Icone: Package },
+              { id: 'movimentacoes', rotulo: 'Movimentações', Icone: ArrowLeftRight },
+              { id: 'compras', rotulo: 'Compras', Icone: ShoppingCart, contagem: comprasPendentes.length },
               { id: 'avarias', rotulo: 'Avarias', Icone: AlertTriangle, contagem: avarias.length },
               { id: 'vinculos', rotulo: 'Vínculos', Icone: Link2, contagem: naoVinculados.length },
             ] as const
@@ -413,7 +441,7 @@ export default function Estoque() {
             <button
               key={item.id}
               type="button"
-              onClick={() => setAba(item.id)}
+              onClick={() => (item.id === 'movimentacoes' ? aoAbrirAbaMovimentacoes() : setAba(item.id))}
               className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-colors ${
                 aba === item.id ? 'border-ops text-ops' : 'border-transparent text-text-dim hover:text-text'
               }`}
@@ -455,7 +483,7 @@ export default function Estoque() {
           </Reveal>
         )}
 
-        {aba === 'avancado' && (
+        {aba === 'itens' && (
           <Reveal>
             <Panel className="mb-4">
               <PanelHeader titulo="Calculadora preditiva" desc="Quanto vai ser consumido pra X convidados, comparado com o que tem no galpão." acao={<Calculator className="h-4 w-4 text-text-faint" />} />
@@ -590,6 +618,90 @@ export default function Estoque() {
                 </div>
               )}
             </Panel>
+          </Reveal>
+        )}
+
+        {aba === 'movimentacoes' && (
+          <Reveal>
+          <Panel>
+            <PanelHeader titulo="Movimentações" desc="Todo entrada/saída/avaria/reintegração registrado, de todos os itens." />
+            {carregandoMovimentos ? (
+              <SkeletonLinhas />
+            ) : !movimentos || movimentos.length === 0 ? (
+              <EstadoVazio Icone={ArrowLeftRight} titulo="Nenhuma movimentação registrada ainda" />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {movimentos.map((m) => (
+                  <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2.5">
+                      <Badge tom={TIPO_MOVIMENTO_TOM[m.tipo]} texto={TIPO_MOVIMENTO_ROTULO[m.tipo]} />
+                      <span className="text-text">
+                        {m.item?.nome ?? '—'} — {m.quantidade} {m.item?.unidade}
+                      </span>
+                      {m.observacao && <span className="text-text-faint">· {m.observacao}</span>}
+                    </div>
+                    <span className="flex-shrink-0 text-text-faint">{formatarData(m.criado_em)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+          </Reveal>
+        )}
+
+        {aba === 'compras' && (
+          <Reveal>
+          <Panel>
+            <PanelHeader titulo="Compras" desc="Mesma lista de Logística — pendentes, ordenadas pela chegada prevista." />
+            {compras.length === 0 ? (
+              <EstadoVazio Icone={ShoppingCart} titulo="Nenhuma compra registrada ainda" descricao="Compras entram aqui quando um item crítico gera uma compra." />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {[...compras]
+                  .sort((a, b) => (a.data_chegada_prevista ?? '9999-99-99').localeCompare(b.data_chegada_prevista ?? '9999-99-99'))
+                  .map((c) => (
+                    <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-input px-3 py-2.5 text-sm">
+                      <div className="min-w-0">
+                        <strong className="text-text">{c.item?.nome ?? '—'}</strong>
+                        <span className="ml-2 text-text-dim">
+                          {c.quantidade} {c.item?.unidade} · {formatarMoeda(c.valor_total)}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tom={c.status === 'recebido' ? 'sucesso' : c.status === 'cancelado' ? 'perigo' : 'pendente'} texto={c.status === 'recebido' ? 'Recebido' : c.status === 'cancelado' ? 'Cancelado' : 'Pendente'} />
+                        {c.status === 'pendente' && (
+                          <>
+                            <div className="w-36">
+                              <Input
+                                type="date"
+                                categoria="operacao"
+                                value={c.data_chegada_prevista ?? ''}
+                                onChange={(e) =>
+                                  definirDataChegadaCompra(c.id, e.target.value || null)
+                                    .then(carregar)
+                                    .catch(aoFalhar)
+                                }
+                                title="Definir/editar chegada prevista"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => receberCompra(c).then(carregar).catch(aoFalhar)}
+                              className="rounded-sm border border-line px-2.5 py-1 text-[11.5px] text-text-dim hover:bg-raised hover:text-text"
+                            >
+                              Marcar recebido
+                            </button>
+                            <button type="button" onClick={() => cancelarCompra(c.id).then(carregar).catch(aoFalhar)} className="text-[11.5px] font-medium text-danger hover:underline">
+                              Cancelar
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </Panel>
           </Reveal>
         )}
 

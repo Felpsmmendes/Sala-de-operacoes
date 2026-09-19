@@ -249,7 +249,7 @@ export default function CueSheet() {
 
   return (
     <>
-      <Cabecalho titulo="Roteiro do Evento" subtitulo="Cronograma minuto a minuto da equipe em campo, passo a passo." />
+      <Cabecalho titulo="Sala de Operações" subtitulo="Cronograma minuto a minuto da equipe em campo, passo a passo." />
       <Conteudo>
         {/* Cabeçalho rico do evento (2026-09-18, REVIEW_DECISOES_V2 Parte
             6/09, P1) — nome + data/horário + local/rádio + contagem de

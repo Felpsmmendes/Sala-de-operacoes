@@ -23,7 +23,7 @@ import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { useConfirmDialog } from '../lib/useConfirmDialog';
 import { formatarMoeda, formatarData, normalizarTexto } from '../lib/status';
-import type { ContratoComLead, Lead, OrcamentoCompleto, RegiaoFrete, Servico, Veiculo } from '../lib/types';
+import type { ContratoComLead, Lead, OrcamentoCompleto, RegiaoFrete, Servico, StatusOrcamento, Veiculo } from '../lib/types';
 
 const CATEGORIAS: { chave: Servico['categoria']; titulo: string }[] = [
   { chave: 'bar', titulo: 'Bar' },
@@ -64,6 +64,7 @@ export default function Orcamentos() {
   const [copiado, setCopiado] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [buscaOrcamentos, setBuscaOrcamentos] = useState('');
+  const [filtroStatusOrc, setFiltroStatusOrc] = useState<'todos' | StatusOrcamento>('todos');
 
   useEffect(() => {
     Promise.all([listarLeads(), listarServicos(), listarOrcamentos(), listarRegioesFrete(), listarVeiculos(), listarContratos()])
@@ -164,9 +165,21 @@ export default function Orcamentos() {
   // acento/maiúscula pra "joao" achar "João".
   const orcamentosFiltrados = useMemo(() => {
     const termo = normalizarTexto(buscaOrcamentos.trim());
-    if (!termo) return orcamentos;
-    return orcamentos.filter((o) => normalizarTexto(o.lead?.nome ?? '').includes(termo));
-  }, [orcamentos, buscaOrcamentos]);
+    return orcamentos.filter((o) => {
+      if (filtroStatusOrc !== 'todos' && o.status !== filtroStatusOrc) return false;
+      if (termo && !normalizarTexto(o.lead?.nome ?? '').includes(termo)) return false;
+      return true;
+    });
+  }, [orcamentos, buscaOrcamentos, filtroStatusOrc]);
+
+  // Contador por status (2026-09-19, SPEC_CAMADA2 2B — "com contador em
+  // cada aba"), sempre em cima de `orcamentos` inteiro (nunca do já
+  // filtrado, senão a aba escondida zeraria o próprio contador).
+  const contagemPorStatusOrc = useMemo(() => {
+    const mapa: Record<StatusOrcamento, number> = { rascunho: 0, enviado: 0, aprovado: 0, recusado: 0 };
+    for (const o of orcamentos) mapa[o.status]++;
+    return mapa;
+  }, [orcamentos]);
 
   const totalServicos = itens.reduce((soma, i) => soma + i.valor + i.horasAdicionais * i.valorHoraAdicional, 0);
   const total = totalServicos + valorFreteCobrado;
@@ -341,7 +354,7 @@ export default function Orcamentos() {
 
   return (
     <>
-      <Cabecalho titulo="Gerador de Orçamentos" subtitulo="Coquetelaria + atrações, cálculo automático do modelo 20% sinal / 80% quitação." />
+      <Cabecalho titulo="Orçamentos" subtitulo="Coquetelaria + atrações, cálculo automático do modelo 20% sinal / 80% quitação." />
       <Conteudo>
         {carregando && <SkeletonLinhas />}
         {erro && <p className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
@@ -461,10 +474,36 @@ export default function Orcamentos() {
                     )
                   }
                 />
+                {/* Filtro por status (2026-09-19, SPEC_CAMADA2 2B) — segmented
+                    control com contador; "todos" mostra os 4 juntos como já era. */}
+                {orcamentos.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        { id: 'todos' as const, rotulo: 'Todos', n: orcamentos.length },
+                        { id: 'rascunho' as const, rotulo: 'Rascunhos', n: contagemPorStatusOrc.rascunho },
+                        { id: 'enviado' as const, rotulo: 'Enviados', n: contagemPorStatusOrc.enviado },
+                        { id: 'aprovado' as const, rotulo: 'Aprovados', n: contagemPorStatusOrc.aprovado },
+                        { id: 'recusado' as const, rotulo: 'Recusados', n: contagemPorStatusOrc.recusado },
+                      ]
+                    ).map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setFiltroStatusOrc(f.id)}
+                        className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                          filtroStatusOrc === f.id ? 'border-money bg-money/15 text-money' : 'border-line text-text-dim hover:bg-raised'
+                        }`}
+                      >
+                        {f.rotulo} <span className="font-mono text-text-faint">{f.n}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {orcamentos.length === 0 ? (
                   <EstadoVazio Icone={Receipt} titulo="Nenhum orçamento salvo ainda" />
                 ) : orcamentosFiltrados.length === 0 ? (
-                  <EstadoVazio Icone={Search} titulo="Nenhum orçamento encontrado" descricao={`Nenhum cliente bate com "${buscaOrcamentos}".`} />
+                  <EstadoVazio Icone={Search} titulo="Nenhum orçamento encontrado" descricao={buscaOrcamentos ? `Nenhum cliente bate com "${buscaOrcamentos}".` : 'Nenhum orçamento nesse status.'} />
                 ) : (
                   <div className="flex flex-col gap-2">
                     {orcamentosFiltrados.map((o) => (
