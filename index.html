@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sala de Operações — Em Cena Eventos</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96.png" />
+    <meta name="theme-color" content="#08090A" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- iOS (Safari não lê o manifest por completo). "black" (opaco) e não
+         "black-translucent": o translúcido passa o conteúdo por baixo do
+         relógio/notch e o app não trata safe-area. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Em Cena" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- Windows / Edge -->
+    <meta name="msapplication-TileColor" content="#08090A" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+    <meta property="og:title" content="Sala de Operações — Em Cena Eventos" />
+    <meta property="og:description" content="Sistema operacional da Em Cena Eventos" />
     <script>
       // aplica o tema salvo ANTES do React renderizar, senão pisca o tema
       // errado por uma fração de segundo a cada carregamento de página.

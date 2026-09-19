@@ -33,6 +33,8 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useNotificacoes } from '../lib/NotificacoesContext';
 import { useTema } from '../lib/useTema';
+import { AtualizacaoPWA } from './AtualizacaoPWA';
+import { BotaoInstalarPWA } from './BotaoInstalarPWA';
 import { Breadcrumb } from './Breadcrumb';
 import { Skeleton } from './Skeleton';
 import { CommandPalette } from './ui/CommandPalette';
@@ -401,6 +403,8 @@ export default function Layout() {
 
           <div className="flex-1" />
 
+          <BotaoInstalarPWA />
+
           <Link
             to="/agenda"
             className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[12px] font-semibold text-accent-ink transition-colors hover:bg-accent-strong"
@@ -491,7 +495,7 @@ export default function Layout() {
             }
           >
             <LayoutDashboard className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
-            Sala de Operações
+            {PAINEL.rotulo}
           </NavLink>
 
           <NavLink
@@ -541,6 +545,7 @@ export default function Layout() {
       </div>
 
       <CommandPalette />
+      <AtualizacaoPWA />
     </div>
   );
 }
