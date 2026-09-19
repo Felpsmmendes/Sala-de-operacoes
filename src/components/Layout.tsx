@@ -3,6 +3,7 @@ import {
   Calendar,
   ChevronDown,
   ClipboardCheck,
+  ClipboardList,
   Clock,
   Filter,
   Fingerprint,
@@ -20,6 +21,7 @@ import {
   User,
   Users,
   Wallet,
+  X,
 } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -39,6 +41,11 @@ const CHAVE_SIDEBAR_COLAPSADA = 'emcena_sidebar_colapsada';
 /* -- Painel fica sozinho no topo, fora dos núcleos — é a tela-lar ("/"),
    não faz sentido enterrada dentro de um núcleo lá embaixo. */
 const PAINEL: ItemNav = { to: '/', rotulo: 'Sala de Operações', Icone: LayoutDashboard };
+
+/* -- Rotina Diária (2026-09-19, "rotina diária") — fica junto do Painel,
+   fora dos núcleos: é a tela de abertura do dia, não pertence a um
+   núcleo operacional específico. -- */
+const ROTINA: ItemNav = { to: '/rotina', rotulo: 'Rotina Diária', Icone: ClipboardList };
 
 /* -- núcleos operacionais (ver PRD, seção 3), na ordem do fluxo real do
    negócio. Ícone e texto SEMPRE neutros (prompt master, seção 2.1/3: "cor
@@ -89,19 +96,19 @@ export const NUCLEOS: { titulo: string; itens: ItemNav[] }[] = [
 /** Lista achatada de toda tela navegável (Painel + núcleos +
     Configurações) — fonte única reaproveitada pelo CommandPalette
     (Cmd/Ctrl+K), pra nunca ficar desalinhada da sidebar de verdade. */
-export const ITENS_BUSCAVEIS: ItemNav[] = [PAINEL, ...NUCLEOS.flatMap((n) => n.itens), { to: '/configuracoes', rotulo: 'Configurações', Icone: User }];
+export const ITENS_BUSCAVEIS: ItemNav[] = [PAINEL, ROTINA, ...NUCLEOS.flatMap((n) => n.itens), { to: '/configuracoes', rotulo: 'Configurações', Icone: User }];
 
-/* -- barra inferior mobile: só os 7 módulos que o PRD marca como
-   "Mobile". Mesma regra da sidebar — neutro em repouso, âmbar só no
-   ativo (v2, 2026-09-10: a v1 tinha uma cor por categoria aqui). -- */
+/* -- barra inferior mobile (2026-09-19, "reorganização + navegação
+   mobile"): só os 4 mais usados ficam fixos — os outros 13 módulos
+   moram no sheet que o botão "Menu" abre (ver `menuMobileAberto` em
+   `Layout()`). Os 7 itens fixos de antes não cabiam num polegar (ícone
+   de ~55px em 390px de tela) e ainda deixavam Configurações inacessível
+   no mobile; 4 + Menu resolve os dois problemas de uma vez. -- */
 const BOTTOMBAR: ItemNav[] = [
   { to: '/', rotulo: 'Painel', Icone: LayoutDashboard },
-  { to: '/crm', rotulo: 'CRM', Icone: Filter },
-  { to: '/orcamentos', rotulo: 'Orçamento', Icone: Receipt },
   { to: '/agenda', rotulo: 'Agenda', Icone: Calendar },
-  { to: '/ponto', rotulo: 'Chegada', Icone: Fingerprint },
+  { to: '/roteiro', rotulo: 'Roteiro', Icone: ListChecks },
   { to: '/financeiro', rotulo: 'Finanças', Icone: Wallet },
-  { to: '/fechamento', rotulo: 'Fechamento', Icone: BarChart3 },
 ];
 
 // `group relative` sempre presentes (2026-09-16) — só têm efeito visual
@@ -154,6 +161,15 @@ export default function Layout() {
       return false;
     }
   });
+
+  // Menu mobile deslizante (2026-09-19, "reorganização + navegação
+  // mobile") — sheet com todos os núcleos, aberto pelo botão "Menu" da
+  // barra inferior. Fecha sozinho ao navegar (senão ficaria aberto por
+  // cima da tela nova depois de tocar num item).
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  useEffect(() => {
+    setMenuMobileAberto(false);
+  }, [location.pathname]);
 
   /** Sidebar em accordion por núcleo (pedido do usuário, 2026-09-13 —
       14 itens sempre visíveis ficava pesado). Cada núcleo abre/fecha
@@ -257,6 +273,11 @@ export default function Layout() {
               )}
               {colapsada && <TooltipColapsado texto={PAINEL.rotulo} />}
             </NavLink>
+            <NavLink key={ROTINA.to} to={ROTINA.to} end title={colapsada ? ROTINA.rotulo : undefined} className={classesLink}>
+              <ROTINA.Icone className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
+              {!colapsada && <span className="truncate">{ROTINA.rotulo}</span>}
+              {colapsada && <TooltipColapsado texto={ROTINA.rotulo} />}
+            </NavLink>
           </div>
           {NUCLEOS.map((nucleo) => {
             // colapsada (modo só-ícone) ignora o accordion de propósito —
@@ -317,7 +338,7 @@ export default function Layout() {
       </aside>
 
       {/* -- conteúdo -- */}
-      <div className={`flex-1 pb-20 transition-[margin] duration-200 lg:pb-0 ${colapsada ? 'lg:ml-16' : 'lg:ml-[210px]'}`}>
+      <div className={`flex-1 pb-24 transition-[margin] duration-200 lg:pb-0 ${colapsada ? 'lg:ml-16' : 'lg:ml-[210px]'}`}>
         {/* Topbar persistente (2026-09-17, "topbar + notificações") — busca,
             atalho de criação e sino ficam fixos no topo em TODA tela
             autenticada, em vez de cada `Cabecalho` remontar seu próprio
@@ -377,28 +398,114 @@ export default function Layout() {
         </Suspense>
       </div>
 
-      {/* -- barra inferior (mobile, <960px) -- */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-line bg-panel px-0.5 py-1.5 lg:hidden">
+      {/* -- barra inferior (mobile, <960px) — 4 itens fixos + Menu (2026-09-19) -- */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-line bg-panel px-1 py-1.5 lg:hidden">
         {BOTTOMBAR.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              // `min-w-0` é o que faz o `truncate` do rótulo funcionar de
-              // verdade: um filho `flex-1` sem isso nunca encolhe além do
-              // tamanho do próprio conteúdo (mínimo = largura do texto),
-              // e com 7 itens nessa barra soma mais largura que cabe em
-              // qualquer celular — estourava a página inteira pro lado
-              // (scroll horizontal fantasma, achado do usuário 2026-09-14).
-              ['flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1 text-[9.5px] font-semibold transition-colors', isActive ? 'text-accent' : 'text-text-faint'].join(' ')
+              ['flex min-w-0 flex-1 flex-col items-center gap-1 rounded-sm px-1 py-1.5 text-[10px] font-semibold transition-colors', isActive ? 'text-accent' : 'text-text-faint'].join(' ')
             }
           >
-            <item.Icone className="h-[19px] w-[19px] flex-shrink-0" strokeWidth={1.75} />
+            <item.Icone className="h-6 w-6 flex-shrink-0" strokeWidth={1.75} />
             <span className="w-full truncate text-center">{item.rotulo}</span>
           </NavLink>
         ))}
+        <button
+          type="button"
+          onClick={() => setMenuMobileAberto((v) => !v)}
+          className={['flex min-w-0 flex-1 flex-col items-center gap-1 rounded-sm px-1 py-1.5 text-[10px] font-semibold transition-colors', menuMobileAberto ? 'text-accent' : 'text-text-faint'].join(
+            ' '
+          )}
+        >
+          <Menu className="h-6 w-6 flex-shrink-0" strokeWidth={1.75} />
+          <span>Menu</span>
+        </button>
       </nav>
+
+      {/* Overlay + sheet deslizante (2026-09-19) — todos os núcleos +
+          Configurações, o que faltava pro mobile acessar as outras 13
+          telas que não cabem na barra fixa. */}
+      {menuMobileAberto && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMenuMobileAberto(false)} />}
+
+      <div
+        className={[
+          'fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-line bg-panel lg:hidden',
+          'transition-transform duration-300 ease-out',
+          menuMobileAberto ? 'translate-y-0' : 'translate-y-full',
+        ].join(' ')}
+        style={{ maxHeight: '80vh' }}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="h-1 w-10 rounded-full bg-line-strong" />
+        </div>
+
+        <div className="flex items-center justify-between border-b border-line px-5 py-3">
+          <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-text-dim">Menu</span>
+          <button type="button" onClick={() => setMenuMobileAberto(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-raised text-text-faint">
+            <X className="h-4 w-4" strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4 overflow-y-auto px-4 py-3 pb-8">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              ['flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors', isActive ? 'bg-accent/10 text-accent' : 'text-text hover:bg-raised'].join(' ')
+            }
+          >
+            <LayoutDashboard className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
+            Sala de Operações
+          </NavLink>
+
+          <NavLink
+            to={ROTINA.to}
+            end
+            className={({ isActive }) =>
+              ['flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors', isActive ? 'bg-accent/10 text-accent' : 'text-text hover:bg-raised'].join(' ')
+            }
+          >
+            <ROTINA.Icone className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
+            {ROTINA.rotulo}
+          </NavLink>
+
+          {NUCLEOS.map((nucleo) => (
+            <div key={nucleo.titulo}>
+              <p className="px-3 pb-2 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-text-dim">{nucleo.titulo}</p>
+              <div className="flex flex-col gap-0.5">
+                {nucleo.itens.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      ['flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors', isActive ? 'bg-accent/10 text-accent' : 'text-text hover:bg-raised'].join(' ')
+                    }
+                  >
+                    <item.Icone className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
+                    {item.rotulo}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div>
+            <p className="px-3 pb-2 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-text-dim">Sistema</p>
+            <NavLink
+              to="/configuracoes"
+              className={({ isActive }) =>
+                ['flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors', isActive ? 'bg-accent/10 text-accent' : 'text-text hover:bg-raised'].join(' ')
+              }
+            >
+              <User className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
+              Configurações
+            </NavLink>
+          </div>
+        </div>
+      </div>
 
       <CommandPalette />
     </div>

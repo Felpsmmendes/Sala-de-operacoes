@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Banknote, Calendar, CheckCircle2, ClipboardCheck, Clock3, Filter, Fingerprint, GlassWater, Lock, Package, PackageCheck, Star, TrendingUp, Truck, Users, Wallet } from 'lucide-react';
+import { Activity, AlertTriangle, Banknote, Calendar, CheckCircle2, Clock3, Fingerprint, GlassWater, Lock, Package, PackageCheck, Star, Truck, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { listarAuditorias } from '../lib/api/auditoria';
@@ -7,7 +7,6 @@ import { listarCuesDoEvento } from '../lib/api/cueSheet';
 import { calcularRitmoDrinksPorHora, listarRegistrosDrink, type RegistroDrink } from '../lib/api/drinks';
 import { listarCompras, listarItens, type CompraComItem, type ItemEstoque } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
-import { listarDreMensal } from '../lib/api/financeiro';
 import { listarFunis } from '../lib/api/funis';
 import { listarLeads } from '../lib/api/leads';
 import { listarOrcamentoIdsComHoraAdicional } from '../lib/api/orcamentos';
@@ -15,11 +14,7 @@ import { buscarPresencaResumo } from '../lib/api/ponto';
 import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
-import { GraficoBarraSplit } from '../components/charts/GraficoBarraSplit';
-import { GraficoBarrasHorizontal } from '../components/charts/GraficoBarrasHorizontal';
 import { GraficoDonut } from '../components/charts/GraficoDonut';
-import { GraficoDRE } from '../components/charts/GraficoDRE';
-import { GraficoLinha } from '../components/charts/GraficoLinha';
 import { MetricCard } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Skeleton } from '../components/Skeleton';
@@ -31,14 +26,8 @@ import { useNotificacoes } from '../lib/NotificacoesContext';
 import { carregarAlertaSatisfacaoNota } from '../lib/configAlertas';
 import { toast } from '../lib/toast';
 import { calcularStaffNecessario, funcaoContaComo } from '../lib/staffing';
-import { STATUS_EVENTO_INFO, corFunilPorIndice, formatarData, formatarMoeda } from '../lib/status';
-import type { AuditoriaPosEvento, ContratoComLead, CueSheetItem, DreMes, EscalaPresenca, EventoComLead, FunilLead, Lead } from '../lib/types';
-
-function formatarMes(mes: string): string {
-  const [ano, m] = mes.slice(0, 7).split('-');
-  const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  return `${nomes[Number(m) - 1]}/${ano}`;
-}
+import { STATUS_EVENTO_INFO, formatarData, formatarMoeda } from '../lib/status';
+import type { AuditoriaPosEvento, ContratoComLead, CueSheetItem, EscalaPresenca, EventoComLead, FunilLead, Lead } from '../lib/types';
 
 function tempoRelativoAtividade(d: Date): string {
   const min = Math.floor((Date.now() - d.getTime()) / 60_000);
@@ -154,7 +143,6 @@ const SALDO_INFO: Record<string, { rotulo: string; tom: 'sucesso' | 'pendente' |
    links que apontam pra seções bem diferentes — dinheiro, pessoas,
    operação). Base compartilhada + 1 variante por categoria usada aqui. */
 const linkPainelBase = 'flex items-center gap-1 text-[12px] font-medium text-text-dim transition-colors';
-const linkPainelDinheiro = `${linkPainelBase} hover:text-money`;
 const linkPainelPessoas = `${linkPainelBase} hover:text-people`;
 const linkPainelOperacao = `${linkPainelBase} hover:text-ops`;
 
@@ -162,7 +150,6 @@ export default function Dashboard() {
   const [eventos, setEventos] = useState<EventoComLead[]>([]);
   const [contratos, setContratos] = useState<ContratoComLead[]>([]);
   const [presenca, setPresenca] = useState<EscalaPresenca[]>([]);
-  const [dreMeses, setDreMeses] = useState<DreMes[]>([]);
   const [funis, setFunis] = useState<FunilLead[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
@@ -202,10 +189,9 @@ export default function Dashboard() {
         // as 4 primeiras não dependem de nada — vão juntas na mesma
         // leva. Presença de hoje só dá pra buscar depois de saber quais
         // eventos são de hoje (idsHoje), por isso fica numa segunda leva.
-        const [ev, ct, dre, fs, ls, itens, comHoraExtra, cp, aud] = await Promise.all([
+        const [ev, ct, fs, ls, itens, comHoraExtra, cp, aud] = await Promise.all([
           listarEventos(),
           listarContratos(),
-          listarDreMensal(),
           listarFunis(),
           listarLeads(),
           listarItens(),
@@ -230,7 +216,6 @@ export default function Dashboard() {
         setPresenca(pres);
         setCuesPorEvento(new Map(idsHoje.map((id, i) => [id, cuesArrays[i]])));
         setRegistrosDrinkHoje(registrosDrink);
-        setDreMeses(dre);
         setFunis(fs);
         setLeads(ls);
         setItensEstoque(itens);
@@ -326,29 +311,6 @@ export default function Dashboard() {
     };
   }, [eventosHoje, presenca]);
 
-  // achado da revisão de design (2026-09-06/08): a Sala de Operações só
-  // mostrava o monitor do dia — nada de tendência financeira, funil
-  // comercial ou risco de contrato/estoque. Layout revisado (2026-09-08)
-  // pra seguir a referência que o usuário trouxe (docs/referencias/image.png):
-  // KPIs com selo de tendência real, gráfico grande isolado, faixa de 3
-  // painéis (funil/equipe/financeiro), tabela compacta de próximas datas.
-  const tendenciaFaturamento = useMemo(() => [...dreMeses].sort((a, b) => a.mes.localeCompare(b.mes)).slice(-6), [dreMeses]);
-  const leadsPorFunil = useMemo(
-    () => funis.map((f, i) => ({ rotulo: f.nome, valor: leads.filter((l) => l.status === f.id).length, corClasse: corFunilPorIndice(i) })),
-    [funis, leads]
-  );
-  // Distribuição de contratos por status (2026-09-16, direção "redesign
-  // SaaS" do usuário) — cores de ESTADO (neutro/sucesso/perigo), não de
-  // núcleo, mesmo padrão já usado no donut de "Cobertura de equipe hoje"
-  // aqui do lado (confirmado=sucesso, convocado=pendente, recusado=perigo).
-  const contratosPorStatus = useMemo(
-    () => [
-      { rotulo: 'Ativo', valor: contratos.filter((c) => c.status === 'ativo').length, corClasse: 'text-neutral' },
-      { rotulo: 'Concluído', valor: contratos.filter((c) => c.status === 'concluido').length, corClasse: 'text-success' },
-      { rotulo: 'Cancelado', valor: contratos.filter((c) => c.status === 'cancelado').length, corClasse: 'text-danger' },
-    ],
-    [contratos]
-  );
   const contratosEmRisco = useMemo(
     () => contratos.filter((c) => c.status !== 'cancelado' && c.saldo_status !== 'quitado' && diasAteEvento(c.data_evento) <= 20).length,
     [contratos]
@@ -478,49 +440,11 @@ export default function Dashboard() {
       .catch(() => toast.aviso('Não foi possível copiar automaticamente. Link: ' + link));
   }
 
-  // "Financeiro do mês": mesmo recorte de contratos do mês do card de
-  // faturamento, dividido pelo que já foi de fato pago (sinal/saldo
-  // quitados) x o que ainda falta receber — nunca um número solto.
-  const financeiroMesRecebido = useMemo(
-    () =>
-      contratos
-        .filter((c) => c.data_evento.slice(0, 7) === mesAtual && c.status !== 'cancelado')
-        .reduce((s, c) => s + (c.sinal_pago ? c.valor_sinal : 0) + (c.saldo_status === 'quitado' ? c.valor_saldo : 0), 0),
-    [contratos, mesAtual]
-  );
-  const financeiroMesPendente = Math.max(0, faturamentoMes - financeiroMesRecebido);
-
-  // gráfico 1 (pedido do usuário, 2026-09-09) — "faturamento contratado"
-  // por mês, função compartilhada (ver calcularFaturamentoPorMes em
-  // api/contratos.ts) pra reaproveitar depois em Fechamento sem duplicar
-  // a lógica. Métrica diferente do DRE: conta valor_total de contrato
-  // (fechado), não só o que já foi pago.
+  // "faturamento contratado" por mês (pedido do usuário, 2026-09-09) —
+  // função compartilhada (ver calcularFaturamentoPorMes em api/contratos.ts),
+  // reaproveitada em Fechamento sem duplicar a lógica; alimenta só o
+  // histórico (sparkline) do card "Faturamento do mês" no MetricGrid.
   const faturamentoPorMes = useMemo(() => calcularFaturamentoPorMes(contratos, 6), [contratos]);
-
-  // gráfico 3 — novos leads por dia, semana atual x semana passada, os
-  // dois recortes deslizantes de 7 dias (janela de hoje-6 até hoje) —
-  // isso mantém o dia da semana alinhado entre as duas séries sem
-  // depender de domingo-a-sábado do calendário.
-  const leadsPorDiaSemanas = useMemo(() => {
-    const NOME_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const hojeZero = new Date();
-    hojeZero.setHours(0, 0, 0, 0);
-    const categorias: string[] = [];
-    const estaSemana: number[] = [];
-    const semanaPassada: number[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const dia = new Date(hojeZero);
-      dia.setDate(dia.getDate() - i);
-      const diaAnterior = new Date(dia);
-      diaAnterior.setDate(diaAnterior.getDate() - 7);
-      const strDia = dia.toISOString().slice(0, 10);
-      const strAnterior = diaAnterior.toISOString().slice(0, 10);
-      categorias.push(NOME_DIA[dia.getDay()]);
-      estaSemana.push(leads.filter((l) => l.criado_em.slice(0, 10) === strDia).length);
-      semanaPassada.push(leads.filter((l) => l.criado_em.slice(0, 10) === strAnterior).length);
-    }
-    return { categorias, estaSemana, semanaPassada };
-  }, [leads]);
 
   // "Compras chegando" (pedido do usuário) — pendentes com previsão pra
   // hoje ou pros próximos 7 dias, puxando de compras.data_chegada_prevista.
@@ -737,170 +661,7 @@ export default function Dashboard() {
             (contratos/leads), sem nenhuma tabela nova. */}
         {!carregando && <AtividadesRecentes contratos={contratos} leads={leads} />}
 
-        <Reveal>
-          <Panel className="mb-4">
-            <PanelHeader
-              titulo="Tendência de faturamento"
-              desc="Receita, custos e lucro líquido pagos — últimos 6 meses."
-              acao={
-                <Link to="/financeiro" className={linkPainelDinheiro}>
-                  Ver DRE completo <TrendingUp className="h-3.5 w-3.5" />
-                </Link>
-              }
-            />
-            <GraficoDRE meses={tendenciaFaturamento} formatarMes={formatarMes} formatarValor={formatarMoeda} />
-          </Panel>
-        </Reveal>
-
-        {/* 2 gráficos — linha/área simples, sem o combo barras+linha do
-            painel acima. */}
-        <Reveal delay={50} className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Panel>
-            <PanelHeader titulo="Faturamento mensal" desc="Valor total dos contratos fechados por mês (independe de já ter sido pago ou não)." />
-            <GraficoLinha
-              categorias={faturamentoPorMes.map((m) => formatarMes(m.mes))}
-              series={[{ rotulo: 'Faturamento', corClasse: 'text-money', pontos: faturamentoPorMes.map((m) => m.valor) }]}
-              formatarValor={formatarMoeda}
-            />
-          </Panel>
-
-          <Panel>
-            <PanelHeader titulo="Novos leads por dia" desc="Esta semana x semana passada, mesmo dia da semana lado a lado." />
-            <GraficoLinha
-              categorias={leadsPorDiaSemanas.categorias}
-              series={[
-                { rotulo: 'Esta semana', corClasse: 'text-people', pontos: leadsPorDiaSemanas.estaSemana },
-                { rotulo: 'Semana passada', corClasse: 'text-text-faint', pontos: leadsPorDiaSemanas.semanaPassada },
-              ]}
-              formatarValor={(v) => `${v} lead${v === 1 ? '' : 's'}`}
-            />
-          </Panel>
-        </Reveal>
-
-        {/* faixa de 3 painéis — funil com donut+legenda / número em
-            destaque / estatística com barra de proporção, com dado real
-            do negócio em cada um. */}
-        <Reveal delay={80} className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Panel>
-            <PanelHeader
-              titulo="Leads por funil"
-              acao={
-                <Link to="/crm" className={linkPainelPessoas}>
-                  Ver no CRM <Filter className="h-3.5 w-3.5" />
-                </Link>
-              }
-            />
-            <GraficoDonut centroRotulo="Leads" fatias={leadsPorFunil} formatarValor={(v) => `${v} lead${v === 1 ? '' : 's'}`} />
-          </Panel>
-
-          <Panel>
-            <PanelHeader
-              titulo="Cobertura de equipe hoje"
-              acao={
-                <Link to="/escala" className={linkPainelPessoas}>
-                  Ver escala <Users className="h-3.5 w-3.5" />
-                </Link>
-              }
-            />
-            {presenca.length === 0 ? (
-              <EstadoVazio Icone={Users} titulo="Ninguém escalado pra hoje" />
-            ) : (
-              <>
-                <strong className="block font-mono text-3xl font-semibold text-text">{totalConfirmadosHoje}</strong>
-                <span className="mb-3 block text-[12.5px] text-text-dim">confirmados de {presenca.length} escalados</span>
-                <GraficoDonut
-                  centroRotulo="Escalados"
-                  fatias={[
-                    { rotulo: 'Confirmado', valor: presenca.filter((p) => p.status_escala === 'confirmado').length, corClasse: 'text-success' },
-                    { rotulo: 'Convocado', valor: presenca.filter((p) => p.status_escala === 'convocado').length, corClasse: 'text-pending' },
-                    { rotulo: 'Recusado', valor: presenca.filter((p) => p.status_escala === 'recusado').length, corClasse: 'text-danger' },
-                  ]}
-                />
-
-                {/* cobertura por função (pedido do usuário, "continue o
-                    design") — mesma regra de dimensionamento da Escala
-                    (calcularStaffNecessario), aplicada aos eventos de hoje. */}
-                <div className="mt-4 flex flex-col gap-2.5 border-t border-line pt-3">
-                  <div>
-                    <div className="mb-1 flex justify-between text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
-                      <span>Bartenders</span>
-                      <span className="font-mono text-text-dim">
-                        {coberturaFuncaoHoje.bartender}/{coberturaFuncaoHoje.necessario.bartender}
-                      </span>
-                    </div>
-                    <ProgressBar
-                      valor={coberturaFuncaoHoje.necessario.bartender > 0 ? (coberturaFuncaoHoje.bartender / coberturaFuncaoHoje.necessario.bartender) * 100 : 0}
-                      categoria="pessoas"
-                      glow
-                    />
-                  </div>
-                  <div>
-                    <div className="mb-1 flex justify-between text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
-                      <span>Barbacks</span>
-                      <span className="font-mono text-text-dim">
-                        {coberturaFuncaoHoje.barback}/{coberturaFuncaoHoje.necessario.barback}
-                      </span>
-                    </div>
-                    <ProgressBar
-                      valor={coberturaFuncaoHoje.necessario.barback > 0 ? (coberturaFuncaoHoje.barback / coberturaFuncaoHoje.necessario.barback) * 100 : 0}
-                      categoria="pessoas"
-                      glow
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-          </Panel>
-
-          <Panel>
-            <PanelHeader
-              titulo="Financeiro do mês"
-              acao={
-                <Link to="/financeiro" className={linkPainelDinheiro}>
-                  Ver detalhes <Wallet className="h-3.5 w-3.5" />
-                </Link>
-              }
-            />
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <div>
-                <span className="block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Contratado</span>
-                <strong className="font-mono text-lg text-text">{formatarMoeda(faturamentoMes)}</strong>
-              </div>
-              <div>
-                <span className="block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Recebido</span>
-                <strong className="font-mono text-lg text-success">{formatarMoeda(financeiroMesRecebido)}</strong>
-              </div>
-            </div>
-            <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Recebido × a receber</span>
-            <GraficoBarraSplit
-              formatarValor={formatarMoeda}
-              segmentos={[
-                { rotulo: 'Recebido', valor: financeiroMesRecebido, corClasse: 'text-success' },
-                { rotulo: 'A receber', valor: financeiroMesPendente, corClasse: 'text-pending' },
-              ]}
-            />
-          </Panel>
-        </Reveal>
-
-        {/* Distribuição de contratos por status (2026-09-16, direção
-            "redesign SaaS" do usuário) — complementa o donut de leads
-            acima (funil comercial) com o outro lado do funil: o que já
-            virou contrato de verdade, e em que situação está. */}
-        <Reveal delay={90} className="mb-4">
-          <Panel>
-            <PanelHeader
-              titulo="Contratos por status"
-              acao={
-                <Link to="/contratos" className={linkPainelDinheiro}>
-                  Ver contratos <ClipboardCheck className="h-3.5 w-3.5" />
-                </Link>
-              }
-            />
-            <GraficoBarrasHorizontal barras={contratosPorStatus} formatarValor={(v) => `${v}`} />
-          </Panel>
-        </Reveal>
-
-        <Reveal delay={100} className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
+        <Reveal className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
           <Panel>
             <PanelHeader
               titulo="Monitor ao vivo"
@@ -1035,6 +796,72 @@ export default function Dashboard() {
           </Panel>
 
           <div className="flex flex-col gap-4">
+            {/* "Cobertura de equipe hoje" (2026-09-19, "reorganização do
+                Dashboard") — movida pra cá da antiga faixa de 3 painéis
+                (funil/cobertura/financeiro), que saiu do Dashboard porque
+                cada um dos outros dois já tem tela própria (CRM,
+                Financeiro). Cobertura fica: é o único dos 3 que resume
+                "o monitor de hoje", o mesmo assunto do Monitor ao vivo
+                ao lado. */}
+            <Panel>
+              <PanelHeader
+                titulo="Cobertura de equipe hoje"
+                acao={
+                  <Link to="/escala" className={linkPainelPessoas}>
+                    Ver escala <Users className="h-3.5 w-3.5" />
+                  </Link>
+                }
+              />
+              {presenca.length === 0 ? (
+                <EstadoVazio Icone={Users} titulo="Ninguém escalado pra hoje" />
+              ) : (
+                <>
+                  <strong className="block font-mono text-3xl font-semibold text-text">{totalConfirmadosHoje}</strong>
+                  <span className="mb-3 block text-[12.5px] text-text-dim">confirmados de {presenca.length} escalados</span>
+                  <GraficoDonut
+                    centroRotulo="Escalados"
+                    fatias={[
+                      { rotulo: 'Confirmado', valor: presenca.filter((p) => p.status_escala === 'confirmado').length, corClasse: 'text-success' },
+                      { rotulo: 'Convocado', valor: presenca.filter((p) => p.status_escala === 'convocado').length, corClasse: 'text-pending' },
+                      { rotulo: 'Recusado', valor: presenca.filter((p) => p.status_escala === 'recusado').length, corClasse: 'text-danger' },
+                    ]}
+                  />
+
+                  {/* cobertura por função (pedido do usuário, "continue o
+                      design") — mesma regra de dimensionamento da Escala
+                      (calcularStaffNecessario), aplicada aos eventos de hoje. */}
+                  <div className="mt-4 flex flex-col gap-2.5 border-t border-line pt-3">
+                    <div>
+                      <div className="mb-1 flex justify-between text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                        <span>Bartenders</span>
+                        <span className="font-mono text-text-dim">
+                          {coberturaFuncaoHoje.bartender}/{coberturaFuncaoHoje.necessario.bartender}
+                        </span>
+                      </div>
+                      <ProgressBar
+                        valor={coberturaFuncaoHoje.necessario.bartender > 0 ? (coberturaFuncaoHoje.bartender / coberturaFuncaoHoje.necessario.bartender) * 100 : 0}
+                        categoria="pessoas"
+                        glow
+                      />
+                    </div>
+                    <div>
+                      <div className="mb-1 flex justify-between text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                        <span>Barbacks</span>
+                        <span className="font-mono text-text-dim">
+                          {coberturaFuncaoHoje.barback}/{coberturaFuncaoHoje.necessario.barback}
+                        </span>
+                      </div>
+                      <ProgressBar
+                        valor={coberturaFuncaoHoje.necessario.barback > 0 ? (coberturaFuncaoHoje.barback / coberturaFuncaoHoje.necessario.barback) * 100 : 0}
+                        categoria="pessoas"
+                        glow
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </Panel>
+
             <Panel>
               <PanelHeader titulo="Ações rápidas" />
               <div className="flex flex-col gap-2">

@@ -36,6 +36,7 @@ const PontoPublico = lazy(() => import('./pages/PontoPublico'));
 const PortalClienteAdmin = lazy(() => import('./pages/PortalClienteAdmin'));
 const PortalClientePublico = lazy(() => import('./pages/PortalClientePublico'));
 const RedefinirSenha = lazy(() => import('./pages/RedefinirSenha'));
+const RotinaDiaria = lazy(() => import('./pages/RotinaDiaria'));
 
 /** Fallback do Suspense mais externo — pega o carregamento do chunk de
     QUALQUER rota de primeiro nível (2026-09-14, trocando o "Carregando…"
@@ -110,6 +111,7 @@ export default function App() {
                 }
               >
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/rotina" element={<RotinaDiaria />} />
                 <Route path="/crm" element={<Crm />} />
                 <Route path="/orcamentos" element={<Orcamentos />} />
                 <Route path="/contratos" element={<Contratos />} />

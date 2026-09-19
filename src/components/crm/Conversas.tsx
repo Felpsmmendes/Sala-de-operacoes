@@ -79,9 +79,18 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
   const leadsFiltrados = leads.filter((l) => l.nome.toLowerCase().includes(busca.toLowerCase()));
 
   return (
-    <div className="grid h-[72vh] min-h-[520px] grid-cols-1 overflow-hidden rounded-lg border border-line lg:grid-cols-[260px_1fr_260px]">
+    <div className="flex h-[72vh] min-h-[520px] flex-col overflow-hidden rounded-lg border border-line lg:grid lg:grid-cols-[260px_1fr_260px]">
       {/* ---- coluna esquerda: lista de contatos ---- */}
-      <div className="flex flex-col border-b border-line bg-panel lg:border-b-0 lg:border-r">
+      {/* No mobile (2026-09-19, "navegação mobile" — achado do usuário:
+          "as conversas" quebradas) isto empilha com a thread abaixo; sem
+          `max-h`/`flex-shrink-0`, as duas linhas implícitas do grid
+          dividiam a altura de forma imprevisível (auto-sizing não
+          propaga altura pros filhos `flex-1 overflow-y-auto`), então a
+          lista de contatos podia engolir a tela inteira sem sobrar
+          espaço real pra thread. `lg:` volta a ser coluna de grid — o
+          `max-h` não faz sentido lá, a altura já vem do `h-[72vh]` do
+          container inteiro. */}
+      <div className="flex max-h-[240px] flex-shrink-0 flex-col border-b border-line bg-panel lg:max-h-none lg:border-b-0 lg:border-r">
         <div className="flex items-center gap-2 border-b border-line p-3">
           <Search className="h-4 w-4 flex-shrink-0 text-text-faint" strokeWidth={2} />
           <input
@@ -114,7 +123,7 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
       </div>
 
       {/* ---- meio: thread da conversa ---- */}
-      <div className="flex min-w-0 flex-col bg-bg">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-bg">
         {!leadSelecionado ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-text-faint">Selecione um lead à esquerda pra ver a conversa.</div>
         ) : (
