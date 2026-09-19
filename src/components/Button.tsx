@@ -55,7 +55,7 @@ export function Button({ variant = 'primary', categoria = 'neutro', className = 
     return (
       <button
         type="button"
-        className={`rounded-sm px-4 py-2.5 text-sm font-medium text-text-faint transition-colors hover:bg-white/5 hover:text-text-dim disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`rounded-sm px-4 py-2.5 text-sm font-medium text-text-faint transition-colors hover:bg-raised hover:text-text-dim disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
         style={style}
         {...props}
       />

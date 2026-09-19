@@ -254,7 +254,7 @@ export default function Layout() {
       >
         <div className={`flex items-center gap-2 ${colapsada ? 'flex-col' : 'justify-between px-1'}`}>
           <a href="/" className="flex items-center gap-2.5 overflow-hidden">
-            <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[11px] bg-white text-[12px] font-black text-[#050507] transition-transform duration-200 hover:scale-105">EC</span>
+            <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[11px] border border-line bg-white text-[12px] font-black text-[#050507] transition-transform duration-200 hover:scale-105">EC</span>
             {!colapsada && (
               <span className="flex flex-col leading-tight">
                 <span className="whitespace-nowrap text-[13.5px] font-extrabold text-text">EM CENA</span>

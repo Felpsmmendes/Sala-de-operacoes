@@ -109,15 +109,19 @@
    contraste ≥4.5:1 contra fundo branco) — preserva a funcionalidade de
    troca de tema já existente, sem inventar paleta nova. */
 :root[data-theme='light'] {
-  --color-bg: #f7f7f9;
-  --color-sidebar: #ffffff;
+  /* 4 camadas com contraste real (2026-09-19, SPEC_MODO_CLARO): antes bg/
+     sidebar/panel eram quase o mesmo branco (#f7f7f9/#fff/#fff) e o card
+     não se destacava. Agora: fundo cinza médio → cards brancos → sub-box e
+     input em cinza claro, espelhando a hierarquia do escuro. */
+  --color-bg: #eef0f3;
+  --color-sidebar: #f5f6f8;
   --color-panel: #ffffff;
-  --color-raised: #f1f2f5;
-  --color-input: #ffffff;
+  --color-raised: #f0f1f4;
+  --color-input: #f0f2f5;
 
-  --color-line: rgba(15, 23, 42, 0.08);
-  --color-line-strong: rgba(15, 23, 42, 0.14);
-  --color-line-focus: rgba(15, 23, 42, 0.22);
+  --color-line: rgba(15, 23, 42, 0.1);
+  --color-line-strong: rgba(15, 23, 42, 0.18);
+  --color-line-focus: rgba(15, 23, 42, 0.28);
 
   --color-text: #0f172a;
   --color-text-dim: rgba(30, 41, 59, 0.78);
@@ -136,7 +140,8 @@
   --color-ops-label: #0f766e;
   --color-execucao-label: #166534;
 
-  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 0 1px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04), 0 16px 32px -16px rgba(15, 23, 42, 0.18);
-  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(15, 23, 42, 0.09), 0 4px 8px rgba(15, 23, 42, 0.05), 0 20px 40px -16px rgba(15, 23, 42, 0.22);
+  /* com o card branco sobre fundo cinza, a sombra vira o diferenciador principal */
+  --shadow-card: 0 0 0 1px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px -8px rgba(15, 23, 42, 0.12);
+  --shadow-card-hover: 0 0 0 1px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.08), 0 12px 32px -8px rgba(15, 23, 42, 0.16);
   --shadow-borda: 0 0 0 1px rgba(15, 23, 42, 0.08);
 }
