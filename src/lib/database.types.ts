@@ -573,6 +573,12 @@ export type Database = {
         Update: { id?: string; nome?: string; km_aproximado?: number; criado_em?: string };
         Relationships: [];
       };
+      evento_veiculos: {
+        Row: { id: string; evento_id: string; veiculo_id: string; criado_em: string };
+        Insert: { id?: string; evento_id: string; veiculo_id: string; criado_em?: string };
+        Update: { id?: string; evento_id?: string; veiculo_id?: string; criado_em?: string };
+        Relationships: [];
+      };
       ponto_registros: {
         Row: {
           id: string;

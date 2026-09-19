@@ -54,6 +54,8 @@ export default function Crm() {
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<StatusLead | ''>('');
   const [filtroValor, setFiltroValor] = useState<'' | 'ate5k' | '5k15k' | 'acima15k'>('');
+  const [filtroOrigem, setFiltroOrigem] = useState('');
+  const [filtroUltimoContato, setFiltroUltimoContato] = useState<'' | 'ate3d' | '4a7d' | '8a14d' | '15d'>('');
   const [ultimoContatoPorLead, setUltimoContatoPorLead] = useState<Map<string, string>>(new Map());
 
   const [modo, setModo] = useState<'pipeline' | 'tabela'>('pipeline');
@@ -202,22 +204,43 @@ export default function Crm() {
 
   const funisPorId = new Map(funis.map((f) => [f.id, f]));
 
-  // Filtro de valor estimado (2026-09-17, "P2/P3") — em cima do que já
-  // veio filtrado do servidor por busca/status; nunca refaz a consulta.
+  // Origens distintas presentes nos dados (2026-09-19, REVIEW_DECISOES_V2
+  // Parte 6/03 — "origem" como filtro) — `origem` é texto livre no
+  // cadastro (LeadForm), então o filtro lista só o que já existe, nunca
+  // uma lista fixa inventada.
+  const origensDisponiveis = useMemo(() => [...new Set(todosLeads.map((l) => l.origem).filter((o): o is string => !!o))].sort(), [todosLeads]);
+
+  // Filtro de valor estimado + origem + último contato (2026-09-17/19,
+  // "P2/P3" + REVIEW_DECISOES_V2) — tudo em cima do que já veio filtrado
+  // do servidor por busca/status; nunca refaz a consulta.
   const leadsFiltrados = useMemo(() => {
-    if (!filtroValor) return leads;
     return leads.filter((l) => {
       const v = l.valor_estimado ?? 0;
-      if (filtroValor === 'ate5k') return v <= 5000;
-      if (filtroValor === '5k15k') return v > 5000 && v <= 15000;
-      return v > 15000;
+      if (filtroValor === 'ate5k' && v > 5000) return false;
+      if (filtroValor === '5k15k' && (v <= 5000 || v > 15000)) return false;
+      if (filtroValor === 'acima15k' && v <= 15000) return false;
+      if (filtroOrigem && l.origem !== filtroOrigem) return false;
+      if (filtroUltimoContato) {
+        const ultimoContato = ultimoContatoPorLead.get(l.id) ?? l.criado_em;
+        const dias = Math.floor((Date.now() - new Date(ultimoContato).getTime()) / 86_400_000);
+        if (filtroUltimoContato === 'ate3d' && dias > 3) return false;
+        if (filtroUltimoContato === '4a7d' && (dias < 4 || dias > 7)) return false;
+        if (filtroUltimoContato === '8a14d' && (dias < 8 || dias > 14)) return false;
+        if (filtroUltimoContato === '15d' && dias < 15) return false;
+      }
+      return true;
     });
-  }, [leads, filtroValor]);
+  }, [leads, filtroValor, filtroOrigem, filtroUltimoContato, ultimoContatoPorLead]);
 
-  const emNegociacao = leadsFiltrados.filter((l) => funisPorId.get(l.status)?.papel == null).length;
-  const ganhos = leadsFiltrados.filter((l) => funisPorId.get(l.status)?.papel === 'ganho').length;
+  const leadsEmNegociacao = leadsFiltrados.filter((l) => funisPorId.get(l.status)?.papel == null);
+  const leadsGanhos = leadsFiltrados.filter((l) => funisPorId.get(l.status)?.papel === 'ganho');
+  const emNegociacao = leadsEmNegociacao.length;
+  const ganhos = leadsGanhos.length;
   const perdidos = leadsFiltrados.filter((l) => funisPorId.get(l.status)?.papel === 'perdido').length;
   const taxaConversao = leadsFiltrados.length > 0 ? Math.round((ganhos / leadsFiltrados.length) * 100) : 0;
+  // MetricCards com quantidade + valor (REVIEW_DECISOES_V2, Parte 6/03).
+  const valorEmNegociacao = leadsEmNegociacao.reduce((s, l) => s + (l.valor_estimado ?? 0), 0);
+  const valorGanhos = leadsGanhos.reduce((s, l) => s + (l.valor_estimado ?? 0), 0);
 
   // "Leads esfriando" (Fase D do roadmap, 2026-09-11) — só considera quem
   // ainda está em negociação (papel null: ganho/perdido já são casos
@@ -265,8 +288,8 @@ export default function Crm() {
           <>
             <MetricGrid>
               <MetricCard Icone={Users} rotulo="Total de leads" valor={String(leadsFiltrados.length)} legenda="Nesta busca/filtro" categoria="pessoas" />
-              <MetricCard Icone={Filter} rotulo="Em negociação" valor={String(emNegociacao)} legenda="Nos funis do meio" categoria="pessoas" />
-              <MetricCard Icone={CheckCircle2} rotulo="Ganhos" valor={String(ganhos)} legenda="Virou contrato" categoria="pessoas" />
+              <MetricCard Icone={Filter} rotulo="Em negociação" valor={String(emNegociacao)} legenda={`Nos funis do meio · ${formatarMoeda(valorEmNegociacao)}`} categoria="pessoas" />
+              <MetricCard Icone={CheckCircle2} rotulo="Ganhos" valor={String(ganhos)} legenda={`Virou contrato · ${formatarMoeda(valorGanhos)}`} categoria="pessoas" />
               <MetricCard Icone={Users} rotulo="Perdidos" valor={String(perdidos)} legenda="Fora do funil" categoria="pessoas" />
               <MetricCard Icone={TrendingUp} rotulo="Taxa de conversão" valor={`${taxaConversao}%`} legenda="Ganhos / total nesta busca" categoria="pessoas" />
               <MetricCard
@@ -282,26 +305,33 @@ export default function Crm() {
               <Panel className="mb-4">
                 <PanelHeader titulo="Leads esfriando" desc={`Em negociação, sem contato há ${DIAS_SEM_CONTATO_LIMITE}+ dias — ordenado pelos mais valiosos primeiro.`} />
                 <div className="flex flex-col gap-2">
-                  {leadsEsfriando.slice(0, 8).map(({ lead, dias }) => (
-                    <button
-                      key={lead.id}
-                      type="button"
-                      onClick={() => {
-                        setAba('leads');
-                        setSelecionadoId(lead.id);
-                      }}
-                      className="list-row flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-left text-sm"
-                    >
-                      <div className="min-w-0">
-                        <strong className="text-text">{lead.nome}</strong>
-                        <span className="ml-2 text-[11.5px] text-text-faint">{funisPorId.get(lead.status)?.nome ?? lead.status}</span>
-                      </div>
-                      <div className="flex flex-shrink-0 items-center gap-3 text-[11.5px]">
-                        <span className="font-mono text-pending">{dias}d sem contato</span>
-                        {lead.valor_estimado != null && <span className="font-mono text-text-dim">{formatarMoeda(lead.valor_estimado)}</span>}
-                      </div>
-                    </button>
-                  ))}
+                  {leadsEsfriando.slice(0, 8).map(({ lead, dias }) => {
+                    // Cor por tempo (REVIEW_DECISOES_V2, Parte 6/03) — só
+                    // 8-14d/15d+ aparecem de fato aqui (a lista já é
+                    // filtrada em 7+ dias), mesma escala do card Kanban.
+                    const corDias = dias >= 8 ? 'text-danger' : 'text-pending';
+                    const pesoDias = dias >= 15 ? 'font-bold' : 'font-semibold';
+                    return (
+                      <button
+                        key={lead.id}
+                        type="button"
+                        onClick={() => {
+                          setAba('leads');
+                          setSelecionadoId(lead.id);
+                        }}
+                        className="list-row flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-left text-sm"
+                      >
+                        <div className="min-w-0">
+                          <strong className="text-text">{lead.nome}</strong>
+                          <span className="ml-2 text-[11.5px] text-text-faint">{funisPorId.get(lead.status)?.nome ?? lead.status}</span>
+                        </div>
+                        <div className="flex flex-shrink-0 items-center gap-3 text-[11.5px]">
+                          <span className={`font-mono ${pesoDias} ${corDias}`}>{dias}d sem contato</span>
+                          {lead.valor_estimado != null && <span className="font-mono text-text-dim">{formatarMoeda(lead.valor_estimado)}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </Panel>
             )}
@@ -344,6 +374,27 @@ export default function Crm() {
                     <option value="ate5k">Até R$5.000</option>
                     <option value="5k15k">R$5.000 – R$15.000</option>
                     <option value="acima15k">Acima de R$15.000</option>
+                  </Select>
+                </div>
+                {origensDisponiveis.length > 0 && (
+                  <div className="w-full sm:w-44">
+                    <Select value={filtroOrigem} onChange={(e) => setFiltroOrigem(e.target.value)} categoria="pessoas">
+                      <option value="">Qualquer origem</option>
+                      {origensDisponiveis.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
+                <div className="w-full sm:w-48">
+                  <Select value={filtroUltimoContato} onChange={(e) => setFiltroUltimoContato(e.target.value as typeof filtroUltimoContato)} categoria="pessoas">
+                    <option value="">Qualquer último contato</option>
+                    <option value="ate3d">Até 3 dias</option>
+                    <option value="4a7d">4 a 7 dias</option>
+                    <option value="8a14d">8 a 14 dias</option>
+                    <option value="15d">15+ dias</option>
                   </Select>
                 </div>
               </div>

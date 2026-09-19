@@ -151,7 +151,9 @@ export function PipelineLeads({
 
       <div ref={scrollRef} className="flex gap-3 overflow-x-auto pb-1" title={editandoFunis ? undefined : 'Segure o botão do meio do mouse e arraste pros lados'}>
         {funis.map((funil) => {
-          const itens = leads.filter((l) => l.status === funil.id);
+          // Ordenação padrão (REVIEW_DECISOES_V2, Parte 5) — maior valor
+          // estimado no topo de cada coluna; sem valor vai pro fim.
+          const itens = leads.filter((l) => l.status === funil.id).sort((a, b) => (b.valor_estimado ?? 0) - (a.valor_estimado ?? 0));
           return (
             <div
               key={funil.id}
@@ -223,7 +225,12 @@ export function PipelineLeads({
                     </button>
                   </div>
                 ) : (
-                  <span className="flex-shrink-0 rounded-full bg-input px-1.5 text-[11px] text-text-faint">{itens.length}</span>
+                  <span className="flex flex-shrink-0 items-center gap-1.5 rounded-full bg-input px-1.5 text-[11px] text-text-faint">
+                    {itens.length}
+                    {itens.some((l) => l.valor_estimado != null) && (
+                      <span className="font-mono text-text-ultra">{formatarMoeda(itens.reduce((s, l) => s + (l.valor_estimado ?? 0), 0))}</span>
+                    )}
+                  </span>
                 )}
               </div>
 
@@ -231,10 +238,18 @@ export function PipelineLeads({
                 {itens.length === 0 && <p className="px-0.5 py-2 text-xs italic text-text-faint">Nenhum lead aqui</p>}
                 {itens.map((lead) => {
                   const dataContato = ultimoContato.get(lead.id);
-                  // mesmo cálculo/limiar já usado na TabelaLeads
-                  // (>=14 dias = frio, >=7 = esfriando, resto = recente).
                   const dias = dataContato ? Math.floor((Date.now() - new Date(dataContato).getTime()) / 86_400_000) : null;
-                  const corContato = dias == null ? '' : dias >= 14 ? 'text-danger' : dias >= 7 ? 'text-pending' : 'text-success';
+                  // Cor por tempo (REVIEW_DECISOES_V2, Parte 6/03) —
+                  // 0-3d normal / 4-7d âmbar / 8-14d vermelho / 15d+
+                  // vermelho forte (o `font-bold` extra faz a diferença
+                  // entre os dois "vermelho" já que o token de cor é o
+                  // mesmo `--color-danger`, sem inventar um tom novo).
+                  const corContato = dias == null ? '' : dias >= 8 ? 'text-danger' : dias >= 4 ? 'text-pending' : 'text-success';
+                  const pesoContato = dias != null && dias >= 15 ? 'font-bold' : 'font-medium';
+                  // Barra lateral 3px por estado (não card inteiro
+                  // colorido) — reaproveita a MESMA cor que o funil já
+                  // tem (cabeçalho da coluna), nunca uma paleta nova.
+                  const corEstado = `var(${CORES.find((c) => c.valor === funil.cor)?.variavel ?? '--color-neutral'})`;
                   return (
                     <button
                       key={lead.id}
@@ -242,6 +257,7 @@ export function PipelineLeads({
                       draggable={!editandoFunis}
                       onDragStart={(ev) => ev.dataTransfer.setData('text/lead-id', lead.id)}
                       onClick={() => onSelecionar(lead.id)}
+                      style={{ borderLeftColor: corEstado, borderLeftWidth: 3 }}
                       className={`flex flex-col gap-1.5 rounded-sm border bg-input p-2.5 text-left text-sm transition-colors hover:border-line-strong hover:bg-raised ${
                         editandoFunis ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
                       } ${lead.id === selecionadoId ? 'border-people' : 'border-line'}`}
@@ -261,7 +277,7 @@ export function PipelineLeads({
                           {(lead.origem || dias != null) && (
                             <div className="flex items-center justify-between gap-2">
                               <span className="min-w-0 truncate">{lead.origem}</span>
-                              {dias != null && <span className={`flex-shrink-0 font-medium ${corContato}`}>{dias <= 0 ? 'Hoje' : dias === 1 ? '1 dia' : `${dias} dias`}</span>}
+                              {dias != null && <span className={`flex-shrink-0 ${pesoContato} ${corContato}`}>{dias <= 0 ? 'Hoje' : dias === 1 ? '1 dia' : `${dias} dias`}</span>}
                             </div>
                           )}
                         </div>

@@ -198,6 +198,30 @@ export default function Escala() {
     return bartenderAtual < necessario.bartender || barbackAtual < necessario.barback;
   }).length;
 
+  // Visão geral de cobertura por data (REVIEW_DECISOES_V2, Parte 6/06,
+  // P1 — "faixa ANTES dos cards de evento") — agrega necessário x atual
+  // de TODOS os eventos de cada data (não só um evento por vez, como os
+  // cards abaixo já mostram individualmente).
+  const coberturaPorData = useMemo(() => {
+    const porData = new Map<string, EventoComLead[]>();
+    for (const ev of eventosFiltrados) porData.set(ev.data_evento, [...(porData.get(ev.data_evento) ?? []), ev]);
+    return [...porData.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([data, evs]) => {
+        let necessario = 0;
+        let atual = 0;
+        for (const ev of evs) {
+          const desteEvento = escalasPorEvento.get(ev.id) ?? [];
+          const necessarioEv = calcularStaffNecessario(ev.convidados);
+          const ativos = desteEvento.filter((e) => e.status !== 'recusado');
+          necessario += necessarioEv.bartender + necessarioEv.barback;
+          atual += ativos.filter((e) => e.membro && (funcaoContaComo(e.membro.funcao) === 'bartender' || funcaoContaComo(e.membro.funcao) === 'barback')).length;
+        }
+        const pct = necessario > 0 ? Math.min(100, Math.round((atual / necessario) * 100)) : 100;
+        return { data, pct, falta: Math.max(0, necessario - atual) };
+      });
+  }, [eventosFiltrados, escalasPorEvento]);
+
   const escaladoAberto = useMemo(() => {
     if (!escaladoAbertoId) return null;
     const esc = escalas.find((e) => e.id === escaladoAbertoId);
@@ -267,6 +291,25 @@ export default function Escala() {
               >
                 {f.rotulo}
               </button>
+            ))}
+          </div>
+        )}
+
+        {/* Visão geral de cobertura por data (REVIEW_DECISOES_V2, Parte
+            6/06, P1) — ANTES dos cards de evento, um resumo por data de
+            todos os eventos daquele dia juntos. */}
+        {!carregando && coberturaPorData.length > 0 && (
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+            {coberturaPorData.slice(0, 10).map(({ data, pct, falta }) => (
+              <div key={data} className="flex flex-shrink-0 items-center gap-2 rounded-md border border-line bg-raised px-3 py-2">
+                <span className="font-mono text-[11px] font-bold uppercase tracking-wide text-text-faint">
+                  {new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')}
+                </span>
+                <div className="h-1.5 w-16 overflow-hidden rounded-full" style={{ background: 'var(--color-sidebar)' }}>
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--color-success)' : falta === 1 ? 'var(--color-pending)' : 'var(--color-danger)', opacity: 0.85 }} />
+                </div>
+                <span className={`font-mono text-[12px] font-bold ${pct >= 100 ? 'text-success' : falta === 1 ? 'text-pending' : 'text-danger'}`}>{pct}%</span>
+              </div>
             ))}
           </div>
         )}

@@ -6,7 +6,7 @@ import { diasAteEvento } from '../lib/api/contratos';
 import { listarEventos } from '../lib/api/eventos';
 import { criarLancamento } from '../lib/api/financeiro';
 import { criarRegiaoFrete, excluirRegiaoFrete, listarRegioesFrete } from '../lib/api/regioesFrete';
-import { criarVeiculo, excluirVeiculo, listarVeiculos } from '../lib/api/veiculos';
+import { alocarVeiculo, criarVeiculo, desalocarVeiculo, excluirVeiculo, listarAlocacoesVeiculo, listarVeiculos } from '../lib/api/veiculos';
 import { AlertaBanner } from '../components/AlertaBanner';
 import { Badge } from '../components/Badge';
 import { Cabecalho, Conteudo } from '../components/Layout';
@@ -24,7 +24,7 @@ import { Select } from '../components/ui/Select';
 import { mensagemDeErro } from '../lib/erroAmigavel';
 import { toast } from '../lib/toast';
 import { formatarData, formatarMoeda } from '../lib/status';
-import type { EventoComLead, NovaRegiaoFrete, NovoVeiculo, RegiaoFrete, Veiculo } from '../lib/types';
+import type { AlocacaoVeiculo, EventoComLead, NovaRegiaoFrete, NovoVeiculo, RegiaoFrete, Veiculo } from '../lib/types';
 
 function aoFalhar(e: unknown) {
   toast.erro(mensagemDeErro(e));
@@ -49,6 +49,12 @@ export default function Logistica() {
   const [regioes, setRegioes] = useState<RegiaoFrete[]>([]);
   const [compras, setCompras] = useState<CompraComItem[]>([]);
   const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
+  // Alocação veículo↔evento (migration_035, REVIEW_DECISOES_V2 Parte
+  // 6/08) — essa sim grava no banco (diferente de statusFrota/
+  // statusVeiculos acima, que são operacionais do momento): é dado de
+  // planejamento, precisa sobreviver ao F5.
+  const [alocacoes, setAlocacoes] = useState<AlocacaoVeiculo[]>([]);
+  const [alocando, setAlocando] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [salvandoVeiculo, setSalvandoVeiculo] = useState(false);
@@ -94,12 +100,13 @@ export default function Logistica() {
     setCarregando(true);
     setErro(null);
     try {
-      const [ev, ve, rg, cp, it] = await Promise.all([listarEventos(), listarVeiculos(), listarRegioesFrete(), listarCompras(), listarItens()]);
+      const [ev, ve, rg, cp, it, al] = await Promise.all([listarEventos(), listarVeiculos(), listarRegioesFrete(), listarCompras(), listarItens(), listarAlocacoesVeiculo()]);
       setEventos(ev.filter((e) => e.status !== 'cancelado'));
       setVeiculos(ve);
       setRegioes(rg);
       setCompras(cp);
       setItensEstoque(it);
+      setAlocacoes(al);
       setVeiculoId((atual) => atual || ve[0]?.id || '');
       setRegiaoId((atual) => atual || rg[0]?.id || '');
     } catch (e) {
@@ -121,6 +128,58 @@ export default function Logistica() {
     for (const ev of eventos) porData.set(ev.data_evento, (porData.get(ev.data_evento) ?? 0) + 1);
     return [...porData.entries()].filter(([, qtd]) => qtd > veiculos.length).sort((a, b) => a[0].localeCompare(b[0]));
   }, [eventos, veiculos]);
+
+  // Grid de alocação semanal + conflito de veículo de verdade
+  // (2026-09-19, REVIEW_DECISOES_V2 Parte 6/08, agora que existe o dado
+  // real — migration_035) — próximos 7 dias, um evento por dia (mesma
+  // regra de negócio de sempre: um evento por dia, ver Agenda), então
+  // "conflito" aqui É o veículo alocado em 2 dias diferentes só quando
+  // a MESMA data tem 2+ eventos (frota compartilhada no mesmo dia).
+  const proximos7Dias = useMemo(() => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(hoje);
+      d.setDate(d.getDate() + i);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
+  }, []);
+
+  const eventosPorDia = useMemo(() => {
+    const mapa = new Map<string, EventoComLead[]>();
+    for (const ev of eventos) mapa.set(ev.data_evento, [...(mapa.get(ev.data_evento) ?? []), ev]);
+    return mapa;
+  }, [eventos]);
+
+  // veiculo_id -> data -> AlocacaoVeiculo[] (pode ter mais de 1 = conflito real)
+  const alocacoesPorVeiculoEData = useMemo(() => {
+    const eventoPorId = new Map(eventos.map((e) => [e.id, e]));
+    const mapa = new Map<string, Map<string, AlocacaoVeiculo[]>>();
+    for (const a of alocacoes) {
+      const ev = eventoPorId.get(a.evento_id);
+      if (!ev) continue;
+      if (!mapa.has(a.veiculo_id)) mapa.set(a.veiculo_id, new Map());
+      const porData = mapa.get(a.veiculo_id)!;
+      porData.set(ev.data_evento, [...(porData.get(ev.data_evento) ?? []), a]);
+    }
+    return mapa;
+  }, [alocacoes, eventos]);
+
+  const conflitosVeiculo = useMemo(() => {
+    const lista: { veiculo: Veiculo; data: string; eventos: EventoComLead[] }[] = [];
+    const eventoPorId = new Map(eventos.map((e) => [e.id, e]));
+    for (const v of veiculos) {
+      const porData = alocacoesPorVeiculoEData.get(v.id);
+      if (!porData) continue;
+      for (const [data, alocs] of porData) {
+        if (alocs.length > 1) {
+          const evs = alocs.map((a) => eventoPorId.get(a.evento_id)).filter((e): e is EventoComLead => !!e);
+          lista.push({ veiculo: v, data, eventos: evs });
+        }
+      }
+    }
+    return lista.sort((a, b) => a.data.localeCompare(b.data));
+  }, [veiculos, alocacoesPorVeiculoEData, eventos]);
 
   async function aoCriarVeiculo(dados: NovoVeiculo) {
     setSalvandoVeiculo(true);
@@ -199,6 +258,25 @@ export default function Logistica() {
     return mapa;
   }, [comprasPendentes, itensEstoque, eventos]);
 
+  async function aoAlocarVeiculo(veiculoId: string, data: string, novoEventoId: string) {
+    // troca a alocação DAQUELE veículo NAQUELE dia — remove a que já
+    // existisse pra esse dia (se houver) antes de criar a nova, pra
+    // "trocar o evento no select" não empilhar duas alocações do mesmo
+    // veículo no mesmo dia sem querer.
+    const eventosNoDia = eventos.filter((e) => e.data_evento === data).map((e) => e.id);
+    const alocacoesExistentes = alocacoes.filter((a) => a.veiculo_id === veiculoId && eventosNoDia.includes(a.evento_id));
+    setAlocando(`${veiculoId}-${data}`);
+    try {
+      for (const a of alocacoesExistentes) await desalocarVeiculo(a.evento_id, veiculoId);
+      if (novoEventoId) await alocarVeiculo(novoEventoId, veiculoId);
+      await carregar();
+    } catch (e) {
+      aoFalhar(e);
+    } finally {
+      setAlocando(null);
+    }
+  }
+
   async function aoMudarDataChegada(id: string, data: string) {
     setCompras((atual) => atual.map((c) => (c.id === id ? { ...c, data_chegada_prevista: data || null } : c)));
     try {
@@ -241,16 +319,25 @@ export default function Logistica() {
 
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
-        {/* Conflito de frota (2026-09-18, REVIEW_DECISOES_V2 Parte 6/08,
-            "conflito de veículo") — adaptado ao dado que existe de
-            verdade: o sistema não tem alocação de UM veículo específico
-            por evento (o romaneio que teria isso foi removido, ver
-            migration_016), então não dá pra apontar "Van Sprinter tem 2
-            eventos" como o mockup do review sugere. O que dá pra detectar
-            com certeza — e é o mesmo problema raiz — é data com mais
-            eventos do que veículos cadastrados no total; isso já existia
-            (`datasComFrotaInsuficiente`), só ganhou o componente
-            AlertaBanner (pedido explícito do P1) e um link acionável. */}
+        {/* Conflito de veículo de verdade (2026-09-19, migration_035) —
+            o MESMO veículo alocado em 2 eventos na MESMA data. Aponta o
+            veículo pelo nome, não só "faltam veículos" no agregado. */}
+        {conflitosVeiculo.length > 0 && (
+          <AlertaBanner tom="perigo" titulo={`Conflito de veículo em ${conflitosVeiculo.length} alocação(ões)`} className="mb-4">
+            <ul className="flex flex-col gap-1">
+              {conflitosVeiculo.map(({ veiculo, data, eventos: evs }) => (
+                <li key={`${veiculo.id}-${data}`}>
+                  <strong className="text-text">{veiculo.nome}</strong> em {formatarData(data)}: {evs.map((e) => e.contrato?.lead?.nome ?? 'evento').join(' + ')} — sobreposição
+                </li>
+              ))}
+            </ul>
+          </AlertaBanner>
+        )}
+
+        {/* Conflito de frota agregado (2026-09-18) — continua útil quando
+            ainda não tem NENHUMA alocação feita: avisa que a data vai
+            precisar de mais veículos do que existem, antes mesmo de
+            começar a alocar. */}
         {datasComFrotaInsuficiente.length > 0 && (
           <AlertaBanner tom="perigo" titulo={`Conflito de frota em ${datasComFrotaInsuficiente.length} data(s)`} className="mb-4">
             <ul className="flex flex-col gap-1">
@@ -266,6 +353,66 @@ export default function Logistica() {
               ))}
             </ul>
           </AlertaBanner>
+        )}
+
+        {/* Grid de alocação semanal (REVIEW_DECISOES_V2, Parte 6/08, P2)
+            — veículo × próximos 7 dias. Clique numa célula com evento(s)
+            naquele dia pra escolher a qual está alocado; sem evento
+            naquele dia, a célula fica vazia (nada pra alocar). */}
+        {veiculos.length > 0 && (
+          <Panel className="mb-4">
+            <PanelHeader titulo="Alocação da semana" desc="Qual veículo vai em qual evento, dia a dia." />
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] border-separate border-spacing-1 text-[12px]">
+                <thead>
+                  <tr>
+                    <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-text-faint">Veículo</th>
+                    {proximos7Dias.map((data) => (
+                      <th key={data} className="px-1 text-center text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+                        {new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {veiculos.map((v) => (
+                    <tr key={v.id}>
+                      <td className="whitespace-nowrap pr-2 text-text">{v.nome}</td>
+                      {proximos7Dias.map((data) => {
+                        const eventosDoDia = eventosPorDia.get(data) ?? [];
+                        const alocs = alocacoesPorVeiculoEData.get(v.id)?.get(data) ?? [];
+                        const emConflito = alocs.length > 1;
+                        const chave = `${v.id}-${data}`;
+                        if (eventosDoDia.length === 0) {
+                          return <td key={data} className="rounded-sm bg-panel px-2 py-1.5 text-center text-text-ultra">—</td>;
+                        }
+                        return (
+                          <td key={data} className={`rounded-sm px-1 py-1 ${emConflito ? 'bg-danger/15' : alocs.length === 1 ? 'bg-people/10' : 'bg-execucao/8'}`}>
+                            <select
+                              disabled={alocando === chave}
+                              value={alocs[0]?.evento_id ?? ''}
+                              onChange={(e) => aoAlocarVeiculo(v.id, data, e.target.value)}
+                              title={emConflito ? `Conflito: alocado em ${alocs.length} eventos neste dia` : undefined}
+                              className={`w-full max-w-[140px] cursor-pointer appearance-none rounded-sm border-0 bg-transparent px-1 py-0.5 text-[11px] outline-none ${
+                                emConflito ? 'font-semibold text-danger' : alocs.length === 1 ? 'text-people' : 'text-text-faint'
+                              }`}
+                            >
+                              <option value="">Disponível</option>
+                              {eventosDoDia.map((ev) => (
+                                <option key={ev.id} value={ev.id}>
+                                  {ev.contrato?.lead?.nome ?? 'Evento'}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
         )}
 
         <RevealGroup>

@@ -12,26 +12,43 @@
    precisa de CSS próprio só pra herdar cor/raio/fonte.
    ========================================================================= */
 @theme {
-  /* -- cor: base da aplicação (quase preto, não puro) -- */
-  --color-bg: #050507; /* fundo geral */
-  --color-sidebar: #08090d; /* sidebar + top bar */
-  --color-panel: #0b0d11; /* card principal */
-  --color-raised: #111419; /* sub-box dentro de card */
-  --color-input: #13171f; /* variação mais clara (sub-box alt, input) */
+  /* -- cor: base da aplicação (2026-09-19, REVIEW_DECISOES_V2 Parte 1 —
+     "tokens de cor definitivos", aplicados aqui por pedido explícito do
+     usuário: só bg/surface/border/text, SEM tocar nas 6 cores de núcleo
+     nem no âmbar de marca — ver justificativa abaixo em `--color-accent`.
+     `--sidebar` não tem equivalente próprio no V2 (só define `--bg` e
+     `--surface`), então passa a valer o mesmo que `--bg` — o V2 trata a
+     sidebar como parte do chrome da página, não como uma superfície à
+     parte. `--raised` usa o MESMO hex do `--hover` do V2 de propósito:
+     é o "sub-box dentro do card" do sistema atual, e como quase todo
+     hover do projeto já é a classe `hover:bg-raised`, reaproveitar o
+     valor cobre os dois papéis (elevação E hover) sem duplicar token. */
+  --color-bg: #08090a; /* fundo geral (V2 --bg) */
+  --color-sidebar: #08090a; /* sidebar + top bar */
+  --color-panel: #101214; /* card principal (V2 --surface) */
+  --color-raised: #16191c; /* sub-box dentro de card + hover (V2 --hover) */
+  --color-input: #1b1e22; /* variação mais clara (sub-box alt, input) */
 
-  /* -- cor: borda -- */
-  --color-line: rgba(255, 255, 255, 0.07); /* borda padrão de card */
-  --color-line-strong: rgba(255, 255, 255, 0.13); /* borda no hover */
-  --color-line-focus: rgba(255, 255, 255, 0.18); /* borda em foco/destaque */
+  /* -- cor: borda — mesmo esquema rgba-sobre-branco de antes (continua
+     compondo certo com opacity modifiers tipo `border-line/50` usados
+     em ~40 arquivos), só recalibrado pra bater com o `--border: #24282C`
+     do V2 quando composto sobre o novo `--color-panel`. */
+  --color-line: rgba(255, 255, 255, 0.09); /* borda padrão de card */
+  --color-line-strong: rgba(255, 255, 255, 0.15); /* borda no hover */
+  --color-line-focus: rgba(255, 255, 255, 0.2); /* borda em foco/destaque */
 
   /* -- cor: texto -- */
-  --color-text: #ffffff; /* títulos e números */
+  --color-text: #f5f5f5; /* títulos e números (V2 --text) */
   --color-text-dim: rgba(226, 232, 240, 0.8); /* conteúdo principal */
-  --color-text-faint: rgba(148, 163, 184, 0.55); /* labels e descrições */
+  --color-text-faint: rgba(148, 163, 184, 0.55); /* labels e descrições — já bate perto do `--muted: #858B93` do V2 */
   --color-text-ultra: rgba(148, 163, 184, 0.3); /* metadados e rodapés */
 
   /* -- cor: destaque único, reservado pra ação primária / marca / item
-     ativo do menu (nunca um núcleo — ver DESIGN.md > "Regra do Núcleo"). -- */
+     ativo do menu (nunca um núcleo — ver DESIGN.md > "Regra do Núcleo").
+     O REVIEW_DECISOES_V2 propõe `--primary: #F5C400` — NÃO aplicado aqui
+     de propósito: este #f59e0b é o âmbar de marca real da Em Cena,
+     decisão documentada em sessão anterior (não é livre pra eu trocar
+     junto com o resto da paleta neutra). */
   --color-accent: #f59e0b;
   --color-accent-strong: #fbbf24;
   --color-accent-ink: #1c1206;

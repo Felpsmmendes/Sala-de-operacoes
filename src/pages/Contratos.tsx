@@ -1,5 +1,5 @@
-import { AlertTriangle, CheckCircle2, Clock, Download, FileSignature, Pencil, Plus, Search, Wallet } from 'lucide-react';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Download, FileSignature, MoreVertical, Pencil, Plus, Search, Wallet } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { bloqueioNaData, listarBloqueios } from '../lib/api/bloqueiosAgenda';
 import { atualizarContrato, cancelarContrato, criarContrato, diasAteEvento, excluirContrato, listarContratos, marcarSinalPago, atualizarStatusSaldo, type EdicaoContrato } from '../lib/api/contratos';
 import { listarLeads } from '../lib/api/leads';
@@ -77,6 +77,69 @@ function BarraLiquidacao({ sinalPago, saldoStatus, diasAteEvento, valorSinal, va
       <MarcadorLiquidacao cor={COR_ESTADO[estadoSaldo]} ativo={estadoSaldo === 'sucesso'} rotulo="Saldo" valor={formatarMoeda(valorSaldo)} />
       <div className="h-[2px] flex-1" style={{ background: liquidado ? COR_ESTADO.sucesso : 'var(--color-line)' }} />
       <MarcadorLiquidacao cor={COR_ESTADO[liquidado ? 'sucesso' : 'neutro']} ativo={liquidado} rotulo="Liquidado" />
+    </div>
+  );
+}
+
+/** Menu `⋮` de ações secundárias do card (REVIEW_DECISOES_V2, Parte 6/02
+    — "[Ver documento] amarelo + ⋮ menu") — Editar/Cancelar/Excluir
+    agrupados aqui, só "Ver documento" fica como botão de destaque fora
+    do menu (é a ação mais comum). Mesmo padrão de fechar ao clicar fora
+    já usado no `SinoNotificacoes` da topbar. */
+function MenuAcoesContrato({ cancelavel, onEditar, onCancelar, onExcluir }: { cancelavel: boolean; onEditar: () => void; onCancelar: () => void; onExcluir: () => void }) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    function aoClicarFora(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    }
+    document.addEventListener('mousedown', aoClicarFora);
+    return () => document.removeEventListener('mousedown', aoClicarFora);
+  }, [aberto]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setAberto((a) => !a)} title="Mais ações" className="flex h-7 w-7 items-center justify-center rounded-sm text-text-faint hover:bg-raised hover:text-text">
+        <MoreVertical className="h-4 w-4" strokeWidth={2} />
+      </button>
+      {aberto && (
+        <div className="absolute right-0 top-8 z-20 w-40 overflow-hidden rounded-sm border border-line bg-panel py-1 shadow-lg">
+          <button
+            type="button"
+            onClick={() => {
+              onEditar();
+              setAberto(false);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-text-dim hover:bg-raised hover:text-text"
+          >
+            <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Editar
+          </button>
+          {cancelavel && (
+            <button
+              type="button"
+              onClick={() => {
+                onCancelar();
+                setAberto(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-text-dim hover:bg-raised hover:text-text"
+            >
+              Cancelar
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              onExcluir();
+              setAberto(false);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-danger hover:bg-danger/10"
+          >
+            Excluir
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -285,16 +348,33 @@ export default function Contratos() {
     const sinaisPendentes = ativos.filter((c) => !c.sinal_pago);
     const saldosPendentes = ativos.filter((c) => c.saldo_status !== 'quitado');
     const emRisco = ativos.filter((c) => c.saldo_status !== 'quitado' && diasAteEvento(c.data_evento) <= 20);
-    return { totalContratado, sinaisPendentes, saldosPendentes, emRisco };
+    // Valor + quantidade nos MetricCards (REVIEW_DECISOES_V2, Parte 6/02
+    // "8 sinais / R$24.800") — soma o que falta receber de cada grupo,
+    // não o valor_total do contrato inteiro.
+    const valorSinaisPendentes = sinaisPendentes.reduce((s, c) => s + c.valor_sinal, 0);
+    const valorSaldosPendentes = saldosPendentes.reduce((s, c) => s + c.valor_saldo, 0);
+    const valorEmRisco = emRisco.reduce((s, c) => s + c.valor_saldo, 0);
+    return { totalContratado, sinaisPendentes, saldosPendentes, emRisco, valorSinaisPendentes, valorSaldosPendentes, valorEmRisco };
   }, [contratos]);
 
   const contratosFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca.trim());
-    return contratos.filter((c) => {
-      if (filtroStatus !== 'todos' && c.status !== filtroStatus) return false;
-      if (termo && !normalizarTexto(c.lead?.nome ?? '').includes(termo)) return false;
-      return true;
-    });
+    return contratos
+      .filter((c) => {
+        if (filtroStatus !== 'todos' && c.status !== filtroStatus) return false;
+        if (termo && !normalizarTexto(c.lead?.nome ?? '').includes(termo)) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        // Ordenação padrão (REVIEW_DECISOES_V2, Parte 5) — em risco D-20
+        // primeiro (saldo não quitado, evento em ≤20 dias), depois data
+        // do evento crescente. "Em risco" nunca deve ficar escondido no
+        // meio da lista atrás de contratos sem pendência nenhuma.
+        const riscoA = a.saldo_status !== 'quitado' && diasAteEvento(a.data_evento) <= 20;
+        const riscoB = b.saldo_status !== 'quitado' && diasAteEvento(b.data_evento) <= 20;
+        if (riscoA !== riscoB) return riscoA ? -1 : 1;
+        return a.data_evento.localeCompare(b.data_evento);
+      });
   }, [contratos, busca, filtroStatus]);
 
   // volta pra página 1 sempre que a busca/filtro muda o total de
@@ -312,15 +392,48 @@ export default function Contratos() {
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Wallet} rotulo="Total contratado" valor={formatarMoeda(metricas.totalContratado)} legenda={`${contratos.filter((c) => c.status === 'ativo').length} contrato(s) ativo(s)`} categoria="dinheiro" />
-          <MetricCard Icone={Clock} rotulo="Sinais pendentes" valor={String(metricas.sinaisPendentes.length)} legenda="Aguardando os 20%" categoria="dinheiro" />
-          <MetricCard Icone={Clock} rotulo="Saldos pendentes" valor={String(metricas.saldosPendentes.length)} legenda="Aguardando os 80%" categoria="dinheiro" />
-          <MetricCard Icone={AlertTriangle} rotulo="Em risco (D-20)" valor={String(metricas.emRisco.length)} legenda="Saldo não quitado, evento em 20 dias ou menos" categoria="dinheiro" />
+          <MetricCard Icone={Clock} rotulo="Sinais pendentes" valor={String(metricas.sinaisPendentes.length)} legenda={`Aguardando os 20% · ${formatarMoeda(metricas.valorSinaisPendentes)}`} categoria="dinheiro" />
+          <MetricCard Icone={Clock} rotulo="Saldos pendentes" valor={String(metricas.saldosPendentes.length)} legenda={`Aguardando os 80% · ${formatarMoeda(metricas.valorSaldosPendentes)}`} categoria="dinheiro" />
+          <MetricCard Icone={AlertTriangle} rotulo="Em risco (D-20)" valor={String(metricas.emRisco.length)} legenda={`Evento em ≤20 dias · ${formatarMoeda(metricas.valorEmRisco)}`} categoria="dinheiro" />
         </MetricGrid>
 
+        {/* Faixa D-20 por linha (REVIEW_DECISOES_V2, Parte 6/02) — cada
+            contrato em risco vira uma linha própria (nome + dias +
+            pendência + seta), não um parágrafo de nomes separados por
+            "·" dentro de um AlertaBanner genérico. */}
         {!carregando && metricas.emRisco.length > 0 && (
-          <AlertaBanner tom="perigo" titulo={`${metricas.emRisco.length} contrato${metricas.emRisco.length > 1 ? 's' : ''} com saldo pendente — evento em ≤ 20 dias`} className="mb-3">
-            {metricas.emRisco.map((c) => `${c.lead?.nome ?? '?'} (D-${diasAteEvento(c.data_evento)})`).join(' · ')}
-          </AlertaBanner>
+          <div className="mb-3 overflow-hidden rounded-sm border border-danger/30">
+            <div className="flex items-center gap-2 border-b border-danger/20 bg-danger/8 px-3.5 py-2">
+              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-danger" strokeWidth={2} />
+              <p className="text-[12.5px] font-semibold text-danger">
+                {metricas.emRisco.length} contrato{metricas.emRisco.length > 1 ? 's' : ''} com saldo pendente — evento em ≤ 20 dias
+              </p>
+            </div>
+            <div className="flex flex-col">
+              {metricas.emRisco
+                .slice()
+                .sort((a, b) => diasAteEvento(a.data_evento) - diasAteEvento(b.data_evento))
+                .map((c) => {
+                  const dias = diasAteEvento(c.data_evento);
+                  const pendencia = c.saldo_status === 'parcial' ? 'saldo parcial' : 'saldo em aberto';
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => document.getElementById(`contrato-${c.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                      className="flex items-center justify-between gap-3 border-b border-line px-3.5 py-2 text-left text-[12.5px] transition-colors last:border-b-0 hover:bg-raised"
+                    >
+                      <span className="min-w-0 truncate text-text">{c.lead?.nome ?? '—'}</span>
+                      <span className="flex flex-shrink-0 items-center gap-2 text-text-faint">
+                        <span className={dias < 0 ? 'font-semibold text-danger' : 'font-mono'}>{dias < 0 ? `${Math.abs(dias)}d atrasado` : `D-${dias}`}</span>
+                        <span>{pendencia}</span>
+                        <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
         )}
         {!carregando && metricas.sinaisPendentes.length > 0 && (
           <AlertaBanner tom="pendente" Icone={Clock} titulo={`${metricas.sinaisPendentes.length} sinal${metricas.sinaisPendentes.length > 1 ? 'is' : ''} de entrada pendente${metricas.sinaisPendentes.length > 1 ? 's' : ''}`} className="mb-4">
@@ -441,7 +554,8 @@ export default function Contratos() {
             {contratosPaginados.map((c) => (
               <div
                 key={c.id}
-                className={`p-4 ${c.saldo_status === 'quitado' ? 'list-row-tint' : 'list-row'}`}
+                id={`contrato-${c.id}`}
+                className={`scroll-mt-4 p-4 ${c.saldo_status === 'quitado' ? 'list-row-tint' : 'list-row'}`}
                 style={c.saldo_status === 'quitado' ? ({ '--row-color': 'var(--color-money)' } as CSSProperties) : undefined}
               >
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
@@ -517,21 +631,20 @@ export default function Contratos() {
                   ) : (
                     <span />
                   )}
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => aoAbrirDocumento(c)} className="flex items-center gap-1 text-[12px] font-medium text-money hover:underline">
-                      <FileSignature className="h-3 w-3" strokeWidth={2} /> {c.documento_texto ? 'Ver documento' : 'Gerar documento'}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => aoAbrirDocumento(c)}
+                      className="flex items-center gap-1.5 rounded-sm bg-accent px-3 py-1.5 text-[12px] font-semibold text-accent-ink transition-colors hover:bg-accent-strong"
+                    >
+                      <FileSignature className="h-3.5 w-3.5" strokeWidth={2} /> {c.documento_texto ? 'Ver documento' : 'Gerar documento'}
                     </button>
-                    <button type="button" onClick={() => setEditando(c)} className="flex items-center gap-1 text-[12px] font-medium text-text-dim hover:underline">
-                      <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
-                    </button>
-                    {c.status !== 'cancelado' && (
-                      <button type="button" onClick={() => aoCancelar(c)} className="text-[12px] font-medium text-text-dim hover:underline">
-                        Cancelar
-                      </button>
-                    )}
-                    <button type="button" onClick={() => aoExcluirDefinitivo(c)} className="text-[12px] font-medium text-danger hover:underline">
-                      Excluir
-                    </button>
+                    <MenuAcoesContrato
+                      cancelavel={c.status !== 'cancelado'}
+                      onEditar={() => setEditando(c)}
+                      onCancelar={() => aoCancelar(c)}
+                      onExcluir={() => aoExcluirDefinitivo(c)}
+                    />
                   </div>
                 </div>
               </div>

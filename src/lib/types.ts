@@ -239,6 +239,15 @@ export type Veiculo = {
 
 export type NovoVeiculo = Omit<Veiculo, 'id'>;
 
+/** Vínculo veículo↔evento (migration_035, 2026-09-19) — many-to-many:
+    um evento pode precisar de mais de um veículo. */
+export type AlocacaoVeiculo = {
+  id: string;
+  evento_id: string;
+  veiculo_id: string;
+  criado_em: string;
+};
+
 /** Região de frete (2026-09-09) — cadastro livre do gestor pra alimentar
     a calculadora de frete sem digitar o km na mão toda vez (ver
     supabase/migration_017_regioes_frete.sql). `km_aproximado` é a
