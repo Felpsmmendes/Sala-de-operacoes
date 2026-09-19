@@ -114,11 +114,11 @@
      não se destacava. Depois (mesmo dia, pedido "menos branco"): nenhuma
      superfície é branco puro — fundo cinza-azulado → card off-white →
      sub-box e input em cinza um pouco mais escuro que o card. */
-  --color-bg: #e4e7ec;
-  --color-sidebar: #eaedf1;
-  --color-panel: #f6f7f9;
-  --color-raised: #eceef2;
-  --color-input: #e8ebf0;
+  --color-bg: #d9dde4;
+  --color-sidebar: #dfe3e9;
+  --color-panel: #eceff3;
+  --color-raised: #e2e6ec;
+  --color-input: #dde1e8;
 
   --color-line: rgba(15, 23, 42, 0.1);
   --color-line-strong: rgba(15, 23, 42, 0.18);
@@ -126,8 +126,8 @@
 
   --color-text: #0f172a;
   --color-text-dim: rgba(30, 41, 59, 0.78);
-  --color-text-faint: rgba(51, 65, 85, 0.58);
-  --color-text-ultra: rgba(51, 65, 85, 0.38);
+  --color-text-faint: rgba(51, 65, 85, 0.66);
+  --color-text-ultra: rgba(51, 65, 85, 0.44);
 
   --color-success: #15803d;
   --color-pending: #92400e;
