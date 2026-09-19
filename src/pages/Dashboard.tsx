@@ -1,10 +1,9 @@
-import { Activity, AlertTriangle, Banknote, Calendar, CheckCircle2, Clock3, Fingerprint, GlassWater, Lock, Package, PackageCheck, Star, Truck, Users } from 'lucide-react';
+import { Activity, AlertTriangle, Banknote, Calendar, CheckCircle2, Clock3, Fingerprint, Lock, Package, PackageCheck, Star, Truck, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { listarAuditorias } from '../lib/api/auditoria';
 import { calcularFaturamentoPorMes, diasAteEvento, listarContratos } from '../lib/api/contratos';
 import { listarCuesDoEvento } from '../lib/api/cueSheet';
-import { calcularRitmoDrinksPorHora, listarRegistrosDrink, type RegistroDrink } from '../lib/api/drinks';
 import { listarCompras, listarItens, type CompraComItem, type ItemEstoque } from '../lib/api/estoque';
 import { listarEventos } from '../lib/api/eventos';
 import { listarFunis } from '../lib/api/funis';
@@ -157,7 +156,6 @@ export default function Dashboard() {
   const [compras, setCompras] = useState<CompraComItem[]>([]);
   const [auditorias, setAuditorias] = useState<AuditoriaPosEvento[]>([]);
   const [cuesPorEvento, setCuesPorEvento] = useState<Map<string, CueSheetItem[]>>(new Map());
-  const [registrosDrinkHoje, setRegistrosDrinkHoje] = useState<RegistroDrink[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   // "Atualizado há Xs" (2026-09-18, REVIEW_DECISOES_V2 Parte 6/01) — a
@@ -205,17 +203,15 @@ export default function Dashboard() {
         // fase a operação está e qual a próxima transição de horário no
         // card do "Monitor ao vivo". Só leitura (nunca sincroniza cues
         // automáticos daqui — isso é ação do Roteiro do Evento).
-        const [pres, cuesArrays, registrosDrink] = await Promise.all([
+        const [pres, cuesArrays] = await Promise.all([
           buscarPresencaResumo(idsHoje),
           Promise.all(idsHoje.map((id) => listarCuesDoEvento(id).catch(() => []))),
-          listarRegistrosDrink(idsHoje).catch(() => []),
         ]);
         if (cancelado) return;
         setEventos(ev);
         setContratos(ct);
         setPresenca(pres);
         setCuesPorEvento(new Map(idsHoje.map((id, i) => [id, cuesArrays[i]])));
-        setRegistrosDrinkHoje(registrosDrink);
         setFunis(fs);
         setLeads(ls);
         setItensEstoque(itens);
@@ -408,30 +404,6 @@ export default function Dashboard() {
     });
   }, [carregando, eventosComPendencia, itensEstoque, leadsEsfriandoGlobal, sinaisPendentesGlobal, clientesInsatisfeitos, adicionarNotificacao]);
 
-  // Fase C do roadmap (2026-09-11) — dado REAL de consumo (contador de
-  // drinks, ver DrinksPublico.tsx), no lugar do número fabricado que o
-  // print original pedia. Ritmo só aparece com pelo menos 2 toques —
-  // menos que isso não é "ritmo", é 1 ponto solto.
-  const ritmoDrinksPorHora = useMemo(() => calcularRitmoDrinksPorHora(registrosDrinkHoje), [registrosDrinkHoje]);
-
-  // Alerta de ritmo abaixo do esperado (2026-09-14) — 0.5 drink/hora por
-  // convidado é uma referência padrão do setor (não um dado medido), só
-  // pra dar um sinal de "algo pode estar travado no bar" enquanto o
-  // evento ainda está rolando; nunca aparece sem convidados cadastrados
-  // no evento (senão a "expectativa" seria inventada do nada).
-  const alertaRitmo = useMemo(() => {
-    if (!ritmoDrinksPorHora || ritmoDrinksPorHora <= 0) return null;
-    const eventoAtivo = eventosHoje[0];
-    const convidados = eventoAtivo?.convidados ?? 0;
-    if (convidados === 0) return null;
-
-    const ritmoEsperado = convidados * 0.5;
-    const pct = (ritmoDrinksPorHora / ritmoEsperado) * 100;
-    if (pct < 60) return { nivel: 'critico' as const, pct: Math.round(pct), ritmoEsperado, convidados };
-    if (pct < 80) return { nivel: 'aviso' as const, pct: Math.round(pct), ritmoEsperado, convidados };
-    return null;
-  }, [ritmoDrinksPorHora, eventosHoje]);
-
   function copiarLinkDrinks(eventoId: string) {
     const link = `${window.location.origin}/drinks/${eventoId}`;
     navigator.clipboard
@@ -579,29 +551,7 @@ export default function Dashboard() {
             categoria="dinheiro"
             comoLink="/contratos"
           />
-          <MetricCard
-            Icone={GlassWater}
-            rotulo="Drinks servidos hoje"
-            valor={String(registrosDrinkHoje.length)}
-            legenda={ritmoDrinksPorHora != null ? `~${ritmoDrinksPorHora.toFixed(0)} drinks/hora` : 'Ritmo aparece com 2+ registros'}
-            categoria="operacao"
-            aoVivo={registrosDrinkHoje.length > 0}
-          />
         </section>
-
-        {alertaRitmo && (
-          <div
-            className={`mb-4 flex items-center gap-2.5 rounded-sm border px-3 py-2.5 text-[12.5px] ${
-              alertaRitmo.nivel === 'critico' ? 'border-danger/30 bg-danger/8 text-danger' : 'border-pending/30 bg-pending/8 text-pending'
-            }`}
-          >
-            <AlertTriangle className="h-4 w-4 flex-shrink-0" strokeWidth={2} />
-            <span>
-              <strong>Ritmo {alertaRitmo.nivel === 'critico' ? 'crítico' : 'abaixo do esperado'}:</strong> {ritmoDrinksPorHora} drinks/hora ({alertaRitmo.pct}% do esperado de{' '}
-              {Math.round(alertaRitmo.ritmoEsperado)}/h para {alertaRitmo.convidados} convidados)
-            </span>
-          </div>
-        )}
 
         {erro && <AlertaBanner tom="perigo" className="mb-4">{erro}</AlertaBanner>}
 
