@@ -427,7 +427,7 @@ export default function Estoque() {
         {erro && <p className="mb-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
         {/* submenu horizontal, sempre visível — mesmo padrão do CRM */}
-        <div className="mb-5 flex gap-1 border-b border-line">
+        <div className="scrollbar-none mb-5 flex gap-1 overflow-x-auto border-b border-line">
           {(
             [
               { id: 'checklists', rotulo: 'Checklists', Icone: ClipboardList, contagem: contratos.length },
@@ -442,7 +442,7 @@ export default function Estoque() {
               key={item.id}
               type="button"
               onClick={() => (item.id === 'movimentacoes' ? aoAbrirAbaMovimentacoes() : setAba(item.id))}
-              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-[13px] font-medium transition-colors ${
                 aba === item.id ? 'border-ops text-ops' : 'border-transparent text-text-dim hover:text-text'
               }`}
             >

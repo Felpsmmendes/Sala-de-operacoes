@@ -585,6 +585,12 @@ export type Database = {
         Update: { id?: string; membro_id?: string; data?: string; disponivel?: boolean; observacao?: string | null; criado_em?: string };
         Relationships: [];
       };
+      erros_app: {
+        Row: { id: string; criado_em: string; origem: string; mensagem: string; stack: string | null; rota: string | null; user_agent: string | null; usuario_id: string | null };
+        Insert: { id?: string; criado_em?: string; origem: string; mensagem: string; stack?: string | null; rota?: string | null; user_agent?: string | null; usuario_id?: string | null };
+        Update: { id?: string; criado_em?: string; origem?: string; mensagem?: string; stack?: string | null; rota?: string | null; user_agent?: string | null; usuario_id?: string | null };
+        Relationships: [];
+      };
       checklist_templates: {
         Row: { id: string; nome: string; descricao: string | null; criado_em: string };
         Insert: { id?: string; nome: string; descricao?: string | null; criado_em?: string };

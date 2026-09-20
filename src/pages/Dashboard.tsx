@@ -528,7 +528,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <section className="metric-grid mb-4 grid grid-cols-2 gap-4 md:grid-cols-3">
+        <section className="metric-grid mb-4 grid grid-flow-dense grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
           <MetricCard Icone={Calendar} rotulo="Eventos hoje" valor={String(eventosHoje.length)} legenda={formatarData(hoje)} categoria="agenda" aoVivo />
           <MetricCard
             Icone={Banknote}

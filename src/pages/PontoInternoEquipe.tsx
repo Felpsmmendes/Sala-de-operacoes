@@ -306,7 +306,7 @@ export default function PontoInternoEquipe() {
               <MetricCard Icone={Users} rotulo="Funcionários" valor={String(ativos.length)} legenda="Ativos na equipe" categoria="pessoas" />
               <MetricCard Icone={UserCheck} rotulo="Presentes" valor={String(presentes.length)} legenda={`${formatarPercentual(pctPresenca)} da equipe`} categoria="pessoas" />
               <MetricCard Icone={Clock} rotulo="Sem registro" valor={String(semRegistro.length)} legenda={`${formatarPercentual(ativos.length > 0 ? 100 - pctPresenca : 0)} da equipe`} categoria="pessoas" />
-              <div className="panel-glass flex items-center gap-4 p-4">
+              <div className="panel-glass flex flex-col items-center gap-2 p-4 text-center sm:flex-row sm:gap-4 sm:text-left">
                 <AnelPresenca percentual={pctPresenca} />
                 <div>
                   <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-text-faint">Presença hoje</p>

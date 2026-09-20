@@ -113,7 +113,7 @@ export default function DetalheEvento() {
           {evento.canal_radio && <span className="font-mono text-[12px] text-pending">Canal {evento.canal_radio}</span>}
         </div>
 
-        <div className="mb-6 flex gap-1 border-b border-line">
+        <div className="scrollbar-none mb-6 flex gap-1 overflow-x-auto border-b border-line">
           {(
             [
               { id: 'resumo', rotulo: 'Resumo' },
@@ -126,7 +126,7 @@ export default function DetalheEvento() {
               key={a.id}
               type="button"
               onClick={() => setAba(a.id)}
-              className={['px-4 py-2.5 text-[13px] font-medium transition-colors', aba === a.id ? 'border-b-2 border-accent text-accent' : 'text-text-dim hover:text-text'].join(' ')}
+              className={['flex-shrink-0 whitespace-nowrap px-4 py-2.5 text-[13px] font-medium transition-colors', aba === a.id ? 'border-b-2 border-accent text-accent' : 'text-text-dim hover:text-text'].join(' ')}
             >
               {a.rotulo}
             </button>

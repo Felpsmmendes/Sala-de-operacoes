@@ -633,3 +633,13 @@ button:not(:disabled):active {
 :root[data-theme='light'] .text-ops {
   color: var(--color-ops-label);
 }
+
+/* Rolagem horizontal sem barra visível — barras de abas no celular (CRM,
+   Estoque, Detalhe do Evento): a linha rola com o dedo, a barra só polui. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

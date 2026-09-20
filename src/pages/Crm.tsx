@@ -268,13 +268,13 @@ export default function Crm() {
       <Cabecalho titulo="CRM & Pipeline de Leads" subtitulo="Novo lead → degustação agendada → proposta enviada → contrato fechado." />
       <Conteudo>
         {/* submenu horizontal, sempre visível — nunca um menu que abre/fecha */}
-        <div className="mb-5 flex gap-1 border-b border-line">
+        <div className="scrollbar-none mb-5 flex gap-1 overflow-x-auto border-b border-line">
           {ABAS.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setAba(item.id)}
-              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-[13px] font-medium transition-colors ${
                 aba === item.id ? 'border-people text-people' : 'border-transparent text-text-dim hover:text-text'
               }`}
             >

@@ -36,6 +36,7 @@ import { useTema } from '../lib/useTema';
 import { AtualizacaoPWA } from './AtualizacaoPWA';
 import { BotaoInstalarPWA } from './BotaoInstalarPWA';
 import { Breadcrumb } from './Breadcrumb';
+import { ErrorBoundary } from './ErrorBoundary';
 import { Skeleton } from './Skeleton';
 import { CommandPalette } from './ui/CommandPalette';
 import { DotLive } from './ui/DotLive';
@@ -372,7 +373,7 @@ export default function Layout() {
       </aside>
 
       {/* -- conteúdo -- */}
-      <div className={`flex-1 pb-24 transition-[margin] duration-200 lg:pb-0 ${colapsada ? 'lg:ml-16' : 'lg:ml-[210px]'}`}>
+      <div className={`min-w-0 flex-1 pb-24 transition-[margin] duration-200 lg:pb-0 ${colapsada ? 'lg:ml-16' : 'lg:ml-[210px]'}`}>
         {/* Topbar persistente (2026-09-17, "topbar + notificações") — busca,
             atalho de criação e sino ficam fixos no topo em TODA tela
             autenticada, em vez de cada `Cabecalho` remontar seu próprio
@@ -429,9 +430,11 @@ export default function Layout() {
             próximo na árvore, que ficava ACIMA do Layout inteiro — a
             sidebar inteira sumia e reaparecia a cada navegação. Com este
             aqui, só o conteúdo pisca; sidebar/topbar continuam montados. */}
-        <Suspense fallback={<CarregandoConteudo />}>
-          <Outlet />
-        </Suspense>
+        <ErrorBoundary compacto resetKey={location.pathname}>
+          <Suspense fallback={<CarregandoConteudo />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       {/* -- barra inferior (mobile, <960px) — 4 itens fixos + Menu (2026-09-19) -- */}
@@ -538,6 +541,15 @@ export default function Layout() {
             >
               <User className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
               Configurações
+            </NavLink>
+            <NavLink
+              to="/status"
+              className={({ isActive }) =>
+                ['flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors', isActive ? 'bg-accent/10 text-accent' : 'text-text hover:bg-raised'].join(' ')
+              }
+            >
+              <Activity className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
+              Status do Sistema
             </NavLink>
           </div>
         </div>

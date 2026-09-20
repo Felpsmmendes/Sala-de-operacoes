@@ -80,9 +80,15 @@ export function MetricCard({
   const corIcone = CATEGORIA_LABEL[categoria];
   const contado = useContagem(valorAnimado?.alvo ?? 0, 1000);
   const valorExibido = valorAnimado ? valorAnimado.formatar(contado) : valor;
+  // Valor longo (ex.: "R$ 221.905,89") não cabe em meia largura no celular sem
+  // esconder dígito atrás de "…" — o card ocupa a linha inteira (<sm) em vez
+  // de truncar. Usa o valor FINAL, não o da animação de contagem (senão o card
+  // pularia de largura enquanto os dígitos crescem).
+  const valorFinal = valorAnimado ? valorAnimado.formatar(valorAnimado.alvo) : valor;
+  const spanCelular = valorFinal.length > 10 ? 'col-span-2 sm:col-span-1' : '';
 
   const conteudo = (
-    <div className="panel-glass flex flex-col gap-3 p-4">
+    <div className={`panel-glass flex flex-col gap-3 p-4 ${spanCelular}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-text-faint">
           {rotulo}
@@ -131,7 +137,7 @@ export function MetricCard({
 
   if (comoLink) {
     return (
-      <Link to={comoLink} className="hover-elevado block rounded-[18px]">
+      <Link to={comoLink} className={`hover-elevado block rounded-[18px] ${spanCelular}`}>
         {conteudo}
       </Link>
     );
@@ -140,5 +146,5 @@ export function MetricCard({
 }
 
 export function MetricGrid({ children }: { children: ReactNode }) {
-  return <section className="metric-grid mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">{children}</section>;
+  return <section className="metric-grid mb-5 grid grid-flow-dense grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{children}</section>;
 }

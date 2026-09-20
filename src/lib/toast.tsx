@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
+import { registrarErro } from './registrarErro';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 export type ToastTipo = 'sucesso' | 'erro' | 'info' | 'aviso' | 'processando';
@@ -83,7 +84,12 @@ export const toast = {
       Duração maior (8s em vez de 4s) só quando tem ação, pra dar tempo
       de clicar. */
   sucesso: (msg: string, acao?: ToastAcao) => _adicionar?.(msg, 'sucesso', acao ? 8000 : undefined, acao),
-  erro: (msg: string) => _adicionar?.(msg, 'erro'),
+  /** Além de mostrar, registra em `erros_app` (origem 'toast') — o toast de
+      erro é o retrato do que o usuário VIU falhar (ex.: banco recusou). */
+  erro: (msg: string) => {
+    registrarErro({ origem: 'toast', mensagem: msg });
+    return _adicionar?.(msg, 'erro');
+  },
   info: (msg: string) => _adicionar?.(msg, 'info'),
   aviso: (msg: string) => _adicionar?.(msg, 'aviso'),
   /** Toast com indicador de "processando" (3 pontinhos) enquanto

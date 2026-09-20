@@ -644,3 +644,18 @@ export type BloqueioAgenda = {
 };
 
 export type NovoBloqueioAgenda = { categoria: CategoriaBloqueio; observacao: string | null; dataInicio: string; dataFim: string };
+
+/* -------------------- Monitoramento de erros do app (2026-09-19, ver migration_038) -------------------- */
+
+export type OrigemErro = 'janela' | 'promessa' | 'react' | 'toast';
+
+export type ErroApp = {
+  id: string;
+  criado_em: string;
+  origem: OrigemErro;
+  mensagem: string;
+  stack: string | null;
+  rota: string | null;
+  user_agent: string | null;
+  usuario_id: string | null;
+};

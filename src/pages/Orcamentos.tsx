@@ -365,6 +365,7 @@ export default function Orcamentos() {
               <div key={e.rotulo} className="flex items-center gap-1.5">
                 {i > 0 && <span className="h-px w-5 flex-shrink-0 bg-line" />}
                 <span
+                  title={e.rotulo}
                   className={`flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
                     e.estado === 'concluida'
                       ? 'border-success/30 bg-success/10 text-success'
@@ -375,7 +376,9 @@ export default function Orcamentos() {
                         : 'border-line bg-input text-text-faint'
                   }`}
                 >
-                  {e.estado === 'concluida' ? '✓' : e.estado === 'atual' ? '●' : '○'} {e.rotulo}
+                  {e.estado === 'concluida' ? '✓' : e.estado === 'atual' ? '●' : '○'}
+                  {/* no celular só o passo atual mostra o nome — os outros ficam só com o símbolo */}
+                  <span className={e.estado === 'atual' ? undefined : 'hidden sm:inline'}>{e.rotulo}</span>
                 </span>
               </div>
             ))}
