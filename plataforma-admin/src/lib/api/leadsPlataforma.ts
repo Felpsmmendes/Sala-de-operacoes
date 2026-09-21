@@ -1,9 +1,6 @@
 import { supabase } from '../supabase';
 import type { EtapaLeadPlataforma, InteracaoLeadPlataforma, LeadPlataforma, TipoInteracaoLeadPlataforma } from '../types';
 
-/** CRM de prospecção da plataforma (migration_043) — RLS já restringe
-    tudo a `super_admins`; estas funções nunca são chamadas de dentro do
-    app de uma empresa. */
 export async function listarLeadsPlataforma(): Promise<LeadPlataforma[]> {
   const { data, error } = await supabase.from('leads_plataforma').select('*').order('criado_em', { ascending: false });
   if (error) throw new Error(error.message);

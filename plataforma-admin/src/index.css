@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+/* Paleta própria, de propósito diferente do Sala de Operações (Em Cena
+   usa âmbar/Plus Jakarta Sans) — reforça que isto aqui é outra
+   aplicação, não uma tela a mais dentro do produto do cliente.
+   Dark-only: ferramenta interna de uso pessoal, sem necessidade de
+   suportar tema claro por enquanto. */
+@theme {
+  --color-bg: #0b0d12;
+  --color-panel: #12151c;
+  --color-raised: #181c25;
+  --color-input: #0f121a;
+  --color-line: #232838;
+  --color-line-strong: #333a4f;
+
+  --color-text: #e8eaf0;
+  --color-text-dim: #a6acbe;
+  --color-text-faint: #6b7286;
+
+  --color-accent: #6366f1;
+  --color-accent-strong: #818cf8;
+  --color-accent-ink: #0b0d12;
+
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-pending: #fbbf24;
+  --color-neutral: #94a3b8;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+}

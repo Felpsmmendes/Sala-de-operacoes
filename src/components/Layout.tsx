@@ -1,7 +1,6 @@
 import {
   Activity,
   BarChart3,
-  Building2,
   Calendar,
   ChevronDown,
   ClipboardCheck,
@@ -25,7 +24,6 @@ import {
   TrendingUp,
   Truck,
   User,
-  UserPlus,
   Users,
   Wallet,
   X,
@@ -169,7 +167,7 @@ function nucleoDaRota(pathname: string): string | null {
 }
 
 export default function Layout() {
-  const { session, ehSuperAdmin } = useAuth();
+  const { session } = useAuth();
   const { naoLidas: contagemAlertas } = useNotificacoes();
   const location = useLocation();
   const email = session?.user?.email ?? '';
@@ -346,32 +344,6 @@ export default function Layout() {
               <DotLive categoria="execucao" />
               Operação Normal
             </div>
-          )}
-          {/* Painel da plataforma (2026-09-21) — só aparece pra quem está
-              em `super_admins` (ver migration_041); pra qualquer outra
-              conta, `ehSuperAdmin` é false/null e este item nem renderiza
-              — não é só a rota que é protegida, o link também não existe. */}
-          {ehSuperAdmin && (
-            <NavLink
-              to="/plataforma"
-              title={colapsada ? 'Plataforma' : undefined}
-              className={({ isActive }) => `nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'is-active' : ''}`}
-            >
-              <Building2 className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
-              {!colapsada && <span className="truncate">Plataforma</span>}
-              {colapsada && <TooltipColapsado texto="Plataforma" />}
-            </NavLink>
-          )}
-          {ehSuperAdmin && (
-            <NavLink
-              to="/plataforma/crm"
-              title={colapsada ? 'Prospecção' : undefined}
-              className={({ isActive }) => `nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'is-active' : ''}`}
-            >
-              <UserPlus className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
-              {!colapsada && <span className="truncate">Prospecção</span>}
-              {colapsada && <TooltipColapsado texto="Prospecção" />}
-            </NavLink>
           )}
           <NavLink
             to="/status"

@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-import ProtectedRouteSuperAdmin from './components/ProtectedRouteSuperAdmin';
 import { Skeleton } from './components/Skeleton';
 import { AuthProvider } from './lib/AuthContext';
 import { NotificacoesProvider } from './lib/NotificacoesContext';
@@ -24,7 +23,6 @@ const ContasPagar = lazy(() => import('./pages/ContasPagar'));
 const ContasReceber = lazy(() => import('./pages/ContasReceber'));
 const Contratos = lazy(() => import('./pages/Contratos'));
 const Crm = lazy(() => import('./pages/Crm'));
-const CrmPlataforma = lazy(() => import('./pages/CrmPlataforma'));
 const CueSheet = lazy(() => import('./pages/CueSheet'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const DetalheEvento = lazy(() => import('./pages/DetalheEvento'));
@@ -39,7 +37,6 @@ const Login = lazy(() => import('./pages/Login'));
 const Logistica = lazy(() => import('./pages/Logistica'));
 const NaoEncontrado = lazy(() => import('./pages/NaoEncontrado'));
 const Orcamentos = lazy(() => import('./pages/Orcamentos'));
-const Plataforma = lazy(() => import('./pages/Plataforma'));
 const Ponto = lazy(() => import('./pages/Ponto'));
 const PontoInterno = lazy(() => import('./pages/PontoInterno'));
 const PontoInternoEquipe = lazy(() => import('./pages/PontoInternoEquipe'));
@@ -149,25 +146,6 @@ export default function App() {
                 <Route path="/fechamento" element={<Fechamento />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
                 <Route path="/status" element={<StatusSistema />} />
-                {/* Painel da plataforma (2026-09-21) — segunda checagem por
-                    cima do <ProtectedRoute> normal, só pra quem está em
-                    `super_admins` (ver ProtectedRouteSuperAdmin.tsx). */}
-                <Route
-                  path="/plataforma"
-                  element={
-                    <ProtectedRouteSuperAdmin>
-                      <Plataforma />
-                    </ProtectedRouteSuperAdmin>
-                  }
-                />
-                <Route
-                  path="/plataforma/crm"
-                  element={
-                    <ProtectedRouteSuperAdmin>
-                      <CrmPlataforma />
-                    </ProtectedRouteSuperAdmin>
-                  }
-                />
                 <Route path="/relatorios" element={<Relatorios />} />
                 <Route path="/checklists" element={<Checklists />} />
                 <Route path="/checklists/templates" element={<ChecklistTemplates />} />

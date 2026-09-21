@@ -562,50 +562,10 @@ export type MembroEmpresa = {
   criado_em: string;
 };
 
-/** Painel da plataforma (2026-09-21) — restrito a quem está em
-    `super_admins` (ver migration_041). Nunca confundir com `Gestor`:
-    gestor administra UMA empresa; super admin enxerga a LISTA de
-    empresas (só nome/plano/status, nunca dado de negócio de nenhuma
-    delas) — é o desenvolvedor/dono da plataforma, ninguém mais por
-    padrão. */
-export type SuperAdmin = {
-  id: string;
-  nome: string | null;
-  criado_em: string;
-};
-
-/** CRM de prospecção da plataforma (migration_043) — funil de VENDAS DO
-    SAAS (empresas que podem virar cliente), não o CRM de cada empresa
-    (`leads`/`funis_lead`, dado de negócio dela). Sem `empresa_id`: um
-    prospect só ganha linha em `empresas` quando fecha de verdade — até
-    lá não é tenant de nada. Mesmo escopo de acesso de `Empresa` (só
-    super_admins). */
-export type EtapaLeadPlataforma = 'lead' | 'contato' | 'demonstracao' | 'proposta' | 'negociacao' | 'ganho' | 'perdido';
-
-export type LeadPlataforma = {
-  id: string;
-  nome_empresa: string;
-  contato_nome: string | null;
-  contato_telefone: string | null;
-  contato_email: string | null;
-  origem: string | null;
-  etapa: EtapaLeadPlataforma;
-  plano_interesse: PlanoEmpresa | null;
-  valor_potencial: number | null;
-  observacoes: string | null;
-  criado_em: string;
-  atualizado_em: string;
-};
-
-export type TipoInteracaoLeadPlataforma = 'mensagem_whatsapp' | 'ligacao' | 'email' | 'reuniao' | 'nota';
-
-export type InteracaoLeadPlataforma = {
-  id: string;
-  lead_id: string;
-  tipo: TipoInteracaoLeadPlataforma;
-  conteudo: string;
-  criado_em: string;
-};
+// `SuperAdmin`/`LeadPlataforma`/etc (painel da plataforma) não moram mais
+// aqui — o painel virou um app separado (`plataforma-admin/`, decisão do
+// usuário em 2026-09-21) com seu próprio `src/lib/types.ts`. Este app só
+// precisa de `Empresa`/`MembroEmpresa` acima, pra `AuthContext.empresaAtual`.
 
 export type TipoPontoInterno = 'entrada' | 'saida';
 
