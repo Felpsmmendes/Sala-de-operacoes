@@ -31,6 +31,3 @@ dist-ssr
 # estado local do CLI do Supabase (ref do projeto, versões) — não é
 # código, é cache de máquina/sessão.
 supabase/.temp/
-
-.vercel
-.env*
