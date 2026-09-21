@@ -1,6 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { buscarMinhaEmpresa } from './api/empresas';
 import { supabase } from './supabase';
+import type { Empresa } from './types';
 
 /**
  * Autenticação do Supabase Auth deste projeto. Historicamente era só UM
@@ -24,6 +26,12 @@ type AuthState = {
       nunca deixar uma conta de funcionário cair no painel de gestão
       (ver ProtectedRoute). */
   ehGestor: boolean | null;
+  /** Empresa (tenant) do usuário logado — Etapa 1 / Entrega 1.3 da
+      fundação multiempresa (ver documento de auditoria). Ainda não é
+      lido por NENHUMA query de dado — só disponível no contexto pra
+      validar a fiação antes de qualquer coisa passar a depender dele.
+      `null` = ainda carregando ou sem vínculo (ver `buscarMinhaEmpresa`). */
+  empresaAtual: Empresa | null;
   entrar: (email: string, senha: string) => Promise<{ erro: string | null }>;
   /** Dispara o e-mail de redefinição de senha do Supabase Auth — o link
       leva pra `/redefinir-senha` (fora do <ProtectedRoute>), que detecta
@@ -41,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [ehGestor, setEhGestor] = useState<boolean | null>(null);
+  const [empresaAtual, setEmpresaAtual] = useState<Empresa | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -49,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(novaSessao);
       if (!novaSessao) {
         setEhGestor(null);
+        setEmpresaAtual(null);
         return;
       }
       // `eh_gestor()` é a mesma função SQL que trava o acesso de gestão em
@@ -57,6 +67,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // dado (isso já é feito pelo RLS de cada tabela, direto no banco).
       const { data, error } = await supabase.rpc('eh_gestor');
       if (!cancelado) setEhGestor(error ? false : Boolean(data));
+
+      // Empresa atual (Entrega 1.3) — busca best-effort: falha em silêncio
+      // (fica `null`) em vez de derrubar o login, já que nada depende
+      // disso ainda (ver comentário no tipo `empresaAtual` acima).
+      try {
+        const empresa = await buscarMinhaEmpresa(novaSessao.user.id);
+        if (!cancelado) setEmpresaAtual(empresa);
+      } catch {
+        if (!cancelado) setEmpresaAtual(null);
+      }
     }
 
     supabase.auth.getSession().then(({ data }) => {
@@ -120,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { erro: error ? error.message : null };
   }
 
-  return <AuthContext.Provider value={{ session, carregando, ehGestor, entrar, recuperarSenha, sair, atualizarNome, atualizarSenha }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ session, carregando, ehGestor, empresaAtual, entrar, recuperarSenha, sair, atualizarNome, atualizarSenha }}>{children}</AuthContext.Provider>;
 }
 
 function traduzErro(msg: string) {

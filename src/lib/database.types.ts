@@ -741,6 +741,26 @@ export type Database = {
         Update: { id?: string; nome?: string | null; criado_em?: string };
         Relationships: [];
       };
+      empresas: {
+        Row: { id: string; nome: string; slug: string; criado_em: string };
+        Insert: { id?: string; nome: string; slug: string; criado_em?: string };
+        Update: { id?: string; nome?: string; slug?: string; criado_em?: string };
+        Relationships: [];
+      };
+      membros_empresa: {
+        Row: { id: string; empresa_id: string; user_id: string; papel: string; criado_em: string };
+        Insert: { id?: string; empresa_id: string; user_id: string; papel?: string; criado_em?: string };
+        Update: { id?: string; empresa_id?: string; user_id?: string; papel?: string; criado_em?: string };
+        Relationships: [
+          {
+            foreignKeyName: 'membros_empresa_empresa_id_fkey';
+            columns: ['empresa_id'];
+            isOneToOne: false;
+            referencedRelation: 'empresas';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       funcionarios_internos: {
         Row: { id: string; nome: string; ativo: boolean; criado_em: string; horario_entrada_padrao: string | null; horario_saida_padrao: string | null; valor_hora: number | null; valor_hora_extra: number | null };
         Insert: {

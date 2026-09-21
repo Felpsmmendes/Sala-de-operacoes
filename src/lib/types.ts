@@ -506,6 +506,29 @@ export type Gestor = {
   criado_em: string;
 };
 
+/* -------------------- Multiempresa (2026-09-21) --------------------
+   Fundação de tenant — Etapa 1 do plano de evolução pra SaaS multiempresa
+   (ver documento de auditoria). `gestores` acima continua existindo e
+   sendo a fonte de verdade de "eh_gestor()" por enquanto; estes dois
+   tipos só espelham as tabelas novas (migration_039/040), ainda não
+   substituem nada. */
+export type Empresa = {
+  id: string;
+  nome: string;
+  slug: string;
+  criado_em: string;
+};
+
+export type PapelMembroEmpresa = 'admin';
+
+export type MembroEmpresa = {
+  id: string;
+  empresa_id: string;
+  user_id: string;
+  papel: PapelMembroEmpresa;
+  criado_em: string;
+};
+
 export type TipoPontoInterno = 'entrada' | 'saida';
 
 export type FuncionarioInterno = {
