@@ -1,0 +1,43 @@
+name: CI
+
+# Roda em todo push nas branches principais e em todo PR contra a main —
+# pega erro de tipo/build/teste ANTES de chegar no Vercel (que só falha
+# silenciosamente o deploy, sem avisar quem empurrou o código) ou pior,
+# antes de virar um bug real em produção. Motivado por um caso concreto
+# (2026-09-14): um `useMemo` sem import passou direto porque ninguém
+# rodou o build completo antes do push — só o typecheck "errado"
+# (`tsc --noEmit` sem `-b`, que com project references não checa nada).
+on:
+  push:
+    branches: [main, design-system-rollout]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # oxlint só falha (exit != 0) em erro de verdade — os warnings
+      # já existentes no projeto não quebram o CI.
+      - name: Lint
+        run: npm run lint
+
+      # .env.test (com valores fictícios, já commitado) alimenta o
+      # supabase.ts durante os testes — nenhum segredo real entra aqui.
+      - name: Testes
+        run: npm run test
+
+      # tsc -b (project references) + vite build — é o comando que
+      # teria pego o bug do Finanças antes do push, não só um "tsc
+      # --noEmit" solto que não cobre o projeto inteiro.
+      - name: Build (typecheck + bundle)
+        run: npm run build
