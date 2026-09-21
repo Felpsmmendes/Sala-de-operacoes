@@ -26,6 +26,12 @@ type AuthState = {
       nunca deixar uma conta de funcionário cair no painel de gestão
       (ver ProtectedRoute). */
   ehGestor: boolean | null;
+  /** Painel da plataforma (migration_041, pedido do usuário) — true só
+      pra quem está em `super_admins` (você, dono do SaaS). Não confundir
+      com `ehGestor`: gestor administra dados de UMA empresa; super admin
+      só enxerga nome/plano/status de TODAS as empresas, nunca dado de
+      negócio de nenhuma. Usado só por `ProtectedRouteSuperAdmin`. */
+  ehSuperAdmin: boolean | null;
   /** Empresa (tenant) do usuário logado — Etapa 1 / Entrega 1.3 da
       fundação multiempresa (ver documento de auditoria). Ainda não é
       lido por NENHUMA query de dado — só disponível no contexto pra
@@ -49,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [ehGestor, setEhGestor] = useState<boolean | null>(null);
+  const [ehSuperAdmin, setEhSuperAdmin] = useState<boolean | null>(null);
   const [empresaAtual, setEmpresaAtual] = useState<Empresa | null>(null);
 
   useEffect(() => {
@@ -58,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(novaSessao);
       if (!novaSessao) {
         setEhGestor(null);
+        setEhSuperAdmin(null);
         setEmpresaAtual(null);
         return;
       }
@@ -67,6 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // dado (isso já é feito pelo RLS de cada tabela, direto no banco).
       const { data, error } = await supabase.rpc('eh_gestor');
       if (!cancelado) setEhGestor(error ? false : Boolean(data));
+
+      // `eh_super_admin()` (migration_041) — mesma lógica, RPC separada
+      // de propósito: nunca deve virar "true" só por alguém ser gestor.
+      const { data: dataSuperAdmin, error: erroSuperAdmin } = await supabase.rpc('eh_super_admin');
+      if (!cancelado) setEhSuperAdmin(erroSuperAdmin ? false : Boolean(dataSuperAdmin));
 
       // Empresa atual (Entrega 1.3) — busca best-effort: falha em silêncio
       // (fica `null`) em vez de derrubar o login, já que nada depende
@@ -140,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { erro: error ? error.message : null };
   }
 
-  return <AuthContext.Provider value={{ session, carregando, ehGestor, empresaAtual, entrar, recuperarSenha, sair, atualizarNome, atualizarSenha }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ session, carregando, ehGestor, ehSuperAdmin, empresaAtual, entrar, recuperarSenha, sair, atualizarNome, atualizarSenha }}>{children}</AuthContext.Provider>;
 }
 
 function traduzErro(msg: string) {

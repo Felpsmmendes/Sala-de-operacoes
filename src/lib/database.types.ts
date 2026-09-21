@@ -742,9 +742,15 @@ export type Database = {
         Relationships: [];
       };
       empresas: {
-        Row: { id: string; nome: string; slug: string; criado_em: string };
-        Insert: { id?: string; nome: string; slug: string; criado_em?: string };
-        Update: { id?: string; nome?: string; slug?: string; criado_em?: string };
+        Row: { id: string; nome: string; slug: string; plano: string; status: string; criado_em: string };
+        Insert: { id?: string; nome: string; slug: string; plano?: string; status?: string; criado_em?: string };
+        Update: { id?: string; nome?: string; slug?: string; plano?: string; status?: string; criado_em?: string };
+        Relationships: [];
+      };
+      super_admins: {
+        Row: { id: string; nome: string | null; criado_em: string };
+        Insert: { id: string; nome?: string | null; criado_em?: string };
+        Update: { id?: string; nome?: string | null; criado_em?: string };
         Relationships: [];
       };
       membros_empresa: {
@@ -898,6 +904,7 @@ export type Database = {
     };
     Functions: {
       eh_gestor: { Args: Record<string, never>; Returns: boolean };
+      eh_super_admin: { Args: Record<string, never>; Returns: boolean };
       portal_obter: { Args: { p_token: string }; Returns: Database['public']['Views']['vw_portal_publico']['Row'][] };
       portal_aprovar_moldura: { Args: { p_token: string }; Returns: undefined };
       portal_aprovar_video: { Args: { p_token: string }; Returns: undefined };

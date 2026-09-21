@@ -1,6 +1,7 @@
 import {
   Activity,
   BarChart3,
+  Building2,
   Calendar,
   ChevronDown,
   ClipboardCheck,
@@ -167,7 +168,7 @@ function nucleoDaRota(pathname: string): string | null {
 }
 
 export default function Layout() {
-  const { session } = useAuth();
+  const { session, ehSuperAdmin } = useAuth();
   const { naoLidas: contagemAlertas } = useNotificacoes();
   const location = useLocation();
   const email = session?.user?.email ?? '';
@@ -344,6 +345,21 @@ export default function Layout() {
               <DotLive categoria="execucao" />
               Operação Normal
             </div>
+          )}
+          {/* Painel da plataforma (2026-09-21) — só aparece pra quem está
+              em `super_admins` (ver migration_041); pra qualquer outra
+              conta, `ehSuperAdmin` é false/null e este item nem renderiza
+              — não é só a rota que é protegida, o link também não existe. */}
+          {ehSuperAdmin && (
+            <NavLink
+              to="/plataforma"
+              title={colapsada ? 'Plataforma' : undefined}
+              className={({ isActive }) => `nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'is-active' : ''}`}
+            >
+              <Building2 className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
+              {!colapsada && <span className="truncate">Plataforma</span>}
+              {colapsada && <TooltipColapsado texto="Plataforma" />}
+            </NavLink>
           )}
           <NavLink
             to="/status"

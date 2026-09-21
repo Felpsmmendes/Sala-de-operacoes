@@ -512,10 +512,15 @@ export type Gestor = {
    sendo a fonte de verdade de "eh_gestor()" por enquanto; estes dois
    tipos só espelham as tabelas novas (migration_039/040), ainda não
    substituem nada. */
+export type PlanoEmpresa = 'essencial' | 'profissional' | 'enterprise';
+export type StatusEmpresa = 'ativa' | 'trial' | 'suspensa';
+
 export type Empresa = {
   id: string;
   nome: string;
   slug: string;
+  plano: PlanoEmpresa;
+  status: StatusEmpresa;
   criado_em: string;
 };
 
@@ -526,6 +531,18 @@ export type MembroEmpresa = {
   empresa_id: string;
   user_id: string;
   papel: PapelMembroEmpresa;
+  criado_em: string;
+};
+
+/** Painel da plataforma (2026-09-21) — restrito a quem está em
+    `super_admins` (ver migration_041). Nunca confundir com `Gestor`:
+    gestor administra UMA empresa; super admin enxerga a LISTA de
+    empresas (só nome/plano/status, nunca dado de negócio de nenhuma
+    delas) — é o desenvolvedor/dono da plataforma, ninguém mais por
+    padrão. */
+export type SuperAdmin = {
+  id: string;
+  nome: string | null;
   criado_em: string;
 };
 
