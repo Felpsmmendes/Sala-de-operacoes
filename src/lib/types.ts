@@ -513,7 +513,27 @@ export type Gestor = {
    tipos só espelham as tabelas novas (migration_039/040), ainda não
    substituem nada. */
 export type PlanoEmpresa = 'essencial' | 'profissional' | 'enterprise';
-export type StatusEmpresa = 'ativa' | 'trial' | 'suspensa';
+export type StatusEmpresa = 'ativa' | 'trial' | 'suspensa' | 'manutencao';
+
+/** Identificador de módulo — mesmo conjunto de rotas reais de
+    `NUCLEOS` (Layout.tsx). Só guarda a configuração por empresa
+    (migration_042); nenhuma tela ainda LÊ isso pra esconder/mostrar
+    módulo de verdade — é fundação da Fase 6, não a entrega completa. */
+export type ModuloPlataforma =
+  | 'crm'
+  | 'orcamentos'
+  | 'contratos'
+  | 'agenda'
+  | 'escala'
+  | 'estoque'
+  | 'logistica'
+  | 'roteiro'
+  | 'ponto'
+  | 'ponto_interno'
+  | 'financeiro'
+  | 'fechamento'
+  | 'auditoria'
+  | 'portal_cliente';
 
 export type Empresa = {
   id: string;
@@ -521,6 +541,14 @@ export type Empresa = {
   slug: string;
   plano: PlanoEmpresa;
   status: StatusEmpresa;
+  /** MRR/cobrança — digitado manualmente pelo super admin, sem gateway
+      de pagamento real por trás (ver comentário na migration_042). */
+  mrr: number;
+  proxima_cobranca: string | null;
+  ultimo_pagamento_em: string | null;
+  saude: number;
+  modulos_ativos: ModuloPlataforma[];
+  observacoes: string | null;
   criado_em: string;
 };
 

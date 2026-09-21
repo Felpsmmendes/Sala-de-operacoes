@@ -742,9 +742,48 @@ export type Database = {
         Relationships: [];
       };
       empresas: {
-        Row: { id: string; nome: string; slug: string; plano: string; status: string; criado_em: string };
-        Insert: { id?: string; nome: string; slug: string; plano?: string; status?: string; criado_em?: string };
-        Update: { id?: string; nome?: string; slug?: string; plano?: string; status?: string; criado_em?: string };
+        Row: {
+          id: string;
+          nome: string;
+          slug: string;
+          plano: string;
+          status: string;
+          mrr: number;
+          proxima_cobranca: string | null;
+          ultimo_pagamento_em: string | null;
+          saude: number;
+          modulos_ativos: string[];
+          observacoes: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          slug: string;
+          plano?: string;
+          status?: string;
+          mrr?: number;
+          proxima_cobranca?: string | null;
+          ultimo_pagamento_em?: string | null;
+          saude?: number;
+          modulos_ativos?: string[];
+          observacoes?: string | null;
+          criado_em?: string;
+        };
+        Update: {
+          id?: string;
+          nome?: string;
+          slug?: string;
+          plano?: string;
+          status?: string;
+          mrr?: number;
+          proxima_cobranca?: string | null;
+          ultimo_pagamento_em?: string | null;
+          saude?: number;
+          modulos_ativos?: string[];
+          observacoes?: string | null;
+          criado_em?: string;
+        };
         Relationships: [];
       };
       super_admins: {
