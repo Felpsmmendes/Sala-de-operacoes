@@ -214,7 +214,7 @@ export default function Relatorios() {
 
         <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-text-faint">Operação</h2>
         <MetricGrid>
-          <MetricCard Icone={Users} rotulo="Taxa de confirmação de escala" valor={taxaConfirmacaoEscala != null ? `${taxaConfirmacaoEscala.toFixed(1)}%` : '—'} legenda="Confirmado / total de convocações" categoria="pessoas" />
+          <MetricCard Icone={Users} rotulo="Confirmação de escala" valor={taxaConfirmacaoEscala != null ? `${taxaConfirmacaoEscala.toFixed(1)}%` : '—'} legenda="Confirmado / total de convocações" categoria="pessoas" />
           <MetricCard Icone={AlertTriangle} rotulo="Avarias registradas" valor={String(auditoriasComAvaria.length)} legenda={somaAvarias > 0 ? `Total ${formatarMoeda(somaAvarias)}` : 'Nenhum valor registrado'} categoria="operacao" />
         </MetricGrid>
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">

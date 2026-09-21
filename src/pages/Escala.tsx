@@ -298,9 +298,9 @@ export default function Escala() {
       <Conteudo>
         <MetricGrid>
           <MetricCard Icone={Users} rotulo="Equipe cadastrada" valor={String(equipe.length)} legenda="Freelancers ativos" categoria="pessoas" />
-          <MetricCard Icone={CalendarClock} rotulo="Confirmados (todos os eventos)" valor={String(confirmadosTotal)} legenda={`de ${escalas.length} convocados`} categoria="pessoas" />
+          <MetricCard Icone={CalendarClock} rotulo="Confirmados" valor={String(confirmadosTotal)} legenda={`de ${escalas.length} convocados`} categoria="pessoas" />
           <MetricCard Icone={Timer} rotulo="Prontos (traje+EPI)" valor={String(trajesOkTotal)} legenda={`de ${escalas.length} convocados`} categoria="pessoas" />
-          <MetricCard Icone={AlertTriangle} rotulo="Eventos com equipe faltando" valor={String(eventosComFalta)} legenda={`de ${eventos.length} eventos`} categoria="pessoas" />
+          <MetricCard Icone={AlertTriangle} rotulo="Sem equipe completa" valor={String(eventosComFalta)} legenda={`de ${eventos.length} eventos`} categoria="pessoas" />
         </MetricGrid>
 
         {!carregando && eventosComFalta > 0 && (

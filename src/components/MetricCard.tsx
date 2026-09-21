@@ -80,19 +80,17 @@ export function MetricCard({
   const corIcone = CATEGORIA_LABEL[categoria];
   const contado = useContagem(valorAnimado?.alvo ?? 0, 1000);
   const valorExibido = valorAnimado ? valorAnimado.formatar(contado) : valor;
-  // Valor longo (ex.: "R$ 221.905,89") não cabe em meia largura no celular sem
-  // esconder dígito atrás de "…" — o card ocupa a linha inteira (<sm) em vez
-  // de truncar. Usa o valor FINAL, não o da animação de contagem (senão o card
-  // pularia de largura enquanto os dígitos crescem).
-  const valorFinal = valorAnimado ? valorAnimado.formatar(valorAnimado.alvo) : valor;
-  const spanCelular = valorFinal.length > 10 ? 'col-span-2 sm:col-span-1' : '';
 
   const conteudo = (
-    <div className={`panel-glass flex flex-col gap-3 p-4 ${spanCelular}`}>
+    <div className="panel-glass flex flex-col gap-3 p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-text-faint">
-          {rotulo}
-          {aoVivo && <span className="pulso-vivo" style={{ '--pulso-cor': cor } as CSSProperties} title="Ao vivo" />}
+        {/* 1 linha só: rótulo comprido trunca com "…" (texto inteiro no title) em vez de
+            quebrar em 2–3 linhas e desalinhar os cards da mesma fileira. `truncate` no
+            texto interno (não `line-clamp` no flex) porque line-clamp não funciona em
+            elemento flex. */}
+        <span className="flex min-w-0 items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-text-faint" title={rotulo}>
+          <span className="truncate">{rotulo}</span>
+          {aoVivo && <span className="pulso-vivo flex-shrink-0" style={{ '--pulso-cor': cor } as CSSProperties} title="Ao vivo" />}
         </span>
         <IconBox Icone={Icone} cor={cor} corIcone={corIcone} />
       </div>
@@ -137,7 +135,7 @@ export function MetricCard({
 
   if (comoLink) {
     return (
-      <Link to={comoLink} className={`hover-elevado block rounded-[18px] ${spanCelular}`}>
+      <Link to={comoLink} className="hover-elevado block rounded-[18px]">
         {conteudo}
       </Link>
     );
@@ -146,5 +144,5 @@ export function MetricCard({
 }
 
 export function MetricGrid({ children }: { children: ReactNode }) {
-  return <section className="metric-grid mb-5 grid grid-flow-dense grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{children}</section>;
+  return <section className="metric-grid mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">{children}</section>;
 }

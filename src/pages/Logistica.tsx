@@ -295,7 +295,7 @@ export default function Logistica() {
           <MetricCard Icone={Truck} rotulo="Veículos cadastrados" valor={String(veiculos.length)} legenda="Frota disponível" categoria="operacao" />
           <MetricCard Icone={MapPin} rotulo="Regiões cadastradas" valor={String(regioes.length)} legenda="Pra calculadora de frete" categoria="operacao" />
           <MetricCard Icone={PackageCheck} rotulo="Compras chegando" valor={String(comprasPendentes.length)} legenda={formatarMoeda(comprasPendentes.reduce((s, c) => s + c.valor_total, 0))} categoria="operacao" />
-          <MetricCard Icone={AlertTriangle} rotulo="Datas com frota insuficiente" valor={String(datasComFrotaInsuficiente.length)} legenda={`de ${veiculos.length} veículo(s)`} categoria="operacao" />
+          <MetricCard Icone={AlertTriangle} rotulo="Frota insuficiente" valor={String(datasComFrotaInsuficiente.length)} legenda={`datas · ${veiculos.length} veículo(s) na frota`} categoria="operacao" />
         </MetricGrid>
 
         {/* Resumo de status da frota (2026-09-18) — disponível/alocado/

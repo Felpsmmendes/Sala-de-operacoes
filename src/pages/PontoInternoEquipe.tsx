@@ -6,6 +6,7 @@ import { Cabecalho, Conteudo } from '../components/Layout';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { SkeletonLinhas } from '../components/Skeleton';
+import { AnelProgresso } from '../components/ui/AnelProgresso';
 import { Avatar } from '../components/ui/Avatar';
 import { Drawer } from '../components/ui/Drawer';
 import { EstadoVazio } from '../components/ui/EmptyState';
@@ -39,32 +40,6 @@ function minutosDoRelogio(iso: string): number {
 
 function formatarPercentual(v: number): string {
   return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
-}
-
-/** Anel de presença — só um número em destaque (o mockup pede o % grande,
-    não uma fatia por pessoa). */
-function AnelPresenca({ percentual }: { percentual: number }) {
-  const raio = 34;
-  const perimetro = 2 * Math.PI * raio;
-  return (
-    <div className="relative h-[84px] w-[84px] flex-shrink-0">
-      <svg viewBox="0 0 84 84" className="h-full w-full -rotate-90" aria-hidden="true">
-        <circle cx="42" cy="42" r={raio} fill="none" strokeWidth="7" style={{ stroke: 'var(--color-raised)' }} />
-        <circle
-          cx="42"
-          cy="42"
-          r={raio}
-          fill="none"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeDasharray={perimetro}
-          strokeDashoffset={perimetro * (1 - Math.max(0, Math.min(100, percentual)) / 100)}
-          style={{ stroke: 'var(--color-accent)', transition: 'stroke-dashoffset 0.5s ease' }}
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center font-mono text-[15px] font-bold text-text">{formatarPercentual(percentual)}</span>
-    </div>
-  );
 }
 
 function CelulaGrade({ estado }: { estado: EstadoDiaGrade }) {
@@ -307,7 +282,7 @@ export default function PontoInternoEquipe() {
               <MetricCard Icone={UserCheck} rotulo="Presentes" valor={String(presentes.length)} legenda={`${formatarPercentual(pctPresenca)} da equipe`} categoria="pessoas" />
               <MetricCard Icone={Clock} rotulo="Sem registro" valor={String(semRegistro.length)} legenda={`${formatarPercentual(ativos.length > 0 ? 100 - pctPresenca : 0)} da equipe`} categoria="pessoas" />
               <div className="panel-glass flex flex-col items-center gap-2 p-4 text-center sm:flex-row sm:gap-4 sm:text-left">
-                <AnelPresenca percentual={pctPresenca} />
+                <AnelProgresso percentual={pctPresenca} />
                 <div>
                   <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-text-faint">Presença hoje</p>
                   <p className="mt-1 text-[12.5px] text-text-dim">
