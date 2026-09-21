@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Truck,
   User,
+  UserPlus,
   Users,
   Wallet,
   X,
@@ -359,6 +360,17 @@ export default function Layout() {
               <Building2 className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
               {!colapsada && <span className="truncate">Plataforma</span>}
               {colapsada && <TooltipColapsado texto="Plataforma" />}
+            </NavLink>
+          )}
+          {ehSuperAdmin && (
+            <NavLink
+              to="/plataforma/crm"
+              title={colapsada ? 'Prospecção' : undefined}
+              className={({ isActive }) => `nav-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'is-active' : ''}`}
+            >
+              <UserPlus className="nav-icon h-[15px] w-[15px] flex-shrink-0" strokeWidth={1.75} />
+              {!colapsada && <span className="truncate">Prospecção</span>}
+              {colapsada && <TooltipColapsado texto="Prospecção" />}
             </NavLink>
           )}
           <NavLink

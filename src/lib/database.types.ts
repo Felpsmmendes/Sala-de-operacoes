@@ -792,6 +792,65 @@ export type Database = {
         Update: { id?: string; nome?: string | null; criado_em?: string };
         Relationships: [];
       };
+      leads_plataforma: {
+        Row: {
+          id: string;
+          nome_empresa: string;
+          contato_nome: string | null;
+          contato_telefone: string | null;
+          contato_email: string | null;
+          origem: string | null;
+          etapa: string;
+          plano_interesse: string | null;
+          valor_potencial: number | null;
+          observacoes: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          id?: string;
+          nome_empresa: string;
+          contato_nome?: string | null;
+          contato_telefone?: string | null;
+          contato_email?: string | null;
+          origem?: string | null;
+          etapa?: string;
+          plano_interesse?: string | null;
+          valor_potencial?: number | null;
+          observacoes?: string | null;
+          criado_em?: string;
+          atualizado_em?: string;
+        };
+        Update: {
+          id?: string;
+          nome_empresa?: string;
+          contato_nome?: string | null;
+          contato_telefone?: string | null;
+          contato_email?: string | null;
+          origem?: string | null;
+          etapa?: string;
+          plano_interesse?: string | null;
+          valor_potencial?: number | null;
+          observacoes?: string | null;
+          criado_em?: string;
+          atualizado_em?: string;
+        };
+        Relationships: [];
+      };
+      leads_plataforma_interacoes: {
+        Row: { id: string; lead_id: string; tipo: string; conteudo: string; criado_em: string };
+        Insert: { id?: string; lead_id: string; tipo: string; conteudo: string; criado_em?: string };
+        Update: { id?: string; lead_id?: string; tipo?: string; conteudo?: string; criado_em?: string };
+        Relationships: [
+          {
+            foreignKeyName: 'leads_plataforma_interacoes_lead_id_fkey';
+            columns: ['lead_id'];
+            isOneToOne: false;
+            referencedRelation: 'leads_plataforma';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       membros_empresa: {
         Row: { id: string; empresa_id: string; user_id: string; papel: string; criado_em: string };
         Insert: { id?: string; empresa_id: string; user_id: string; papel?: string; criado_em?: string };

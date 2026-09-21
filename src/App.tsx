@@ -24,6 +24,7 @@ const ContasPagar = lazy(() => import('./pages/ContasPagar'));
 const ContasReceber = lazy(() => import('./pages/ContasReceber'));
 const Contratos = lazy(() => import('./pages/Contratos'));
 const Crm = lazy(() => import('./pages/Crm'));
+const CrmPlataforma = lazy(() => import('./pages/CrmPlataforma'));
 const CueSheet = lazy(() => import('./pages/CueSheet'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const DetalheEvento = lazy(() => import('./pages/DetalheEvento'));
@@ -156,6 +157,14 @@ export default function App() {
                   element={
                     <ProtectedRouteSuperAdmin>
                       <Plataforma />
+                    </ProtectedRouteSuperAdmin>
+                  }
+                />
+                <Route
+                  path="/plataforma/crm"
+                  element={
+                    <ProtectedRouteSuperAdmin>
+                      <CrmPlataforma />
                     </ProtectedRouteSuperAdmin>
                   }
                 />
