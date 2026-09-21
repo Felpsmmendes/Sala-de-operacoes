@@ -1,10 +1,12 @@
-import type { SelectHTMLAttributes } from 'react';
+import { useId, type SelectHTMLAttributes } from 'react';
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   rotulo?: string;
 }
 
-export function Select({ rotulo, id, className = '', children, ...props }: SelectProps) {
+export function Select({ rotulo, id: idProp, className = '', children, ...props }: SelectProps) {
+  const idAuto = useId();
+  const id = idProp ?? idAuto;
   return (
     <div className="flex w-full flex-col gap-1.5">
       {rotulo && (

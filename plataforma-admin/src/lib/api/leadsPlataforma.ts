@@ -49,3 +49,10 @@ export async function registrarInteracaoLeadPlataforma(leadId: string, tipo: Tip
   const { error } = await supabase.from('leads_plataforma_interacoes').insert({ lead_id: leadId, tipo, conteudo });
   if (error) throw new Error(error.message);
 }
+
+/** Últimas interações de qualquer lead (com o nome da empresa-alvo) — alimenta a tela de Atividades. */
+export async function listarInteracoesRecentes(limite = 30): Promise<(InteracaoLeadPlataforma & { lead: { nome_empresa: string } | null })[]> {
+  const { data, error } = await supabase.from('leads_plataforma_interacoes').select('*, lead:leads_plataforma(nome_empresa)').order('criado_em', { ascending: false }).limit(limite);
+  if (error) throw new Error(error.message);
+  return data as unknown as (InteracaoLeadPlataforma & { lead: { nome_empresa: string } | null })[];
+}

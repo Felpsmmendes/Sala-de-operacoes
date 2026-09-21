@@ -22,6 +22,7 @@ export type Database = {
           saude: number;
           modulos_ativos: string[];
           observacoes: string | null;
+          url_sistema: string | null;
           criado_em: string;
         };
         Insert: {
@@ -36,6 +37,7 @@ export type Database = {
           saude?: number;
           modulos_ativos?: string[];
           observacoes?: string | null;
+          url_sistema?: string | null;
           criado_em?: string;
         };
         Update: {
@@ -50,8 +52,33 @@ export type Database = {
           saude?: number;
           modulos_ativos?: string[];
           observacoes?: string | null;
+          url_sistema?: string | null;
           criado_em?: string;
         };
+        Relationships: [];
+      };
+      planos_plataforma: {
+        Row: { chave: string; nome: string; preco_mensal: number; modulos: string[]; atualizado_em: string };
+        Insert: { chave: string; nome: string; preco_mensal?: number; modulos?: string[]; atualizado_em?: string };
+        Update: { chave?: string; nome?: string; preco_mensal?: number; modulos?: string[]; atualizado_em?: string };
+        Relationships: [];
+      };
+      chamados_plataforma: {
+        Row: { id: string; empresa_id: string; titulo: string; descricao: string | null; modulo: string | null; prioridade: string; status: string; responsavel: string | null; criado_em: string; atualizado_em: string; resolvido_em: string | null };
+        Insert: { id?: string; empresa_id: string; titulo: string; descricao?: string | null; modulo?: string | null; prioridade?: string; status?: string; responsavel?: string | null; criado_em?: string; atualizado_em?: string; resolvido_em?: string | null };
+        Update: { id?: string; empresa_id?: string; titulo?: string; descricao?: string | null; modulo?: string | null; prioridade?: string; status?: string; responsavel?: string | null; criado_em?: string; atualizado_em?: string; resolvido_em?: string | null };
+        Relationships: [];
+      };
+      chamados_plataforma_comentarios: {
+        Row: { id: string; chamado_id: string; autor: string | null; conteudo: string; criado_em: string };
+        Insert: { id?: string; chamado_id: string; autor?: string | null; conteudo: string; criado_em?: string };
+        Update: { id?: string; chamado_id?: string; autor?: string | null; conteudo?: string; criado_em?: string };
+        Relationships: [];
+      };
+      cobrancas_plataforma: {
+        Row: { id: string; empresa_id: string; descricao: string; tipo: string; valor: number; vencimento: string; status: string; pago_em: string | null; criado_em: string };
+        Insert: { id?: string; empresa_id: string; descricao: string; tipo?: string; valor: number; vencimento: string; status?: string; pago_em?: string | null; criado_em?: string };
+        Update: { id?: string; empresa_id?: string; descricao?: string; tipo?: string; valor?: number; vencimento?: string; status?: string; pago_em?: string | null; criado_em?: string };
         Relationships: [];
       };
       super_admins: {

@@ -1,8 +1,9 @@
-import { Building2, CheckCircle2, Plus, Search } from 'lucide-react';
+import { Building2, CheckCircle2, ExternalLink, Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { atualizarModulosEmpresa, atualizarPlanoEmpresa, atualizarResumoEmpresa, atualizarStatusEmpresa, criarEmpresa, listarEmpresas } from '../lib/api/empresas';
-import { Badge, type TomBadge } from '../components/ui/Badge';
+import { Badge } from '../components/ui/Badge';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
+import { Titulo } from '../components/Titulo';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Avatar } from '../components/ui/Avatar';
 import { Checkbox } from '../components/ui/Checkbox';
@@ -14,33 +15,9 @@ import { Select } from '../components/ui/Select';
 import { SkeletonLinhas } from '../components/ui/Skeleton';
 import { Textarea } from '../components/ui/Textarea';
 import { formatarData, formatarMoeda, normalizarTexto } from '../lib/format';
+import { MODULOS, PLANO_ROTULO, STATUS_EMPRESA_INFO as STATUS_INFO } from '../lib/rotulos';
 import { useToast } from '../lib/toast';
 import type { Empresa, ModuloPlataforma, PlanoEmpresa, StatusEmpresa } from '../lib/types';
-
-const PLANO_ROTULO: Record<PlanoEmpresa, string> = { essencial: 'Essencial', profissional: 'Profissional', enterprise: 'Enterprise' };
-const STATUS_INFO: Record<StatusEmpresa, { rotulo: string; tom: TomBadge }> = {
-  ativa: { rotulo: 'Ativa', tom: 'sucesso' },
-  trial: { rotulo: 'Trial', tom: 'pendente' },
-  manutencao: { rotulo: 'Manutenção', tom: 'pendente' },
-  suspensa: { rotulo: 'Suspensa', tom: 'perigo' },
-};
-
-const MODULOS: { id: ModuloPlataforma; rotulo: string }[] = [
-  { id: 'crm', rotulo: 'CRM & Pipeline' },
-  { id: 'orcamentos', rotulo: 'Orçamentos' },
-  { id: 'contratos', rotulo: 'Contratos' },
-  { id: 'agenda', rotulo: 'Agenda' },
-  { id: 'escala', rotulo: 'Equipe & Escalas' },
-  { id: 'estoque', rotulo: 'Estoque' },
-  { id: 'logistica', rotulo: 'Logística' },
-  { id: 'roteiro', rotulo: 'Sala de Operações' },
-  { id: 'ponto', rotulo: 'Ponto de Chegada' },
-  { id: 'ponto_interno', rotulo: 'Ponto Interno' },
-  { id: 'financeiro', rotulo: 'Financeiro' },
-  { id: 'fechamento', rotulo: 'Fechamento Mensal' },
-  { id: 'auditoria', rotulo: 'Pós-Evento' },
-  { id: 'portal_cliente', rotulo: 'Portal do Cliente' },
-];
 
 export default function Empresas() {
   const { sucesso, erro: erroToast } = useToast();
@@ -128,7 +105,7 @@ export default function Empresas() {
     }
   }
 
-  async function aoSalvarResumo(id: string, dados: { mrr: number; proxima_cobranca: string | null; ultimo_pagamento_em: string | null; saude: number; observacoes: string | null }) {
+  async function aoSalvarResumo(id: string, dados: { mrr: number; proxima_cobranca: string | null; ultimo_pagamento_em: string | null; saude: number; observacoes: string | null; url_sistema: string | null }) {
     setSalvandoResumo(true);
     try {
       await atualizarResumoEmpresa(id, dados);
@@ -156,10 +133,7 @@ export default function Empresas() {
 
   return (
     <>
-      <div className="mb-5">
-        <h1 className="text-xl font-semibold text-text">Empresas</h1>
-        <p className="text-[12.5px] text-text-faint">Quantas empresas estão usando o Sala de Operações, plano e módulos de cada uma.</p>
-      </div>
+      <Titulo titulo="Empresas" subtitulo="Clientes ativos e sistemas — plano, módulos, cobrança e acesso de cada empresa." />
 
       <MetricGrid>
         <MetricCard Icone={Building2} rotulo="Empresas" valor={String(empresas.length)} legenda={`${ativas} ativa(s)`} />
@@ -280,6 +254,11 @@ export default function Empresas() {
                   {PLANO_ROTULO[selecionada.plano]} · desde {formatarData(selecionada.criado_em)}
                 </p>
               </div>
+              {selecionada.url_sistema && (
+                <a href={selecionada.url_sistema} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-[12px] font-semibold text-accent-ink hover:bg-accent-strong">
+                  Acessar sistema <ExternalLink className="h-3 w-3" strokeWidth={2.5} />
+                </a>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -331,13 +310,14 @@ function AbaResumo({
 }: {
   empresa: Empresa;
   salvando: boolean;
-  onSalvar: (dados: { mrr: number; proxima_cobranca: string | null; ultimo_pagamento_em: string | null; saude: number; observacoes: string | null }) => void;
+  onSalvar: (dados: { mrr: number; proxima_cobranca: string | null; ultimo_pagamento_em: string | null; saude: number; observacoes: string | null; url_sistema: string | null }) => void;
 }) {
   const [mrr, setMrr] = useState(String(empresa.mrr));
   const [proximaCobranca, setProximaCobranca] = useState(empresa.proxima_cobranca ?? '');
   const [ultimoPagamento, setUltimoPagamento] = useState(empresa.ultimo_pagamento_em ?? '');
   const [saude, setSaude] = useState(empresa.saude);
   const [observacoes, setObservacoes] = useState(empresa.observacoes ?? '');
+  const [urlSistema, setUrlSistema] = useState(empresa.url_sistema ?? '');
 
   return (
     <div className="flex flex-col gap-4">
@@ -358,12 +338,13 @@ function AbaResumo({
           <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} /> Pago em {formatarData(empresa.ultimo_pagamento_em)}
         </p>
       )}
+      <Input rotulo="Endereço do sistema" type="url" value={urlSistema} onChange={(e) => setUrlSistema(e.target.value)} placeholder="https://…" dica="Onde o sistema desta empresa roda — alimenta o botão Acessar sistema." />
       <Textarea rotulo="Observações (opcional)" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Notas internas sobre esta empresa…" />
       <ProgressBar valor={saude} tom={saude >= 80 ? 'success' : saude >= 50 ? 'pending' : 'danger'} />
       <button
         type="button"
         disabled={salvando}
-        onClick={() => onSalvar({ mrr: Number(mrr) || 0, proxima_cobranca: proximaCobranca || null, ultimo_pagamento_em: ultimoPagamento || null, saude, observacoes: observacoes.trim() || null })}
+        onClick={() => onSalvar({ mrr: Number(mrr) || 0, proxima_cobranca: proximaCobranca || null, ultimo_pagamento_em: ultimoPagamento || null, saude, observacoes: observacoes.trim() || null, url_sistema: urlSistema.trim() || null })}
         className="self-start rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50"
       >
         {salvando ? 'Salvando…' : 'Salvar resumo'}

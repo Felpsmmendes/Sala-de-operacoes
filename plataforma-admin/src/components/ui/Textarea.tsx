@@ -1,10 +1,12 @@
-import type { TextareaHTMLAttributes } from 'react';
+import { useId, type TextareaHTMLAttributes } from 'react';
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   rotulo?: string;
 }
 
-export function Textarea({ rotulo, id, className = '', ...props }: TextareaProps) {
+export function Textarea({ rotulo, id: idProp, className = '', ...props }: TextareaProps) {
+  const idAuto = useId();
+  const id = idProp ?? idAuto;
   return (
     <div className="flex w-full flex-col gap-1.5">
       {rotulo && (

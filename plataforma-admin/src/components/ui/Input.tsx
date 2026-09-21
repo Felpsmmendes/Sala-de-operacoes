@@ -1,11 +1,14 @@
-import type { InputHTMLAttributes } from 'react';
+import { useId, type InputHTMLAttributes } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   rotulo?: string;
   dica?: string;
 }
 
-export function Input({ rotulo, dica, id, className = '', ...props }: InputProps) {
+export function Input({ rotulo, dica, id: idProp, className = '', ...props }: InputProps) {
+  // sem `id`, gera um — senão o <label htmlFor> fica solto e não liga ao campo
+  const idAuto = useId();
+  const id = idProp ?? idAuto;
   return (
     <div className="flex w-full flex-col gap-1.5">
       {rotulo && (

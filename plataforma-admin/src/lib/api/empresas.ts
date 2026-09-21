@@ -25,7 +25,7 @@ export async function atualizarStatusEmpresa(id: string, status: StatusEmpresa):
 
 export async function atualizarResumoEmpresa(
   id: string,
-  dados: { mrr: number; proxima_cobranca: string | null; ultimo_pagamento_em: string | null; saude: number; observacoes: string | null }
+  dados: { mrr: number; proxima_cobranca: string | null; ultimo_pagamento_em: string | null; saude: number; observacoes: string | null; url_sistema: string | null }
 ): Promise<void> {
   const { error } = await supabase.from('empresas').update(dados).eq('id', id);
   if (error) throw new Error(error.message);

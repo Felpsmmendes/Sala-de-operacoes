@@ -10,6 +10,24 @@ em `../supabase/`), só que só enxerga as tabelas de plataforma
 (`empresas`, `super_admins`, `leads_plataforma*`) — RLS restringe tudo a
 quem está em `super_admins` (ver `../supabase/migration_041_super_admins.sql`).
 
+## Telas
+
+| Rota | O que é | Dado |
+|---|---|---|
+| `/` Dashboard | MRR, clientes, leads, manutenções, receita 6 meses, funil, próximas ações, "Acessar sistemas" | calculado das outras tabelas |
+| `/crm` | Funil de prospecção (leads da plataforma) | `leads_plataforma*` |
+| `/empresas` | Clientes: plano, status, MRR, módulos, **endereço do sistema + botão Acessar sistema** | `empresas` |
+| `/manutencoes` | Central de chamados, com comentários | `chamados_plataforma*` |
+| `/financeiro` | Cobranças (lançar, baixar, reabrir), receita por mês, MRR por plano, indicadores | `cobrancas_plataforma` |
+| `/configuracoes` | Planos (preço e módulos) | `planos_plataforma` |
+| `/atividades` | Linha do tempo geral | montada das tabelas acima (sem tabela de log própria) |
+
+Requer as migrações `039` a `044` (a `044` cria chamados, cobranças, planos e `empresas.url_sistema`).
+Sem gateway de pagamento: cobrança é lançada e baixada à mão. "Atrasada" é derivada
+(pendente + vencimento passado), nunca gravada.
+
+Testes: `npm test` (cálculos de MRR, atraso, inadimplência, receita por mês, funil).
+
 ## Rodar localmente
 
 ```
