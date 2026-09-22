@@ -143,6 +143,9 @@ export function MetricCard({
   return conteudo;
 }
 
-export function MetricGrid({ children }: { children: ReactNode }) {
-  return <section className="metric-grid mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">{children}</section>;
+/** `colunas` (padrão 4) só existe pra telas com uma quantidade de card
+    que não fecha redondo em 4 (ex.: CRM com 6 cards — 4+2 numa fileira
+    de 4, 3+3 numa de 3). Não mexe no padrão de quem já usa 4. */
+export function MetricGrid({ children, colunas = 4 }: { children: ReactNode; colunas?: 3 | 4 }) {
+  return <section className={`metric-grid mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 ${colunas === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>{children}</section>;
 }

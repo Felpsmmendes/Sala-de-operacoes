@@ -286,7 +286,7 @@ export default function Crm() {
 
         {aba === 'leads' && (
           <>
-            <MetricGrid>
+            <MetricGrid colunas={3}>
               <MetricCard Icone={Users} rotulo="Total de leads" valor={String(leadsFiltrados.length)} legenda="Nesta busca/filtro" categoria="pessoas" />
               <MetricCard Icone={Filter} rotulo="Em negociação" valor={String(emNegociacao)} legenda={`Nos funis do meio · ${formatarMoeda(valorEmNegociacao)}`} categoria="pessoas" />
               <MetricCard Icone={CheckCircle2} rotulo="Ganhos" valor={String(ganhos)} legenda={`Virou contrato · ${formatarMoeda(valorGanhos)}`} categoria="pessoas" />
