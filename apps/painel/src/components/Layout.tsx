@@ -1,6 +1,7 @@
 import { Activity, Building2, DollarSign, LayoutDashboard, LogOut, Settings, UserPlus, Wrench, type LucideIcon } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
+import { LogoMark } from './LogoMark';
 
 const ITENS: { to: string; rotulo: string; Icone: LucideIcon }[] = [
   { to: '/', rotulo: 'Dashboard', Icone: LayoutDashboard },
@@ -24,9 +25,12 @@ export default function Layout() {
     <div className="min-h-screen lg:pl-[220px]">
       {/* barra lateral (desktop) */}
       <aside className="fixed inset-y-0 left-0 hidden w-[220px] flex-col border-r border-line bg-panel px-3 py-5 lg:flex">
-        <div className="mb-6 px-3">
-          <p className="text-[13px] font-bold tracking-wide text-text">Sala de Operações</p>
-          <p className="font-mono text-[9.5px] font-semibold uppercase tracking-widest text-accent-strong">Painel da plataforma</p>
+        <div className="mb-6 flex items-center gap-2.5 px-3">
+          <LogoMark tamanho={26} />
+          <div>
+            <p className="display text-[16px] leading-none text-text">Firme</p>
+            <p className="mt-1 font-mono text-[9px] font-semibold uppercase tracking-widest text-text-faint">Painel</p>
+          </div>
         </div>
         <nav className="flex flex-1 flex-col gap-0.5">
           {ITENS.map((item) => (
@@ -49,7 +53,10 @@ export default function Layout() {
       {/* barra superior (celular/tablet): mesma navegação, rolando na horizontal */}
       <header className="sticky top-0 z-20 border-b border-line bg-panel lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 pt-3">
-          <p className="text-[13px] font-bold text-text">Painel da plataforma</p>
+          <div className="flex items-center gap-2">
+            <LogoMark tamanho={22} />
+            <p className="display text-[14px] leading-none text-text">Firme</p>
+          </div>
           <button type="button" onClick={sair} aria-label="Sair" className="text-text-dim hover:text-danger">
             <LogOut className="h-4 w-4" strokeWidth={2} />
           </button>

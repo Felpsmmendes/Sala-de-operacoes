@@ -1,6 +1,7 @@
-# Painel da Plataforma
+# Firme — Painel
 
-Aplicação **separada** do Sala de Operações (`../eventos`) — código, build e
+Painel interno da Firme (marca da plataforma — ver `../landing`), a empresa
+por trás do Sala de Operações. Aplicação **separada** do Sala de Operações (`../eventos`) — código, build e
 deploy próprios, sem nenhum import cruzado com `../eventos/src`. É a
 ferramenta interna de quem opera a plataforma (você), não uma tela a mais
 dentro do produto que cada empresa (Em Cena incluída) usa no dia a dia. Os

@@ -1,6 +1,6 @@
-import { ShieldCheck } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
+import { LogoMark } from '../components/LogoMark';
 import { Input } from '../components/ui/Input';
 import { useAuth } from '../lib/AuthContext';
 
@@ -26,12 +26,10 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm rounded-lg border border-line bg-panel p-6">
         <div className="mb-6 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-accent/15 text-accent">
-            <ShieldCheck className="h-4.5 w-4.5" strokeWidth={2} />
-          </span>
+          <LogoMark tamanho={36} />
           <div>
-            <p className="text-sm font-semibold text-text">Painel da Plataforma</p>
-            <p className="text-[10.5px] uppercase tracking-widest text-text-faint">Acesso restrito</p>
+            <p className="display text-[18px] leading-none text-text">Firme</p>
+            <p className="mt-1 text-[10.5px] uppercase tracking-widest text-text-faint">Painel · acesso restrito</p>
           </div>
         </div>
         <form onSubmit={aoSubmeter} className="flex flex-col gap-3">
