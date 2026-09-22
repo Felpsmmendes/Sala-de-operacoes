@@ -13,7 +13,7 @@ import { Textarea } from '../components/ui/Textarea';
 import { adicionarComentario, atualizarChamado, criarChamado, excluirChamado, listarChamados, listarComentarios } from '../lib/api/chamados';
 import { listarEmpresas } from '../lib/api/empresas';
 import { useAuth } from '../lib/AuthContext';
-import { formatarDataHora } from '../lib/format';
+import { formatarDataHora, formatarInteiro } from '../lib/format';
 import { resumoChamados } from '../lib/metricas';
 import { MODULOS, PRIORIDADE_INFO, STATUS_CHAMADO_INFO, rotuloModulo } from '../lib/rotulos';
 import { useToast } from '../lib/toast';
@@ -174,15 +174,15 @@ export default function Manutencoes() {
       />
 
       <MetricGrid colunas={4}>
-        <MetricCard Icone={AlertTriangle} rotulo="Urgentes" valor={String(resumo.urgentes)} legenda="Ainda não resolvidos" tom={resumo.urgentes > 0 ? 'perigo' : undefined} />
-        <MetricCard Icone={Clock} rotulo="Em andamento" valor={String(resumo.emAndamento)} />
-        <MetricCard Icone={CalendarClock} rotulo="Agendados" valor={String(resumo.agendados)} />
-        <MetricCard Icone={CheckCircle2} rotulo="Resolvidos" valor={String(resumo.resolvidos)} tom={resumo.resolvidos > 0 ? 'sucesso' : undefined} />
+        <MetricCard Icone={AlertTriangle} rotulo="Urgentes" valor={String(resumo.urgentes)} valorAnimado={{ alvo: resumo.urgentes, formatar: formatarInteiro }} vivo={resumo.urgentes > 0 ? 'perigo' : undefined} legenda="Ainda não resolvidos" tom={resumo.urgentes > 0 ? 'perigo' : undefined} />
+        <MetricCard Icone={Clock} rotulo="Em andamento" valor={String(resumo.emAndamento)} valorAnimado={{ alvo: resumo.emAndamento, formatar: formatarInteiro }} />
+        <MetricCard Icone={CalendarClock} rotulo="Agendados" valor={String(resumo.agendados)} valorAnimado={{ alvo: resumo.agendados, formatar: formatarInteiro }} />
+        <MetricCard Icone={CheckCircle2} rotulo="Resolvidos" valor={String(resumo.resolvidos)} valorAnimado={{ alvo: resumo.resolvidos, formatar: formatarInteiro }} tom={resumo.resolvidos > 0 ? 'sucesso' : undefined} />
       </MetricGrid>
 
       {erro && <p className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
-      <Panel>
+      <Panel revelar={0}>
         <PanelHeader
           titulo="Chamados"
           desc={carregando ? undefined : `${visiveis.length} de ${chamados.length}`}
@@ -220,7 +220,7 @@ export default function Manutencoes() {
                   key={c.id}
                   type="button"
                   onClick={() => abrirChamado(c.id)}
-                  className={`grid grid-cols-[1.1fr_1.7fr_1fr_0.8fr_1fr_0.8fr_1fr] items-center gap-3 rounded-md border px-3 py-2.5 text-left text-[12.5px] transition-colors ${c.id === selecionadoId ? 'border-accent bg-raised' : 'border-line bg-input hover:bg-raised'}`}
+                  className={`grid grid-cols-[1.1fr_1.7fr_1fr_0.8fr_1fr_0.8fr_1fr] linha-hover items-center gap-3 rounded-md border px-3 py-2.5 text-left text-[12.5px] ${c.id === selecionadoId ? 'border-accent bg-raised' : 'border-line bg-input hover:bg-raised'}`}
                 >
                   <span className="truncate font-medium text-text">{c.empresa?.nome ?? '—'}</span>
                   <span className="truncate text-text">{c.titulo}</span>

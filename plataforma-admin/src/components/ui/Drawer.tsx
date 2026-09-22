@@ -19,7 +19,7 @@ export function Drawer({ titulo, onFechar, children, largura = '420px' }: { titu
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/60" onClick={onFechar} />
+      <div className="fade-in absolute inset-0 bg-black/60" onClick={onFechar} />
       <div
         className="relative flex h-full flex-col overflow-y-auto border-l border-line bg-panel p-5 shadow-2xl transition-transform duration-200"
         style={{ width: `min(${largura}, 92vw)`, transform: entrou ? 'translateX(0)' : 'translateX(100%)' }}

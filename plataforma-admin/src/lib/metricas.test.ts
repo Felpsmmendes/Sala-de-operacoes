@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calcularMrr, dataLocal, diasDeAtraso, funilPlataforma, leadsEmAberto, mrrPorPlano, receitaPorMes, resumoChamados, resumoCobrancas, statusCobranca, taxaInadimplencia, ultimosMeses } from './metricas';
+import { calcularMrr, dataLocal, diasDeAtraso, funilPlataforma, leadsEmAberto, mrrPorPlano, ordenarEtapas, receitaPorMes, resumoChamados, resumoCobrancas, statusCobranca, taxaInadimplencia, ultimosMeses } from './metricas';
 
 const HOJE = '2026-09-21';
 
@@ -61,18 +61,47 @@ describe('resumo de cobranças', () => {
   });
 });
 
+const ETAPAS = [
+  { id: 'lead', nome: 'Lead', ordem: 0, papel: null },
+  { id: 'proposta', nome: 'Proposta', ordem: 1, papel: null },
+  { id: 'ganho', nome: 'Ganho', ordem: 2, papel: 'ganho' as const },
+  { id: 'perdido', nome: 'Perdido', ordem: 3, papel: 'perdido' as const },
+];
+
 describe('funil e chamados', () => {
   it('funil conta só etapas em aberto e soma o valor potencial', () => {
-    const f = funilPlataforma([
-      { etapa: 'lead', valor_potencial: 299 },
-      { etapa: 'lead', valor_potencial: null },
-      { etapa: 'proposta', valor_potencial: 1199 },
-      { etapa: 'ganho', valor_potencial: 999 },
-    ]);
-    expect(f.find((e) => e.id === 'lead')).toMatchObject({ qtd: 2, valor: 299 });
-    expect(f.find((e) => e.id === 'proposta')).toMatchObject({ qtd: 1, valor: 1199 });
-    expect(f.some((e) => (e.id as string) === 'ganho')).toBe(false);
-    expect(leadsEmAberto([{ etapa: 'lead' }, { etapa: 'ganho' }, { etapa: 'perdido' }, { etapa: 'negociacao' }])).toBe(2);
+    const f = funilPlataforma(
+      [
+        { etapa: 'lead', valor_potencial: 299 },
+        { etapa: 'lead', valor_potencial: null },
+        { etapa: 'proposta', valor_potencial: 1199 },
+        { etapa: 'ganho', valor_potencial: 999 },
+      ],
+      ETAPAS
+    );
+    expect(f.map((e) => e.id)).toEqual(['lead', 'proposta']);
+    expect(f[0]).toMatchObject({ rotulo: 'Lead', qtd: 2, valor: 299 });
+    expect(f[1]).toMatchObject({ qtd: 1, valor: 1199 });
+  });
+
+  it('etapa criada/renomeada pelo usuário entra no funil pela ordem dela', () => {
+    const etapas = [...ETAPAS, { id: 'x1', nome: 'Follow-up', ordem: 0.5, papel: null }];
+    const f = funilPlataforma([{ etapa: 'x1', valor_potencial: 100 }], etapas);
+    expect(f.map((e) => e.rotulo)).toEqual(['Lead', 'Follow-up', 'Proposta']);
+    expect(f[1].qtd).toBe(1);
+  });
+
+  it('ganho e perdido ficam sempre no fim, mesmo com ordem gravada diferente', () => {
+    const embaralhadas = [
+      { id: 'ganho', nome: 'Ganho', ordem: 0, papel: 'ganho' as const },
+      { id: 'a', nome: 'A', ordem: 5, papel: null },
+      { id: 'perdido', nome: 'Perdido', ordem: 1, papel: 'perdido' as const },
+    ];
+    expect(ordenarEtapas(embaralhadas).map((e) => e.id)).toEqual(['a', 'ganho', 'perdido']);
+  });
+
+  it('leads em aberto: só quem está em etapa comum; etapa desconhecida não conta', () => {
+    expect(leadsEmAberto([{ etapa: 'lead' }, { etapa: 'ganho' }, { etapa: 'perdido' }, { etapa: 'proposta' }, { etapa: 'sumiu' }], ETAPAS)).toBe(2);
   });
 
   it('urgente resolvido não conta como urgente', () => {

@@ -2,6 +2,7 @@ import { Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Titulo } from '../components/Titulo';
+import { RevealGroup } from '../components/ui/Reveal';
 import { Checkbox } from '../components/ui/Checkbox';
 import { Drawer } from '../components/ui/Drawer';
 import { Input } from '../components/ui/Input';
@@ -69,12 +70,12 @@ export default function Configuracoes() {
       <Titulo titulo="Configurações" subtitulo="Planos e módulos que a plataforma oferece." />
       {erro && <p className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
-      <Panel className="mb-4">
+      <Panel revelar={0} className="mb-4">
         <PanelHeader titulo="Planos disponíveis" desc="Preço de tabela e módulos de cada plano. O MRR de cada empresa continua sendo digitado na tela Empresas — mudar o preço aqui não altera empresas já cadastradas." />
         {carregando ? (
           <SkeletonLinhas n={3} />
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <RevealGroup className="grid grid-cols-1 gap-4 md:grid-cols-3" stagger={90}>
             {planos.map((p) => {
               const doPlano = empresas.filter((e) => e.plano === p.chave).length;
               return (
@@ -102,11 +103,11 @@ export default function Configuracoes() {
                 </div>
               );
             })}
-          </div>
+          </RevealGroup>
         )}
       </Panel>
 
-      <Panel>
+      <Panel revelar={120}>
         <PanelHeader titulo="Conta" />
         <dl className="flex flex-col gap-2 text-[13px]">
           <div className="flex items-center justify-between gap-3">

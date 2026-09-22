@@ -13,6 +13,7 @@ import { SkeletonLinhas } from '../components/ui/Skeleton';
 import { cancelarCobranca, criarCobranca, excluirCobranca, listarCobrancas, marcarCobrancaPaga, reabrirCobranca } from '../lib/api/cobrancas';
 import { listarEmpresas } from '../lib/api/empresas';
 import { formatarData, formatarMesAno, formatarMoeda } from '../lib/format';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { calcularMrr, dataLocal, diasDeAtraso, empresaPagante, mrrPorPlano, receitaPorMes, resumoCobrancas, statusCobranca, taxaInadimplencia, ultimosMeses, type StatusCobrancaExibido } from '../lib/metricas';
 import { PLANO_ROTULO, STATUS_COBRANCA_INFO } from '../lib/rotulos';
 import { useToast } from '../lib/toast';
@@ -136,22 +137,22 @@ export default function Financeiro() {
       />
 
       <MetricGrid colunas={4}>
-        <MetricCard Icone={TrendingUp} rotulo="MRR" valor={formatarMoeda(mrr)} legenda={`${pagantes} empresa${pagantes !== 1 ? 's' : ''} pagante${pagantes !== 1 ? 's' : ''}`} />
-        <MetricCard Icone={CheckCircle2} rotulo="Recebido no mês" valor={formatarMoeda(resumo.recebidoNoMes)} legenda="Cobranças pagas neste mês" tom={resumo.recebidoNoMes > 0 ? 'sucesso' : undefined} />
-        <MetricCard Icone={Clock} rotulo="A receber" valor={formatarMoeda(resumo.aReceber)} legenda="Pendentes, ainda no prazo" />
-        <MetricCard Icone={AlertTriangle} rotulo="Em atraso" valor={formatarMoeda(resumo.emAtraso)} legenda={`${resumo.qtdEmAtraso} cobrança${resumo.qtdEmAtraso !== 1 ? 's' : ''}`} tom={resumo.emAtraso > 0 ? 'perigo' : undefined} />
+        <MetricCard Icone={TrendingUp} rotulo="MRR" valor={formatarMoeda(mrr)} valorAnimado={{ alvo: mrr, formatar: formatarMoeda }} legenda={`${pagantes} empresa${pagantes !== 1 ? 's' : ''} pagante${pagantes !== 1 ? 's' : ''}`} />
+        <MetricCard Icone={CheckCircle2} rotulo="Recebido no mês" valor={formatarMoeda(resumo.recebidoNoMes)} valorAnimado={{ alvo: resumo.recebidoNoMes, formatar: formatarMoeda }} legenda="Cobranças pagas neste mês" tom={resumo.recebidoNoMes > 0 ? 'sucesso' : undefined} />
+        <MetricCard Icone={Clock} rotulo="A receber" valor={formatarMoeda(resumo.aReceber)} valorAnimado={{ alvo: resumo.aReceber, formatar: formatarMoeda }} legenda="Pendentes, ainda no prazo" />
+        <MetricCard Icone={AlertTriangle} rotulo="Em atraso" valor={formatarMoeda(resumo.emAtraso)} valorAnimado={{ alvo: resumo.emAtraso, formatar: formatarMoeda }} vivo={resumo.emAtraso > 0 ? 'perigo' : undefined} legenda={`${resumo.qtdEmAtraso} cobrança${resumo.qtdEmAtraso !== 1 ? 's' : ''}`} tom={resumo.emAtraso > 0 ? 'perigo' : undefined} />
       </MetricGrid>
 
       {erro && <p className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
       <div className="mb-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-        <Panel className="min-w-0 lg:col-span-2">
+        <Panel revelar={0} className="min-w-0 lg:col-span-2">
           <PanelHeader titulo="Receita recebida" desc="Últimos 6 meses, pelo mês do pagamento." />
           {carregando ? <SkeletonLinhas n={3} /> : <BarrasMensais rotulos={meses.map(formatarMesAno)} valores={receita} formatar={formatarMoeda} />}
         </Panel>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <Panel>
+          <Panel revelar={70}>
             <PanelHeader titulo="MRR por plano" />
             {totalMrr === 0 ? (
               <p className="text-[12.5px] text-text-faint">Nenhuma empresa pagante ainda.</p>
@@ -165,16 +166,14 @@ export default function Financeiro() {
                         {formatarMoeda(porPlano[p])} <span className="text-[11px] text-text-faint">{Math.round((porPlano[p] / totalMrr) * 100)}%</span>
                       </span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-raised">
-                      <div className="h-full rounded-full bg-accent" style={{ width: `${(porPlano[p] / totalMrr) * 100}%` }} />
-                    </div>
+                    <ProgressBar valor={(porPlano[p] / totalMrr) * 100} />
                   </div>
                 ))}
               </div>
             )}
           </Panel>
 
-          <Panel>
+          <Panel revelar={140}>
             <PanelHeader titulo="Indicadores" />
             <dl className="flex flex-col gap-2.5 text-[13px]">
               <div className="flex items-center justify-between gap-3">
@@ -194,7 +193,7 @@ export default function Financeiro() {
         </div>
       </div>
 
-      <Panel>
+      <Panel revelar={0}>
         <PanelHeader
           titulo="Cobranças"
           desc={carregando ? undefined : `${visiveis.length} de ${cobrancas.length}`}

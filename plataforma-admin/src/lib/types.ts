@@ -34,7 +34,13 @@ export type Empresa = {
   criado_em: string;
 };
 
-export type EtapaLeadPlataforma = 'lead' | 'contato' | 'demonstracao' | 'proposta' | 'negociacao' | 'ganho' | 'perdido';
+/** Id de uma etapa do pipeline (`etapas_plataforma.id`) — editável pela tela, não mais uma lista fixa. */
+export type EtapaLeadPlataforma = string;
+
+/** Etapas especiais que o painel entende: 'ganho' (virou cliente) e 'perdido'. `null` = etapa comum, "em aberto". */
+export type PapelEtapa = 'ganho' | 'perdido';
+
+export type EtapaPipeline = { id: string; nome: string; ordem: number; papel: PapelEtapa | null; criado_em: string };
 
 export type LeadPlataforma = {
   id: string;

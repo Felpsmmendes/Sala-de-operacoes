@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   if (carregando || (session && ehSuperAdmin === null)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
-        <div className="h-8 w-8 animate-pulse rounded-full bg-raised" />
+        <div className="skeleton h-8 w-8 rounded-full" />
       </div>
     );
   }

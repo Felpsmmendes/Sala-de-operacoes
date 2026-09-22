@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Panel } from '../components/Panel';
 import { Titulo } from '../components/Titulo';
+import { RevealGroup } from '../components/ui/Reveal';
 import { EstadoVazio } from '../components/ui/EmptyState';
 import { SkeletonLinhas } from '../components/ui/Skeleton';
 import { listarChamados, listarComentariosRecentes } from '../lib/api/chamados';
@@ -111,7 +112,7 @@ export default function Atividades() {
         ))}
       </div>
 
-      <Panel>
+      <Panel revelar={0}>
         {carregando ? (
           <SkeletonLinhas n={6} />
         ) : porDia.length === 0 ? (
@@ -121,7 +122,7 @@ export default function Atividades() {
             {porDia.map(([dia, lista]) => (
               <section key={dia}>
                 <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-text-faint">{dia}</p>
-                <div className="flex flex-col divide-y divide-line">
+                <RevealGroup className="flex flex-col divide-y divide-line" stagger={35}>
                   {lista.map((e) => {
                     const { Icone, cor } = VISUAL[e.grupo];
                     return (
@@ -137,7 +138,7 @@ export default function Atividades() {
                       </Link>
                     );
                   })}
-                </div>
+                </RevealGroup>
               </section>
             ))}
           </div>

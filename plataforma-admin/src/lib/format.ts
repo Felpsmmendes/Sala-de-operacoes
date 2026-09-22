@@ -33,3 +33,8 @@ export function normalizarTexto(s: string): string {
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase();
 }
+
+/** Pra `valorAnimado` de contagem inteira (o número cru passa por casas decimais no meio da animação). */
+export function formatarInteiro(n: number): string {
+  return String(Math.round(n));
+}

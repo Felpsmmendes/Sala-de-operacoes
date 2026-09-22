@@ -26,7 +26,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {itens.map((t) => (
           <div
             key={t.id}
-            className={`flex items-center gap-2 rounded-md border px-3.5 py-2.5 text-[12.5px] shadow-lg ${
+            className={`toast-entrada flex items-center gap-2 rounded-md border px-3.5 py-2.5 text-[12.5px] shadow-lg ${
               t.tipo === 'sucesso' ? 'border-success/30 bg-panel text-success' : 'border-danger/30 bg-panel text-danger'
             }`}
           >

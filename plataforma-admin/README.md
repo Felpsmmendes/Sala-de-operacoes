@@ -15,14 +15,14 @@ quem está em `super_admins` (ver `../supabase/migration_041_super_admins.sql`).
 | Rota | O que é | Dado |
 |---|---|---|
 | `/` Dashboard | MRR, clientes, leads, manutenções, receita 6 meses, funil, próximas ações, "Acessar sistemas" | calculado das outras tabelas |
-| `/crm` | Funil de prospecção (leads da plataforma) | `leads_plataforma*` |
+| `/crm` | Funil de prospecção: cards arrastáveis entre colunas e **Editar pipeline** (criar, renomear, reordenar e excluir etapas) | `leads_plataforma*`, `etapas_plataforma` |
 | `/empresas` | Clientes: plano, status, MRR, módulos, **endereço do sistema + botão Acessar sistema** | `empresas` |
 | `/manutencoes` | Central de chamados, com comentários | `chamados_plataforma*` |
 | `/financeiro` | Cobranças (lançar, baixar, reabrir), receita por mês, MRR por plano, indicadores | `cobrancas_plataforma` |
 | `/configuracoes` | Planos (preço e módulos) | `planos_plataforma` |
 | `/atividades` | Linha do tempo geral | montada das tabelas acima (sem tabela de log própria) |
 
-Requer as migrações `039` a `044` (a `044` cria chamados, cobranças, planos e `empresas.url_sistema`).
+Requer as migrações `039` a `045` (a `044` cria chamados, cobranças, planos e `empresas.url_sistema`; a `045` torna as etapas do pipeline editáveis).
 Sem gateway de pagamento: cobrança é lançada e baixada à mão. "Atrasada" é derivada
 (pendente + vencimento passado), nunca gravada.
 

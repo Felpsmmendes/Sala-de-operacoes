@@ -57,6 +57,12 @@ export type Database = {
         };
         Relationships: [];
       };
+      etapas_plataforma: {
+        Row: { id: string; nome: string; ordem: number; papel: string | null; criado_em: string };
+        Insert: { id: string; nome: string; ordem?: number; papel?: string | null; criado_em?: string };
+        Update: { id?: string; nome?: string; ordem?: number; papel?: string | null; criado_em?: string };
+        Relationships: [];
+      };
       planos_plataforma: {
         Row: { chave: string; nome: string; preco_mensal: number; modulos: string[]; atualizado_em: string };
         Insert: { chave: string; nome: string; preco_mensal?: number; modulos?: string[]; atualizado_em?: string };

@@ -14,7 +14,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Select } from '../components/ui/Select';
 import { SkeletonLinhas } from '../components/ui/Skeleton';
 import { Textarea } from '../components/ui/Textarea';
-import { formatarData, formatarMoeda, normalizarTexto } from '../lib/format';
+import { formatarData, formatarInteiro, formatarMoeda, normalizarTexto } from '../lib/format';
 import { MODULOS, PLANO_ROTULO, STATUS_EMPRESA_INFO as STATUS_INFO } from '../lib/rotulos';
 import { useToast } from '../lib/toast';
 import type { Empresa, ModuloPlataforma, PlanoEmpresa, StatusEmpresa } from '../lib/types';
@@ -136,8 +136,8 @@ export default function Empresas() {
       <Titulo titulo="Empresas" subtitulo="Clientes ativos e sistemas — plano, módulos, cobrança e acesso de cada empresa." />
 
       <MetricGrid>
-        <MetricCard Icone={Building2} rotulo="Empresas" valor={String(empresas.length)} legenda={`${ativas} ativa(s)`} />
-        <MetricCard Icone={Building2} rotulo="MRR somado" valor={formatarMoeda(mrrTotal)} legenda="Digitado manualmente por empresa" />
+        <MetricCard Icone={Building2} rotulo="Empresas" valor={String(empresas.length)} valorAnimado={{ alvo: empresas.length, formatar: formatarInteiro }} legenda={`${ativas} ativa(s)`} />
+        <MetricCard Icone={Building2} rotulo="MRR somado" valor={formatarMoeda(mrrTotal)} valorAnimado={{ alvo: mrrTotal, formatar: formatarMoeda }} legenda="Digitado manualmente por empresa" />
         <MetricCard Icone={Building2} rotulo="Saúde média" valor={empresas.length > 0 ? `${Math.round(empresas.reduce((s, e) => s + e.saude, 0) / empresas.length)}%` : '—'} legenda="Ajustada à mão" />
       </MetricGrid>
 
@@ -192,7 +192,7 @@ export default function Empresas() {
                   key={e.id}
                   type="button"
                   onClick={() => selecionar(e.id)}
-                  className={`grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] items-center gap-3 rounded-md border px-3 py-2.5 text-left text-[12.5px] transition-colors ${
+                  className={`grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] linha-hover items-center gap-3 rounded-md border px-3 py-2.5 text-left text-[12.5px] ${
                     e.id === selecionadaId ? 'border-accent bg-raised' : 'border-line bg-input hover:bg-raised'
                   }`}
                 >

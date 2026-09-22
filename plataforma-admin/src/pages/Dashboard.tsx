@@ -5,18 +5,21 @@ import { BarrasMensais } from '../components/BarrasMensais';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Panel, PanelHeader } from '../components/Panel';
 import { Titulo } from '../components/Titulo';
+import { ProgressBar } from '../components/ui/ProgressBar';
+import { RevealGroup } from '../components/ui/Reveal';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonLinhas } from '../components/ui/Skeleton';
 import { listarChamados } from '../lib/api/chamados';
 import { listarCobrancas } from '../lib/api/cobrancas';
 import { listarEmpresas } from '../lib/api/empresas';
+import { listarEtapas } from '../lib/api/etapas';
 import { listarLeadsPlataforma } from '../lib/api/leadsPlataforma';
 import { useAuth } from '../lib/AuthContext';
-import { formatarMesAno, formatarMoeda, saudacao } from '../lib/format';
+import { formatarInteiro, formatarMesAno, formatarMoeda, saudacao } from '../lib/format';
 import { calcularMrr, dataLocal, diasDeAtraso, empresaPagante, funilPlataforma, leadsEmAberto, receitaPorMes, resumoChamados, statusCobranca, ultimosMeses } from '../lib/metricas';
 import { PLANO_ROTULO, STATUS_EMPRESA_INFO } from '../lib/rotulos';
-import type { ChamadoComEmpresa, CobrancaComEmpresa, Empresa, LeadPlataforma } from '../lib/types';
+import type { ChamadoComEmpresa, CobrancaComEmpresa, Empresa, EtapaPipeline, LeadPlataforma } from '../lib/types';
 
 type Acao = { chave: string; titulo: string; detalhe: string; quando: string; tom: 'perigo' | 'pendente'; to: string; peso: number };
 
@@ -49,16 +52,18 @@ export default function Dashboard() {
   const { session } = useAuth();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [leads, setLeads] = useState<LeadPlataforma[]>([]);
+  const [etapas, setEtapas] = useState<EtapaPipeline[]>([]);
   const [chamados, setChamados] = useState<ChamadoComEmpresa[]>([]);
   const [cobrancas, setCobrancas] = useState<CobrancaComEmpresa[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([listarEmpresas(), listarLeadsPlataforma(), listarChamados(), listarCobrancas()])
-      .then(([e, l, ch, cb]) => {
+    Promise.all([listarEmpresas(), listarLeadsPlataforma(), listarChamados(), listarCobrancas(), listarEtapas()])
+      .then(([e, l, ch, cb, et]) => {
         setEmpresas(e);
         setLeads(l);
+        setEtapas(et);
         setChamados(ch);
         setCobrancas(cb);
       })
@@ -69,7 +74,7 @@ export default function Dashboard() {
   const hoje = dataLocal();
   const meses = useMemo(() => ultimosMeses(6), []);
   const receita = useMemo(() => receitaPorMes(cobrancas, meses), [cobrancas, meses]);
-  const funil = useMemo(() => funilPlataforma(leads), [leads]);
+  const funil = useMemo(() => funilPlataforma(leads, etapas), [leads, etapas]);
   const maiorFunil = Math.max(...funil.map((f) => f.qtd), 1);
   const acoes = useMemo(() => montarAcoes(cobrancas, chamados, hoje), [cobrancas, chamados, hoje]);
   const cham = resumoChamados(chamados);
@@ -86,16 +91,16 @@ export default function Dashboard() {
       {erro && <p className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
 
       <MetricGrid colunas={5}>
-        <MetricCard Icone={TrendingUp} rotulo="MRR" valor={formatarMoeda(calcularMrr(empresas))} legenda="Ativas e em manutenção" />
-        <MetricCard Icone={Building2} rotulo="Clientes ativos" valor={String(ativas)} legenda={`de ${empresas.length} cadastrada${empresas.length !== 1 ? 's' : ''}`} />
-        <MetricCard Icone={UserPlus} rotulo="Leads" valor={String(leadsEmAberto(leads))} legenda="No funil de vendas" />
-        <MetricCard Icone={CalendarClock} rotulo="Em trial" valor={String(emTrial)} legenda="Ainda não pagam" />
-        <MetricCard Icone={Wrench} rotulo="Manutenções abertas" valor={String(cham.abertos)} legenda={cham.urgentes > 0 ? `${cham.urgentes} urgente${cham.urgentes !== 1 ? 's' : ''}` : 'Nenhuma urgente'} tom={cham.urgentes > 0 ? 'perigo' : undefined} />
+        <MetricCard Icone={TrendingUp} rotulo="MRR" valor={formatarMoeda(calcularMrr(empresas))} valorAnimado={{ alvo: calcularMrr(empresas), formatar: formatarMoeda }} legenda="Ativas e em manutenção" />
+        <MetricCard Icone={Building2} rotulo="Clientes ativos" valor={String(ativas)} valorAnimado={{ alvo: ativas, formatar: formatarInteiro }} legenda={`de ${empresas.length} cadastrada${empresas.length !== 1 ? 's' : ''}`} />
+        <MetricCard Icone={UserPlus} rotulo="Leads" valor={String(leadsEmAberto(leads, etapas))} valorAnimado={{ alvo: leadsEmAberto(leads, etapas), formatar: formatarInteiro }} legenda="No funil de vendas" />
+        <MetricCard Icone={CalendarClock} rotulo="Em trial" valor={String(emTrial)} valorAnimado={{ alvo: emTrial, formatar: formatarInteiro }} legenda="Ainda não pagam" />
+        <MetricCard Icone={Wrench} rotulo="Manutenções abertas" valor={String(cham.abertos)} valorAnimado={{ alvo: cham.abertos, formatar: formatarInteiro }} vivo={cham.urgentes > 0 ? 'perigo' : undefined} legenda={cham.urgentes > 0 ? `${cham.urgentes} urgente${cham.urgentes !== 1 ? 's' : ''}` : 'Nenhuma urgente'} tom={cham.urgentes > 0 ? 'perigo' : undefined} />
       </MetricGrid>
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-4">
-          <Panel>
+          <Panel revelar={0}>
             <PanelHeader titulo="Receita dos últimos 6 meses" desc="Cobranças pagas, pelo mês do pagamento." />
             {carregando ? (
               <SkeletonLinhas n={3} />
@@ -112,7 +117,7 @@ export default function Dashboard() {
             )}
           </Panel>
 
-          <Panel>
+          <Panel revelar={90}>
             <PanelHeader
               titulo="Acessar sistemas"
               desc="As empresas que mais faturam — abre o sistema de cada uma."
@@ -127,7 +132,7 @@ export default function Dashboard() {
             ) : sistemas.length === 0 ? (
               <p className="py-4 text-center text-[12.5px] text-text-faint">Nenhuma empresa ativa ainda.</p>
             ) : (
-              <div className="flex flex-col gap-2">
+              <RevealGroup className="flex flex-col gap-2" stagger={60}>
                 {sistemas.map((e) => (
                   <div key={e.id} className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-input px-3 py-2.5">
                     <Avatar nome={e.nome} tamanho={30} />
@@ -149,13 +154,13 @@ export default function Dashboard() {
                     )}
                   </div>
                 ))}
-              </div>
+              </RevealGroup>
             )}
           </Panel>
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <Panel>
+          <Panel revelar={40}>
             <PanelHeader
               titulo="Pipeline de vendas"
               desc="Prospecção em aberto, por etapa."
@@ -178,23 +183,21 @@ export default function Dashboard() {
                         {f.valor > 0 && <span className="ml-2 text-[11px] text-text-faint">{formatarMoeda(f.valor)}</span>}
                       </span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-raised">
-                      <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${(f.qtd / maiorFunil) * 100}%` }} />
-                    </div>
+                    <ProgressBar valor={(f.qtd / maiorFunil) * 100} />
                   </div>
                 ))}
               </div>
             )}
           </Panel>
 
-          <Panel>
+          <Panel revelar={130}>
             <PanelHeader titulo="Próximas ações" desc="Cobranças e chamados que pedem atenção." />
             {carregando ? (
               <SkeletonLinhas n={3} />
             ) : acoes.length === 0 ? (
               <p className="py-4 text-center text-[12.5px] text-success">Nada pendente — tudo em dia.</p>
             ) : (
-              <div className="flex flex-col gap-2">
+              <RevealGroup className="flex flex-col gap-2" stagger={60}>
                 {acoes.map((a) => (
                   <Link key={a.chave} to={a.to} className="flex items-center gap-3 rounded-md border border-line bg-input px-3 py-2.5 hover:bg-raised">
                     <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${a.tom === 'perigo' ? 'text-danger' : 'text-pending'}`} strokeWidth={2} />
@@ -205,7 +208,7 @@ export default function Dashboard() {
                     <span className={`flex-shrink-0 font-mono text-[10.5px] uppercase ${a.tom === 'perigo' ? 'text-danger' : 'text-pending'}`}>{a.quando}</span>
                   </Link>
                 ))}
-              </div>
+              </RevealGroup>
             )}
           </Panel>
         </div>

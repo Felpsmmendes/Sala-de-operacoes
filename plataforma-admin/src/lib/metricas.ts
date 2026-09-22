@@ -1,4 +1,4 @@
-import type { Chamado, Cobranca, Empresa, EtapaLeadPlataforma, LeadPlataforma, PlanoEmpresa } from './types';
+import type { Chamado, Cobranca, Empresa, EtapaPipeline, LeadPlataforma, PlanoEmpresa } from './types';
 
 /* Cálculos do painel (MRR, cobrança em atraso, receita por mês, funil). Funções
    puras, sem acesso a banco, pra ficarem testáveis — é dinheiro. */
@@ -85,24 +85,30 @@ export function taxaInadimplencia(cobrancas: Pick<Cobranca, 'status' | 'valor' |
   return base > 0 ? (atraso / base) * 100 : null;
 }
 
-export const ETAPAS_FUNIL: { id: EtapaLeadPlataforma; rotulo: string }[] = [
-  { id: 'lead', rotulo: 'Leads' },
-  { id: 'contato', rotulo: 'Contatos' },
-  { id: 'demonstracao', rotulo: 'Demonstrações' },
-  { id: 'proposta', rotulo: 'Propostas' },
-  { id: 'negociacao', rotulo: 'Negociações' },
-];
-
-/** Funil de vendas: só as etapas em aberto (ganho/perdido saem do funil). */
-export function funilPlataforma(leads: Pick<LeadPlataforma, 'etapa' | 'valor_potencial'>[]): { id: EtapaLeadPlataforma; rotulo: string; qtd: number; valor: number }[] {
-  return ETAPAS_FUNIL.map((e) => {
-    const doEstagio = leads.filter((l) => l.etapa === e.id);
-    return { ...e, qtd: doEstagio.length, valor: doEstagio.reduce((s, l) => s + (l.valor_potencial ?? 0), 0) };
-  });
+/** Ordem de exibição do pipeline: etapas comuns pela `ordem`, e as duas especiais
+    (ganho, perdido) sempre no fim — mesmo que a ordem gravada diga outra coisa. */
+export function ordenarEtapas<T extends Pick<EtapaPipeline, 'ordem' | 'papel'>>(etapas: T[]): T[] {
+  const peso = (e: T) => (e.papel === 'ganho' ? 1_000_001 : e.papel === 'perdido' ? 1_000_002 : e.ordem);
+  return [...etapas].sort((a, b) => peso(a) - peso(b));
 }
 
-export function leadsEmAberto(leads: Pick<LeadPlataforma, 'etapa'>[]): number {
-  return leads.filter((l) => l.etapa !== 'ganho' && l.etapa !== 'perdido').length;
+/** Funil de vendas: só as etapas em aberto (papel nulo) — ganho/perdido saem do funil. */
+export function funilPlataforma(
+  leads: Pick<LeadPlataforma, 'etapa' | 'valor_potencial'>[],
+  etapas: Pick<EtapaPipeline, 'id' | 'nome' | 'ordem' | 'papel'>[]
+): { id: string; rotulo: string; qtd: number; valor: number }[] {
+  return ordenarEtapas(etapas)
+    .filter((e) => e.papel === null)
+    .map((e) => {
+      const doEstagio = leads.filter((l) => l.etapa === e.id);
+      return { id: e.id, rotulo: e.nome, qtd: doEstagio.length, valor: doEstagio.reduce((s, l) => s + (l.valor_potencial ?? 0), 0) };
+    });
+}
+
+/** Lead "em aberto" = está numa etapa comum. Etapa desconhecida não conta (nunca chuta). */
+export function leadsEmAberto(leads: Pick<LeadPlataforma, 'etapa'>[], etapas: Pick<EtapaPipeline, 'id' | 'papel'>[]): number {
+  const abertas = new Set(etapas.filter((e) => e.papel === null).map((e) => e.id));
+  return leads.filter((l) => abertas.has(l.etapa)).length;
 }
 
 export type ResumoChamados = { urgentes: number; emAndamento: number; agendados: number; resolvidos: number; abertos: number };

@@ -1,5 +1,5 @@
 import { Activity, Building2, DollarSign, LayoutDashboard, LogOut, Settings, UserPlus, Wrench, type LucideIcon } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 
 const ITENS: { to: string; rotulo: string; Icone: LucideIcon }[] = [
@@ -18,6 +18,7 @@ function classesLink({ isActive }: { isActive: boolean }) {
 
 export default function Layout() {
   const { session, sair } = useAuth();
+  const { pathname } = useLocation();
 
   return (
     <div className="min-h-screen lg:pl-[220px]">
@@ -64,7 +65,10 @@ export default function Layout() {
       </header>
 
       <main className="mx-auto min-w-0 max-w-[1400px] px-4 py-6 lg:px-8">
-        <Outlet />
+        {/* `key` remonta o wrapper a cada rota — é o que re-dispara a entrada da página */}
+        <div key={pathname} className="pagina-entrada">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

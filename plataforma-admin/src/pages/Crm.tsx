@@ -1,4 +1,4 @@
-import { CheckCircle2, Plus, TrendingUp, XCircle } from 'lucide-react';
+import { CheckCircle2, Plus, Settings2, TrendingUp, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   atualizarLeadPlataforma,
@@ -10,6 +10,9 @@ import {
   registrarInteracaoLeadPlataforma,
   type NovoLeadPlataforma,
 } from '../lib/api/leadsPlataforma';
+import { listarEtapas } from '../lib/api/etapas';
+import { EditorPipeline } from '../components/EditorPipeline';
+import { Titulo } from '../components/Titulo';
 import { Badge } from '../components/ui/Badge';
 import { MetricCard, MetricGrid } from '../components/MetricCard';
 import { Drawer } from '../components/ui/Drawer';
@@ -18,19 +21,10 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { SkeletonLinhas } from '../components/ui/Skeleton';
 import { Textarea } from '../components/ui/Textarea';
-import { formatarData, formatarMoeda } from '../lib/format';
+import { formatarData, formatarInteiro, formatarMoeda } from '../lib/format';
+import { ordenarEtapas } from '../lib/metricas';
 import { useToast } from '../lib/toast';
-import type { EtapaLeadPlataforma, InteracaoLeadPlataforma, LeadPlataforma, PlanoEmpresa, TipoInteracaoLeadPlataforma } from '../lib/types';
-
-const ETAPAS_KANBAN: { id: EtapaLeadPlataforma; rotulo: string }[] = [
-  { id: 'lead', rotulo: 'Lead' },
-  { id: 'contato', rotulo: 'Contato' },
-  { id: 'demonstracao', rotulo: 'Demonstração' },
-  { id: 'proposta', rotulo: 'Proposta' },
-  { id: 'negociacao', rotulo: 'Negociação' },
-];
-
-const TODAS_ETAPAS: { id: EtapaLeadPlataforma; rotulo: string }[] = [...ETAPAS_KANBAN, { id: 'ganho', rotulo: 'Ganho' }, { id: 'perdido', rotulo: 'Perdido' }];
+import type { EtapaLeadPlataforma, EtapaPipeline, InteracaoLeadPlataforma, LeadPlataforma, PlanoEmpresa, TipoInteracaoLeadPlataforma } from '../lib/types';
 
 const PLANO_ROTULO: Record<PlanoEmpresa, string> = { essencial: 'Essencial', profissional: 'Profissional', enterprise: 'Enterprise' };
 const TIPO_INTERACAO_ROTULO: Record<TipoInteracaoLeadPlataforma, string> = { mensagem_whatsapp: 'WhatsApp', ligacao: 'Ligação', email: 'E-mail', reuniao: 'Reunião', nota: 'Nota' };
@@ -38,10 +32,14 @@ const TIPO_INTERACAO_ROTULO: Record<TipoInteracaoLeadPlataforma, string> = { men
 export default function Crm() {
   const { sucesso, erro: erroToast } = useToast();
   const [leads, setLeads] = useState<LeadPlataforma[]>([]);
+  const [etapas, setEtapas] = useState<EtapaPipeline[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [novoAberto, setNovoAberto] = useState(false);
+  const [editorAberto, setEditorAberto] = useState(false);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+  const [arrastandoId, setArrastandoId] = useState<string | null>(null);
+  const [sobreEtapaId, setSobreEtapaId] = useState<string | null>(null);
 
   function aoFalhar(e: unknown) {
     erroToast(e instanceof Error ? e.message : 'Algo deu errado.');
@@ -51,7 +49,9 @@ export default function Crm() {
     setCarregando(true);
     setErro(null);
     try {
-      setLeads(await listarLeadsPlataforma());
+      const [ls, et] = await Promise.all([listarLeadsPlataforma(), listarEtapas()]);
+      setLeads(ls);
+      setEtapas(et);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar leads.');
     } finally {
@@ -73,32 +73,48 @@ export default function Crm() {
     }
   }
 
-  const leadsAtivos = leads.filter((l) => l.etapa !== 'ganho' && l.etapa !== 'perdido');
-  const ganhos = leads.filter((l) => l.etapa === 'ganho').length;
+  function aoSoltar(etapaId: string) {
+    const id = arrastandoId;
+    setArrastandoId(null);
+    setSobreEtapaId(null);
+    const lead = leads.find((l) => l.id === id);
+    if (!lead || lead.etapa === etapaId) return;
+    aoMoverEtapa(lead.id, etapaId);
+  }
+
+  const colunas = ordenarEtapas(etapas);
+  const idsAbertas = new Set(etapas.filter((e) => e.papel === null).map((e) => e.id));
+  const idGanho = etapas.find((e) => e.papel === 'ganho')?.id;
+  const leadsAtivos = leads.filter((l) => idsAbertas.has(l.etapa));
+  const ganhos = leads.filter((l) => l.etapa === idGanho).length;
   const valorPotencialAtivo = leadsAtivos.reduce((s, l) => s + (l.valor_potencial ?? 0), 0);
+  const contagemPorEtapa = leads.reduce<Record<string, number>>((acc, l) => ({ ...acc, [l.etapa]: (acc[l.etapa] ?? 0) + 1 }), {});
   const selecionado = leads.find((l) => l.id === selecionadoId) ?? null;
 
   return (
     <>
-      <div className="mb-5">
-        <h1 className="text-xl font-semibold text-text">Possíveis clientes</h1>
-        <p className="text-[12.5px] text-text-faint">Funil de vendas da plataforma — empresas que podem virar tenant.</p>
-      </div>
+      <Titulo
+        titulo="Possíveis clientes"
+        subtitulo="Funil de vendas da plataforma. Arraste os cards entre as colunas (no celular, abra o lead e troque a etapa)."
+        acao={
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setEditorAberto(true)} disabled={carregando} className="flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-[12.5px] font-medium text-text-dim hover:bg-raised hover:text-text disabled:opacity-50">
+              <Settings2 className="h-3.5 w-3.5" strokeWidth={2} /> Editar pipeline
+            </button>
+            <button type="button" onClick={() => setNovoAberto(true)} className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
+              <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Novo lead
+            </button>
+          </div>
+        }
+      />
 
       <MetricGrid>
-        <MetricCard Icone={TrendingUp} rotulo="Leads ativos" valor={String(leadsAtivos.length)} legenda="Fora de ganho/perdido" />
-        <MetricCard Icone={TrendingUp} rotulo="Valor potencial" valor={formatarMoeda(valorPotencialAtivo)} legenda="Soma do funil ativo" />
-        <MetricCard Icone={CheckCircle2} rotulo="Convertidos" valor={String(ganhos)} legenda="Marcados como ganho" />
+        <MetricCard Icone={TrendingUp} rotulo="Leads ativos" valor={String(leadsAtivos.length)} valorAnimado={{ alvo: leadsAtivos.length, formatar: formatarInteiro }} legenda="Em etapas abertas" />
+        <MetricCard Icone={TrendingUp} rotulo="Valor potencial" valor={formatarMoeda(valorPotencialAtivo)} valorAnimado={{ alvo: valorPotencialAtivo, formatar: formatarMoeda }} legenda="Soma do funil ativo" />
+        <MetricCard Icone={CheckCircle2} rotulo="Convertidos" valor={String(ganhos)} valorAnimado={{ alvo: ganhos, formatar: formatarInteiro }} legenda="Na etapa de ganho" />
       </MetricGrid>
 
       {erro && <p className="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{erro}</p>}
-
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-[12.5px] text-text-faint">{leadsAtivos.length} no funil ativo</p>
-        <button type="button" onClick={() => setNovoAberto(true)} className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-[12.5px] font-semibold text-accent-ink hover:bg-accent-strong">
-          <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Novo lead
-        </button>
-      </div>
 
       {carregando ? (
         <SkeletonLinhas />
@@ -106,29 +122,73 @@ export default function Crm() {
         <EstadoVazio Icone={TrendingUp} titulo="Nenhum lead cadastrado ainda" descricao='Clique em "Novo lead" pra cadastrar a primeira empresa interessada.' />
       ) : (
         <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-[900px] gap-3">
-            {ETAPAS_KANBAN.map((etapa) => {
-              const doEstagio = leadsAtivos.filter((l) => l.etapa === etapa.id);
+          <div className="flex gap-3" style={{ minWidth: colunas.length * 150 + (colunas.length - 1) * 12 }}>
+            {colunas.map((etapa) => {
+              const doEstagio = leads.filter((l) => l.etapa === etapa.id);
+              const sobre = sobreEtapaId === etapa.id && arrastandoId !== null;
               return (
-                <div key={etapa.id} className="flex w-56 flex-shrink-0 flex-col gap-2">
+                <section
+                  key={etapa.id}
+                  aria-label={`Etapa ${etapa.nome}`}
+                  onDragOver={(e) => {
+                    if (!arrastandoId) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (sobreEtapaId !== etapa.id) setSobreEtapaId(etapa.id);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSobreEtapaId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    aoSoltar(etapa.id);
+                  }}
+                  className={`flex min-w-[150px] flex-1 flex-col gap-2 rounded-lg border p-2 transition-colors ${sobre ? 'border-accent bg-accent/5' : 'border-transparent'}`}
+                >
                   <div className="flex items-center justify-between px-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-text-faint">{etapa.rotulo}</p>
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-faint">
+                      {etapa.papel && <span className={`h-1.5 w-1.5 rounded-full ${etapa.papel === 'ganho' ? 'bg-success' : 'bg-danger'}`} />}
+                      {etapa.nome}
+                    </p>
                     <span className="font-mono text-[11px] text-text-faint">{doEstagio.length}</span>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {doEstagio.map((l) => (
-                      <button key={l.id} type="button" onClick={() => setSelecionadoId(l.id)} className="rounded-md border border-line bg-input p-3 text-left text-sm hover:bg-raised">
+                  <div className="flex min-h-[110px] flex-col gap-2">
+                    {doEstagio.map((l, indice) => (
+                      <div
+                        key={l.id}
+                        style={{ animationDelay: `${Math.min(indice, 6) * 40}ms` }}
+                        role="button"
+                        tabIndex={0}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', l.id);
+                          setArrastandoId(l.id);
+                        }}
+                        onDragEnd={() => {
+                          setArrastandoId(null);
+                          setSobreEtapaId(null);
+                        }}
+                        onClick={() => setSelecionadoId(l.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelecionadoId(l.id);
+                          }
+                        }}
+                        className={`cartao-entrada linha-hover cursor-grab rounded-md border border-line bg-input p-3 text-left text-sm hover:bg-raised active:cursor-grabbing ${arrastandoId === l.id ? 'opacity-40' : ''}`}
+                      >
                         <strong className="block truncate text-text">{l.nome_empresa}</strong>
                         {l.origem && <span className="text-[11px] text-text-faint">{l.origem}</span>}
-                        <div className="mt-2 flex items-center justify-between gap-2">
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                           {l.plano_interesse ? <Badge tom="neutro" texto={PLANO_ROTULO[l.plano_interesse]} /> : <span />}
                           {l.valor_potencial != null && <span className="font-mono text-[11.5px] text-text-dim">{formatarMoeda(l.valor_potencial)}</span>}
                         </div>
-                      </button>
+                      </div>
                     ))}
-                    {doEstagio.length === 0 && <p className="rounded-md border border-dashed border-line px-3 py-4 text-center text-[11.5px] text-text-faint">Vazio</p>}
+                    {doEstagio.length === 0 && <p className="rounded-md border border-dashed border-line px-3 py-4 text-center text-[11.5px] text-text-faint">{sobre ? 'Solte aqui' : 'Vazio'}</p>}
                   </div>
-                </div>
+                </section>
               );
             })}
           </div>
@@ -137,9 +197,12 @@ export default function Crm() {
 
       {novoAberto && <DrawerNovoLead onFechar={() => setNovoAberto(false)} onCriado={(l) => { setLeads((atual) => [l, ...atual]); sucesso(`${l.nome_empresa} adicionada ao funil.`); }} onErro={aoFalhar} />}
 
+      {editorAberto && <EditorPipeline etapas={etapas} contagem={contagemPorEtapa} onFechar={() => setEditorAberto(false)} onMudou={async () => setEtapas(await listarEtapas())} />}
+
       {selecionado && (
         <DrawerDetalheLead
           lead={selecionado}
+          etapas={colunas}
           onFechar={() => setSelecionadoId(null)}
           onMoverEtapa={(etapa) => aoMoverEtapa(selecionado.id, etapa)}
           onAtualizado={(dados) => setLeads((atual) => atual.map((l) => (l.id === selecionado.id ? { ...l, ...dados } : l)))}
@@ -215,6 +278,7 @@ function DrawerNovoLead({ onFechar, onCriado, onErro }: { onFechar: () => void; 
 
 function DrawerDetalheLead({
   lead,
+  etapas,
   onFechar,
   onMoverEtapa,
   onAtualizado,
@@ -222,12 +286,16 @@ function DrawerDetalheLead({
   onErro,
 }: {
   lead: LeadPlataforma;
+  etapas: EtapaPipeline[];
   onFechar: () => void;
   onMoverEtapa: (etapa: EtapaLeadPlataforma) => void;
   onAtualizado: (dados: Partial<LeadPlataforma>) => void;
   onExcluido: () => void;
   onErro: (e: unknown) => void;
 }) {
+  const etapaAtual = etapas.find((e) => e.id === lead.etapa);
+  const etapaGanho = etapas.find((e) => e.papel === 'ganho');
+  const etapaPerdido = etapas.find((e) => e.papel === 'perdido');
   const [observacoes, setObservacoes] = useState(lead.observacoes ?? '');
   const [salvandoObs, setSalvandoObs] = useState(false);
   const [interacoes, setInteracoes] = useState<InteracaoLeadPlataforma[]>([]);
@@ -299,25 +367,25 @@ function DrawerDetalheLead({
         <div>
           <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-text-faint">Etapa</p>
           <Select value={lead.etapa} onChange={(e) => onMoverEtapa(e.target.value as EtapaLeadPlataforma)}>
-            {TODAS_ETAPAS.map((e) => (
+            {etapas.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.rotulo}
+                {e.nome}
               </option>
             ))}
           </Select>
         </div>
 
-        {lead.etapa !== 'ganho' && lead.etapa !== 'perdido' && (
+        {etapaAtual?.papel === null && etapaGanho && etapaPerdido && (
           <div className="flex gap-2">
-            <button type="button" onClick={() => onMoverEtapa('ganho')} className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-[12.5px] font-semibold text-success hover:bg-success/20">
+            <button type="button" onClick={() => onMoverEtapa(etapaGanho.id)} className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-[12.5px] font-semibold text-success hover:bg-success/20">
               <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} /> Marcar ganho
             </button>
-            <button type="button" onClick={() => onMoverEtapa('perdido')} className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-[12.5px] font-semibold text-danger hover:bg-danger/20">
+            <button type="button" onClick={() => onMoverEtapa(etapaPerdido.id)} className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-[12.5px] font-semibold text-danger hover:bg-danger/20">
               <XCircle className="h-3.5 w-3.5" strokeWidth={2} /> Marcar perdido
             </button>
           </div>
         )}
-        {lead.etapa === 'ganho' && <p className="text-[11.5px] text-success">Ganho — cadastre a empresa em Empresas quando fechar de verdade (ainda é manual).</p>}
+        {etapaAtual?.papel === 'ganho' && <p className="text-[11.5px] text-success">Ganho — cadastre a empresa em Empresas quando fechar de verdade (ainda é manual).</p>}
 
         <Textarea rotulo="Observações" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Notas sobre esta negociação…" />
         <button type="button" disabled={salvandoObs} onClick={aoSalvarObs} className="self-start rounded-md border border-line px-3 py-1.5 text-[12px] text-text-dim hover:bg-raised hover:text-text disabled:opacity-50">
