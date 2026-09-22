@@ -65,7 +65,7 @@ export async function excluirItem(id: string): Promise<void> {
 
 /** Registra um movimento e já ajusta `estoque_atual` do item (entrada/
     reintegração somam, saída/avaria subtraem) via RPC
-    `estoque_registrar_movimento` (`supabase/migration_009_estoque_atomico.sql`)
+    `estoque_registrar_movimento` (`supabase/migrations/20260101000008_009_estoque_atomico.sql`)
     — leitura e escrita do saldo viram uma única instrução SQL
     (`estoque_atual = estoque_atual + delta`) dentro da função, então duas
     chamadas concorrentes no mesmo item nunca se sobrescrevem (o Postgres

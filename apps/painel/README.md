@@ -1,14 +1,16 @@
 # Painel da Plataforma
 
-Aplicação **separada** do Sala de Operações (`../`) — código, build e deploy
-próprios, sem nenhum import cruzado com `../src`. É a ferramenta interna de
-quem opera a plataforma (você), não uma tela a mais dentro do produto que
-cada empresa (Em Cena incluída) usa no dia a dia.
+Aplicação **separada** do Sala de Operações (`../eventos`) — código, build e
+deploy próprios, sem nenhum import cruzado com `../eventos/src`. É a
+ferramenta interna de quem opera a plataforma (você), não uma tela a mais
+dentro do produto que cada empresa (Em Cena incluída) usa no dia a dia. Os
+dois apps vivem no mesmo repositório monorepo (ver `../../docs/ESTRUTURA.md`),
+mas são projetos Vite/Vercel independentes.
 
 Usa o **mesmo projeto Supabase** por baixo (mesmo banco, mesmas migrações
-em `../supabase/`), só que só enxerga as tabelas de plataforma
+em `../../supabase/migrations/`), só que só enxerga as tabelas de plataforma
 (`empresas`, `super_admins`, `leads_plataforma*`) — RLS restringe tudo a
-quem está em `super_admins` (ver `../supabase/migration_041_super_admins.sql`).
+quem está em `super_admins` (ver a migração `..._041_super_admins.sql`).
 
 ## Telas
 
@@ -30,26 +32,27 @@ Testes: `npm test` (cálculos de MRR, atraso, inadimplência, receita por mês, 
 
 ## Rodar localmente
 
+Instala tudo de uma vez na raiz do repositório (workspaces npm):
+
 ```
-cd plataforma-admin
-npm install
-npm run dev
+npm install            # na raiz, instala eventos + painel
+npm run dev:painel      # ou: npm run dev -w @sala/painel
 ```
 
-Copie `.env.example` para `.env.local` com os mesmos valores do `../.env.local`
-do app principal (mesmo projeto Supabase).
+Copie `.env.example` para `.env.local` (dentro de `apps/painel/`) com os
+mesmos valores do `.env.local` do app de eventos (mesmo projeto Supabase).
 
 Login: a mesma conta que você já usa no Sala de Operações — o acesso é
 decidido por estar ou não em `super_admins`, não por uma senha diferente.
 
 ## Deploy
 
-Projeto Vite independente — na Vercel, aponte um projeto novo com
-**Root Directory** = `plataforma-admin` (o app principal continua sendo
-outro projeto Vercel, apontando pra raiz do repositório). Configure as
-mesmas duas variáveis de ambiente (`VITE_SUPABASE_URL`,
-`VITE_SUPABASE_ANON_KEY`) no painel do novo projeto Vercel, e um
-domínio/subdomínio só seu (nunca sob o domínio de nenhuma empresa cliente).
+Projeto Vite independente — na Vercel, **Root Directory** = `apps/painel`
+(o app de eventos é outro projeto Vercel, com **Root Directory** =
+`apps/eventos`). Configure as mesmas duas variáveis de ambiente
+(`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) no painel do projeto Vercel,
+e um domínio/subdomínio só seu (nunca sob o domínio de nenhuma empresa
+cliente).
 
 ## Por que um app à parte (e não uma tela dentro do Sala de Operações)
 

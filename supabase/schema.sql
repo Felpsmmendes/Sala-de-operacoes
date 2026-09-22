@@ -26,7 +26,7 @@ create extension if not exists pgcrypto;
 -- Providers → Email → "Allow new users to sign up" = OFF) E nenhuma
 -- conta extra existir. Definição de bootstrap (fresh install, antes da
 -- conta do gestor existir) — assim que criar a conta real, troque para
--- travar num usuário específico, IGUAL a `supabase/migration_007_seguranca.sql`:
+-- travar num usuário específico, IGUAL a `supabase/migrations/20260101000006_007_seguranca.sql`:
 --   select auth.uid() = '<uuid do usuário gestor>'::uuid;
 -- (o uuid aparece em Authentication → Users no painel do Supabase, ou no
 -- retorno de POST /auth/v1/token?grant_type=password).

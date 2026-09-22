@@ -7,6 +7,11 @@ name: CI
 # (2026-09-14): um `useMemo` sem import passou direto porque ninguém
 # rodou o build completo antes do push — só o typecheck "errado"
 # (`tsc --noEmit` sem `-b`, que com project references não checa nada).
+#
+# Monorepo (apps/eventos + apps/painel via npm workspaces, ver
+# docs/ESTRUTURA.md): um `npm ci` na raiz instala os dois de uma vez, e
+# lint/test/build cobrem os dois workspaces — antes só o app da raiz
+# (eventos) era coberto, o painel ficava de fora.
 on:
   push:
     branches: [main, design-system-rollout]
@@ -31,13 +36,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # .env.test (com valores fictícios, já commitado) alimenta o
-      # supabase.ts durante os testes — nenhum segredo real entra aqui.
-      - name: Testes
+      # .env.test de cada app (com valores fictícios, já commitado)
+      # alimenta o supabase.ts durante os testes — nenhum segredo real
+      # entra aqui.
+      - name: Testes (eventos + painel)
         run: npm run test
 
-      # tsc -b (project references) + vite build — é o comando que
-      # teria pego o bug do Finanças antes do push, não só um "tsc
-      # --noEmit" solto que não cobre o projeto inteiro.
+      # tsc -b (project references) + vite build de cada workspace — é
+      # o comando que teria pego o bug do Finanças antes do push, não
+      # só um "tsc --noEmit" solto que não cobre o projeto inteiro.
       - name: Build (typecheck + bundle)
         run: npm run build

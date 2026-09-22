@@ -29,7 +29,7 @@ export async function atualizarVideo(id: string, url: string): Promise<void> {
 
 /**
  * Tela pública (sem login) — tudo abaixo passa por função RPC
- * `security definer` (ver `supabase/migration_007_seguranca.sql`), nunca
+ * `security definer` (ver `supabase/migrations/20260101000006_007_seguranca.sql`), nunca
  * por select/update direto na tabela/view. Achado de auditoria
  * (2026-09-06): `using (true)` sem RPC deixava listar/alterar TODAS as
  * linhas de `portal_cliente` numa chamada de API sem filtro nenhum — o

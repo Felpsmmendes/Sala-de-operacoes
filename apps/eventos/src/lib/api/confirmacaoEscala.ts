@@ -5,7 +5,7 @@ import type { ConfirmacaoEscala } from '../types';
  * Tela pública (sem login) — igual ao Portal do Cliente e ao Ponto:
  * `anon` nunca tem select/update direto em `escalas`/`vw_confirmacao_escala`,
  * só via função RPC `security definer` que exige o token como parâmetro
- * (ver supabase/migration_032_confirmacao_escala.sql). O token é 1 por
+ * (ver supabase/migrations/20260102000031_032_confirmacao_escala.sql). O token é 1 por
  * linha de escala — 1 por pessoa por evento/contrato — gerado sozinho
  * quando o gestor convoca alguém.
  */

@@ -55,7 +55,7 @@ export type Servico = {
   /** Texto comercial pro Gerador de Mensagens (Orçamentos) — separado da
       `descricao` curta acima (usada nos cards/PDF) porque a mensagem
       pro cliente precisa de um parágrafo de venda de verdade, não uma
-      legenda de uma linha. Ver supabase/migration_011_copy_comercial_servicos.sql
+      legenda de uma linha. Ver supabase/migrations/20260101000010_011_copy_comercial_servicos.sql
       — texto real, migrado do painel anterior, não inventado. Nullable:
       serviço sem isso preenchido cai de volta na `descricao` curta. */
   mensagem_descricao: string | null;
@@ -262,7 +262,7 @@ export type AlocacaoVeiculo = {
 
 /** Região de frete (2026-09-09) — cadastro livre do gestor pra alimentar
     a calculadora de frete sem digitar o km na mão toda vez (ver
-    supabase/migration_017_regioes_frete.sql). `km_aproximado` é a
+    supabase/migrations/20260101000016_017_regioes_frete.sql). `km_aproximado` é a
     distância de IDA — a calculadora dobra pra ida+volta. */
 export type RegiaoFrete = {
   id: string;
@@ -493,7 +493,7 @@ export type PortalPublico = Omit<PortalCliente, 'assinatura_ip' | 'assinatura_ha
    Diferente do check-in de freelancer por evento (Escala/EscalaPresenca,
    sem login): aqui `id` = o próprio `auth.users.id` da conta (login de
    verdade, criada manualmente pelo gestor no Supabase — self-signup
-   continua desligado). Ver supabase/migration_010_ponto_interno.sql. */
+   continua desligado). Ver supabase/migrations/20260101000009_010_ponto_interno.sql. */
 
 /** Allowlist de contas com acesso total (2026-09-13, ver migration_030 —
     Fase E do roadmap, resiliência: antes disso era 1 UUID travado direto
@@ -596,7 +596,7 @@ export type PontoInternoRegistro = {
    automático) — não dá pra criar um evento solto na Agenda. Tarefa é o
    oposto: um lembrete rápido preso só numa data, sem exigir contrato
    nenhum (ex.: "ligar pro fornecedor X"), pensado pra suprir exatamente
-   isso no calendário. Ver supabase/migration_012_tarefas_agenda.sql. */
+   isso no calendário. Ver supabase/migrations/20260101000011_012_tarefas_agenda.sql. */
 
 export type TarefaAgenda = {
   id: string;
@@ -606,7 +606,7 @@ export type TarefaAgenda = {
   concluida: boolean;
   observacoes: string | null;
   /** Lead relacionado (ex.: degustação marcada com um cliente) — opcional,
-      ver migration_013_tarefa_lead.sql. Ao criar com lead_id, a tarefa
+      ver 20260101000012_013_tarefa_lead.sql. Ao criar com lead_id, a tarefa
       também vira uma interação (`lead_interacoes`, tipo "reuniao") no
       histórico de conversa desse lead, pro CRM refletir sozinho. */
   lead_id: string | null;
@@ -691,7 +691,7 @@ export type FluxoCompleto = FluxoAutomacao & { nos: NoFluxo[]; conexoes: Conexao
 /* -------------------- Bloqueio de data (2026-09-09) --------------------
    Diferente de tarefa (lembrete livre): marca que uma data — ou
    intervalo — está reservada por outro motivo, sem estar ligado a lead
-   nenhum. Ver migration_024_bloqueios_agenda.sql. */
+   nenhum. Ver 20260101000023_024_bloqueios_agenda.sql. */
 
 export type CategoriaBloqueio = 'degustacao' | 'reuniao_interna' | 'reserva_evento' | 'outro';
 

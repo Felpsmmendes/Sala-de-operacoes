@@ -1,7 +1,7 @@
 -- Migration 033 — Portal do Cliente: registra quando o cliente abre o link
 -- (pedido do usuário, 2026-09-14: "não dá pra saber se o cliente já viu o
 -- portal"). Mesmo padrão de segurança do resto do portal público (ver
--- migration_007_seguranca.sql) — nunca update direto na tabela a partir do
+-- 20260101000006_007_seguranca.sql) — nunca update direto na tabela a partir do
 -- token anônimo, só por função RPC security definer.
 
 alter table portal_cliente

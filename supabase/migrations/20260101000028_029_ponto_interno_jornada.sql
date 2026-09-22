@@ -2,7 +2,7 @@
 -- Migração 029 — Jornada padrão + valor/hora por funcionário interno
 -- (pedido do usuário, 2026-09-13 — "ponto eletrônico mais detalhado:
 -- horas a pagar, horário normal de chegada, hora extra"). Rode isso
--- DEPOIS da migration_010_ponto_interno.sql (que cria as 2 tabelas base).
+-- DEPOIS da 20260101000009_010_ponto_interno.sql (que cria as 2 tabelas base).
 --
 -- Decisões do usuário:
 --   - "Horas a pagar" é valor em R$, não só soma de horas — por isso os

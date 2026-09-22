@@ -4,6 +4,9 @@
 núcleo (ou parte dele) com dado real, testado, antes de passar pra
 próxima — mesmo ritmo do painel anterior (`../../Texto/`).
 
+(Caminhos `src/...` deste roadmap são relativos a `apps/eventos/` — ver
+[`ESTRUTURA.md`](ESTRUTURA.md).)
+
 ## Fase 1 — Fundação técnica ✅ (concluída)
 
 Scaffold (Vite+React+TS+Tailwind v4), schema completo do banco (todas as
@@ -135,7 +138,7 @@ confirma a própria chegada escolhendo o nome numa lista. Painel do
 gestor mostra quem já chegou por evento e uma tabela de "próximas
 datas" com confirmados/chegados, pra pegar buraco de escala com
 antecedência. View `vw_escala_presenca` nunca expõe a diária (dado de
-pagamento) — ver `supabase/migration_003_ponto_publico.sql`.
+pagamento) — ver `supabase/migrations/20260101000002_003_ponto_publico.sql`.
 
 **Deep-link entre telas:** Dashboard → Cue Sheet/Escala/Logística/Ponto
 via `?evento=<id>`, cada botão do card já abre a tela certa com o evento
@@ -291,7 +294,7 @@ Usuário testando o sistema como usuário final reportou 2 pontos:
 
 **1. "Pra ser CRM de verdade precisa de canal de conversa/contato"** —
 faltava histórico de interação por lead, que todo CRM de mercado tem.
-Adicionado (`migration_006_crm_interacoes.sql`, tabela `lead_interacoes`):
+Adicionado (`20260101000005_006_crm_interacoes.sql`, tabela `lead_interacoes`):
 seção "Histórico de conversa/contato" no detalhe do lead (CRM), com tipos
 mensagem/ligação/e-mail/reunião/nota. A mensagem de WhatsApp do orçamento
 **se registra sozinha** ali quando gerada (`Orcamentos.tsx` →
@@ -311,7 +314,7 @@ texto certo, e o arrasto com o botão do meio realmente rolando o pipeline
 ## Auditoria de segurança pós-deploy (2026-09-06)
 
 Usuário perguntou como verificar a segurança do site em produção.
-Auditoria encontrou e corrigiu 2 achados reais (`migration_007_seguranca.sql`):
+Auditoria encontrou e corrigiu 2 achados reais (`20260101000006_007_seguranca.sql`):
 
 **1. CRÍTICO — qualquer conta autenticada tinha acesso total.**
 `eh_gestor()` checava só `auth.role() = 'authenticated'`, não QUEM. O
@@ -552,7 +555,7 @@ CHECK fixo em 5 valores (`novo`, `degustacao_agendada`,
 rótulo/cor no código, mas nunca adicionar coluna sem alterar o banco.
 Resolvido convertendo pra uma tabela de verdade:
 
-- `funis_lead` (`supabase/migration_008_funis_lead.sql`): cada linha é
+- `funis_lead` (`supabase/migrations/20260101000007_008_funis_lead.sql`): cada linha é
   uma coluna do Pipeline (`id`, `nome`, `cor`, `ordem`). `leads.status`
   virou FOREIGN KEY pra essa tabela (era CHECK). Os 5 funis antigos
   foram migrados como linhas iniciais, mesmos ids de sempre (nenhum

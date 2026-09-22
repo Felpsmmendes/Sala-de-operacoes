@@ -361,7 +361,7 @@ export type Database = {
           assinatura_ip: string | null;
           assinatura_em: string | null;
           criado_em: string;
-          /** ver migration_033_portal_visualizacao.sql (2026-09-14) */
+          /** ver 20260102000032_033_portal_visualizacao.sql (2026-09-14) */
           aberto_em: string | null;
           visualizacoes: number;
         };
@@ -842,7 +842,7 @@ export type Database = {
           data_pagamento: string | null;
           observacoes: string | null;
           criado_em: string;
-          /** ver migration_034_categoria_lancamento.sql (2026-09-14) */
+          /** ver 20260102000033_034_categoria_lancamento.sql (2026-09-14) */
           categoria: string | null;
         };
         Insert: {
@@ -942,14 +942,14 @@ export type Database = {
       portal_aprovar_video: { Args: { p_token: string }; Returns: undefined };
       portal_assinar: { Args: { p_token: string; p_nome: string; p_cpf: string; p_hash: string }; Returns: undefined };
       portal_assinar_contrato: { Args: { p_token: string; p_nome: string; p_cpf: string; p_hash: string }; Returns: undefined };
-      /** ver supabase/migration_033_portal_visualizacao.sql */
+      /** ver supabase/migrations/20260102000032_033_portal_visualizacao.sql */
       portal_registrar_visualizacao: { Args: { p_token: string }; Returns: undefined };
       ponto_obter_presenca: { Args: { p_evento_id: string }; Returns: Database['public']['Views']['vw_escala_presenca']['Row'][] };
       ponto_registrar_chegada: { Args: { p_evento_id: string; p_membro_id: string }; Returns: undefined };
       confirmacao_obter: { Args: { p_token: string }; Returns: Database['public']['Views']['vw_confirmacao_escala']['Row'][] };
       confirmacao_responder: { Args: { p_token: string; p_confirmar: boolean }; Returns: undefined };
       contar_drinks_evento: { Args: { p_evento_id: string }; Returns: number };
-      /** ver supabase/migration_009_estoque_atomico.sql */
+      /** ver supabase/migrations/20260101000008_009_estoque_atomico.sql */
       estoque_registrar_movimento: {
         Args: { p_item_id: string; p_tipo: string; p_quantidade: number; p_evento_id: string | null; p_observacao: string | null };
         Returns: undefined;

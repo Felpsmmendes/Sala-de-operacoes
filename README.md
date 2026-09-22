@@ -10,6 +10,11 @@ freelancers, quer portal de cliente e infraestrutura própria). Ver
 `../Texto/docs/referencias/stitch_em_cena_design_system/` pros modelos
 visuais que inspiraram o design system.
 
+Este é o app de eventos, um dos workspaces do monorepo — código em
+`apps/eventos/` (todo caminho `src/...` deste README é relativo a essa
+pasta). Estrutura completa (o painel `apps/painel/`, o Supabase
+compartilhado) em [`docs/ESTRUTURA.md`](docs/ESTRUTURA.md).
+
 ## Stack
 
 - **Frontend:** Vite + React + TypeScript
@@ -52,10 +57,10 @@ Controladoria) com RLS já configurado.
 ### 3. Configurar o app
 
 ```bash
-npm install
-cp .env.example .env.local
-# edite .env.local com a URL e a chave anon do passo 1
-npm run dev
+npm install                    # na raiz do repo — instala eventos + painel
+cp apps/eventos/.env.example apps/eventos/.env.local
+# edite apps/eventos/.env.local com a URL e a chave anon do passo 1
+npm run dev -w @sala/eventos
 ```
 
 Abra `http://localhost:5173` e entre com o e-mail/senha que você criou no
@@ -69,7 +74,7 @@ Dashboard, só que chega até você sem precisar abrir o sistema. Só manda
 e-mail quando há algo pra alertar (sem "tudo ok" diário).
 
 - **Código:** `supabase/functions/alerta-trava-d15/index.ts` (Edge
-  Function) + `supabase/migration_025_alerta_trava_d15_cron.sql` (agenda
+  Function) + `supabase/migrations/20260101000024_025_alerta_trava_d15_cron.sql` (agenda
   via `pg_cron`, 1x por dia).
 - **Envio:** [Resend](https://resend.com) (grátis até 3.000 e-mails/mês).
   Sem domínio verificado, o remetente é `onboarding@resend.dev` — funciona,
@@ -81,7 +86,7 @@ e-mail quando há algo pra alertar (sem "tudo ok" diário).
   npx supabase functions deploy alerta-trava-d15 --no-verify-jwt
   npx supabase secrets set RESEND_API_KEY=re_xxx ALERTA_EMAIL_DESTINO=voce@emcena.com.br
   ```
-  Depois disso, rode `migration_025_alerta_trava_d15_cron.sql` no SQL
+  Depois disso, rode `20260101000024_025_alerta_trava_d15_cron.sql` no SQL
   Editor (trocando `<PROJECT_REF>` pelo real antes).
 - **`--no-verify-jwt`:** decisão consciente — a function só envia e-mail,
   nunca devolve dado sensível, e só o cron interno do projeto a chama.
@@ -114,7 +119,7 @@ desenvolvimento pra cada automação nova. Substitui a v1 (formulário de
   um lead) e andam pelo grafo até parar; `tempo_sem_contato`, e a
   retomada de execuções paradas num nó de espera, rodam 1x por dia via
   cron (`supabase/functions/aplicar-automacoes-tempo`, agendado em
-  `migration_027_automacoes_crm.sql`) — mesmo motor de grafo reescrito em
+  `20260101000026_027_automacoes_crm.sql`) — mesmo motor de grafo reescrito em
   Deno (comentário no arquivo explica o porquê da duplicação). Nunca
   trava a ação principal do app se uma automação falhar.
 - **Sem duplicar disparo:** só 1 execução ATIVA por (fluxo, lead) —
@@ -123,7 +128,7 @@ desenvolvimento pra cada automação nova. Substitui a v1 (formulário de
   ```bash
   npx supabase functions deploy aplicar-automacoes-tempo --no-verify-jwt
   ```
-  Depois, rodar `migration_027_automacoes_crm.sql` no SQL Editor — ela já
+  Depois, rodar `20260101000026_027_automacoes_crm.sql` no SQL Editor — ela já
   faz `drop table if exists` das tabelas da v1 antes de criar o novo
   schema em grafo (`automacoes_fluxos`/`automacoes_nos`/
   `automacoes_conexoes`/`automacoes_execucoes`), então pode rodar direto
@@ -156,7 +161,7 @@ posto. Sem POS, sem catálogo de receita: é um log de toques
 hoje" e o ritmo (drinks/hora) no Dashboard em tempo real — no lugar do
 número fabricado que o print original pedia.
 
-- **Código:** `supabase/migration_026_registros_drink.sql` (tabela + RLS
+- **Código:** `supabase/migrations/20260101000025_026_registros_drink.sql` (tabela + RLS
   + RPC `contar_drinks_evento`), `src/lib/api/drinks.ts`,
   `src/pages/DrinksPublico.tsx`.
 - **Segurança:** anon só INSERE (nunca lê a tabela bruta); a tela
@@ -362,4 +367,4 @@ padrão da assinatura de homologação de mídia — mas um evento SEPARADO:
 - `ModalDocumentoContrato.tsx` (aba Contratos, botão "Gerar/Ver documento" em cada card) — editor rico simples via `contentEditable` não controlado (evita o bug clássico do cursor pular pro início a cada tecla quando `dangerouslySetInnerHTML` é re-renderizado a cada input).
 - Portal do Cliente (`/portal/:token`) — nova seção abaixo da homologação de mídia, com o documento em fundo branco (papel) e o formulário de assinatura; trava D-15 já existente também bloqueia a assinatura do contrato.
 - Badge "Contrato assinado" / "Aguardando assinatura" na listagem de Contratos.
-- **Rodar `migration_028_documento_contrato.sql`** no SQL Editor do Supabase antes de usar — adiciona as colunas em `contratos` e estende a view `vw_portal_publico` (mesma view que a homologação já usa, só com 4 colunas novas) + a RPC pública `portal_assinar_contrato`.
+- **Rodar `20260101000027_028_documento_contrato.sql`** no SQL Editor do Supabase antes de usar — adiciona as colunas em `contratos` e estende a view `vw_portal_publico` (mesma view que a homologação já usa, só com 4 colunas novas) + a RPC pública `portal_assinar_contrato`.

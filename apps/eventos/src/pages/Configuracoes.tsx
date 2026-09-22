@@ -237,7 +237,7 @@ export default function Configuracoes() {
               <Panel>
                 <PanelHeader titulo="Quem tem acesso" desc="Contas com acesso total ao sistema — adicionar uma nova é manual pelo SQL Editor do Supabase (ver migration_030), de propósito." />
                 {erroGestores ? (
-                  <p className="text-[12.5px] text-text-dim">Ainda não disponível — rode a migração mais recente no Supabase (migration_030_multiplos_gestores.sql).</p>
+                  <p className="text-[12.5px] text-text-dim">Ainda não disponível — rode a migração mais recente no Supabase (20260102000029_030_multiplos_gestores.sql).</p>
                 ) : !gestores ? (
                   <div className="flex flex-col gap-2">
                     {[1, 2].map((i) => (

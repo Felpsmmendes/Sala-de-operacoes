@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Migração 013 — tarefa da Agenda pode ligar a um lead (2026-09-07).
 -- Rode isso no SQL Editor do Supabase (depois da 001-012, precisa da
--- migration_012_tarefas_agenda.sql já aplicada).
+-- 20260101000011_012_tarefas_agenda.sql já aplicada).
 --
 -- Pedido do usuário: uma tarefa tipo "Degustação com Fulano" precisa
 -- aparecer também no histórico de conversa do lead, não só solta no
