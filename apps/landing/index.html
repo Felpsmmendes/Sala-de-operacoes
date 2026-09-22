@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firme — sala de operações para empresas de eventos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:       #0A0B0D;
+  --ink-2:     #1C1E24;
+  --ink-3:     #2E3138;
+  --muted:     #6B7280;
+  --line:      #E4E6EA;
+  --surface:   #F7F8FA;
+  --white:     #FFFFFF;
+  --amber:     #F59E0B;
+  --amber-dim: rgba(245,158,11,0.10);
+  --amber-mid: rgba(245,158,11,0.22);
+  --teal:      #0D9488;
+  --teal-dim:  rgba(13,148,136,0.10);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--white);
+  color: var(--ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.display {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
+  height: 64px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo-mark {
+  width: 28px; height: 28px;
+  background: var(--ink);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.logo-mark svg { width: 16px; height: 16px; }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.nav-links a:hover { color: var(--ink); }
+
+.nav-cta {
+  background: var(--ink);
+  color: var(--white) !important;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: background 0.15s !important;
+}
+
+.nav-cta:hover { background: var(--ink-3) !important; color: var(--white) !important; }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  align-items: center;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
+  padding-top: 64px;
+  gap: 3.5rem;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.hero-text { padding: 3.5rem 0; }
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-mid);
+  padding: 0.35rem 0.875rem;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #92400E;
+  margin-bottom: 1.75rem;
+  letter-spacing: 0.02em;
+}
+
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+
+.hero-title {
+  font-size: clamp(2.25rem, 4.2vw, 3.5rem);
+  margin-bottom: 1.5rem;
+  color: var(--ink);
+}
+
+.hero-title em {
+  font-style: normal;
+  color: var(--teal);
+}
+
+.hero-sub {
+  font-size: 1.0625rem;
+  color: var(--muted);
+  max-width: 46ch;
+  line-height: 1.7;
+  margin-bottom: 2.25rem;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--ink);
+  color: var(--white);
+  padding: 0.875rem 1.75rem;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.btn-primary:hover { background: var(--ink-3); transform: translateY(-1px); }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--ink);
+  padding: 0.875rem 1.5rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.btn-secondary:hover { border-color: var(--ink-3); transform: translateY(-1px); }
+
+.hero-note {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* ── SCREEN FRAME (usado no hero, nas telas do produto e no dashboard grande) ── */
+.frame {
+  background: var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(10,11,13,0.28);
+}
+
+.frame-bar {
+  height: 36px;
+  background: var(--ink-2);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  padding: 0 0.875rem;
+  gap: 0.4rem;
+}
+
+.dot { width: 9px; height: 9px; border-radius: 50%; }
+.dot-r { background: #FF5F57; }
+.dot-y { background: #FEBC2E; }
+.dot-g { background: #28C840; }
+
+.frame-label {
+  margin-left: auto; margin-right: auto;
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.3);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.frame-shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.hero-visual .frame { height: 540px; }
+.hero-visual .frame-shot { height: calc(100% - 36px); }
+
+/* ── CAPABILITY BAND ── */
+.band {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 2rem clamp(1.5rem, 5vw, 4rem);
+  background: var(--surface);
+  text-align: center;
+}
+
+.band-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  margin-bottom: 1rem;
+}
+
+.band-pills {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.band-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 0.35rem 0.875rem;
+}
+
+/* ── SECTION BASE ── */
+section { padding: 6rem clamp(1.5rem, 5vw, 4rem); }
+.section-inner { max-width: 1280px; margin: 0 auto; }
+
+.section-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--teal);
+  margin-bottom: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.section-title {
+  font-size: clamp(1.75rem, 3.3vw, 2.625rem);
+  margin-bottom: 1rem;
+  max-width: 20ch;
+}
+
+.section-sub {
+  font-size: 1.0625rem;
+  color: var(--muted);
+  max-width: 54ch;
+  line-height: 1.7;
+  margin-bottom: 3.5rem;
+}
+
+/* ── PROBLEMA ── */
+.problem { background: var(--surface); }
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5px;
+  background: var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--line);
+}
+
+.problem-item { background: var(--white); padding: 2rem; }
+
+.problem-number {
+  font-family: 'Syne', sans-serif;
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  opacity: 0.08;
+}
+
+.problem-title { font-size: 1rem; font-weight: 600; color: var(--ink); margin-bottom: 0.5rem; }
+.problem-desc { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+
+/* ── ANTES / DEPOIS ── */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.compare-col {
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 1.75rem;
+}
+
+.compare-col.bad { background: var(--surface); }
+.compare-col.good { background: var(--ink); border-color: var(--ink); }
+
+.compare-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 1.25rem;
+}
+
+.compare-col.bad .compare-label { color: var(--muted); }
+.compare-col.good .compare-label { color: rgba(255,255,255,0.45); }
+
+.compare-list { list-style: none; display: flex; flex-direction: column; gap: 0.875rem; }
+
+.compare-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+}
+
+.compare-col.bad .compare-list li { color: var(--ink-3); }
+.compare-col.good .compare-list li { color: rgba(255,255,255,0.88); }
+
+.compare-icon {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.compare-col.bad .compare-icon { background: rgba(107,114,128,0.12); color: var(--muted); }
+.compare-col.good .compare-icon { background: rgba(45,212,191,0.18); color: #2DD4BF; }
+
+.compare-arrow {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+}
+
+/* ── PRODUTO (tabs) ── */
+.product-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1.5px solid var(--line);
+  margin-bottom: 3rem;
+  overflow-x: auto;
+}
+
+.product-tab {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+  transition: color 0.15s, border-color 0.15s;
+  background: none;
+  border-left: none; border-right: none; border-top: none;
+  white-space: nowrap;
+}
+
+.product-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+.product-panels { display: none; }
+.product-panels.active { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5rem; align-items: center; }
+
+.product-feature-list { display: flex; flex-direction: column; gap: 1.5rem; }
+.product-feature { display: flex; gap: 1rem; align-items: flex-start; }
+
+.product-feature-icon {
+  width: 36px; height: 36px;
+  background: var(--teal-dim);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.product-feature-icon svg { width: 16px; height: 16px; color: var(--teal); }
+.product-feature-title { font-size: 0.9375rem; font-weight: 600; color: var(--ink); margin-bottom: 0.25rem; }
+.product-feature-desc { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+
+.product-screen { aspect-ratio: 4/3; }
+.product-screen .frame-shot { height: calc(100% - 36px); }
+
+/* ── UM EVENTO POR DENTRO (timeline) ── */
+.timeline-wrap { overflow-x: auto; padding-bottom: 0.5rem; }
+
+.timeline {
+  display: flex;
+  align-items: center;
+  min-width: 760px;
+}
+
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  flex: 1;
+  text-align: center;
+}
+
+.timeline-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--teal);
+  border: 3px solid var(--teal-dim);
+}
+
+.timeline-label { font-size: 0.8125rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+
+.timeline-line {
+  flex: 1;
+  height: 2px;
+  background: var(--line);
+  margin: 0 -0.5rem;
+  margin-bottom: 1.6rem;
+}
+
+/* ── DASHBOARD PROTAGONISTA ── */
+.showcase {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.showcase .section-title { color: var(--white); max-width: 22ch; }
+.showcase .section-sub { color: rgba(255,255,255,0.5); }
+.showcase .section-tag { color: #2DD4BF; }
+
+.showcase-frame {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 40px 100px rgba(0,0,0,0.5);
+  max-height: 620px;
+}
+
+.showcase-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-position: top;
+}
+
+.showcase-fade {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 220px;
+  background: linear-gradient(to bottom, rgba(10,11,13,0) 0%, var(--ink) 92%);
+  pointer-events: none;
+}
+
+/* ── SEGMENTOS ── */
+.segments-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.segment-card {
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.segment-card:hover { border-color: var(--ink-3); transform: translateY(-2px); }
+
+.segment-icon {
+  width: 38px; height: 38px;
+  background: var(--amber-dim);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 0.875rem;
+}
+
+.segment-icon svg { width: 18px; height: 18px; color: #92400E; }
+.segment-title { font-size: 0.9375rem; font-weight: 600; color: var(--ink); margin-bottom: 0.35rem; }
+.segment-desc { font-size: 0.8125rem; color: var(--muted); line-height: 1.55; }
+
+/* ── PRECOS ── */
+.pricing { background: var(--surface); }
+
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+
+.pricing-card {
+  background: var(--white);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 2rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.pricing-card.featured { border-color: var(--ink); background: var(--ink); color: var(--white); }
+
+.pricing-badge {
+  position: absolute;
+  top: -12px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--amber);
+  color: var(--ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.875rem;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+
+.pricing-plan {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+.pricing-card.featured .pricing-plan { color: rgba(255,255,255,0.5); }
+
+.pricing-tagline {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.375rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}
+
+.pricing-desc {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 1.75rem;
+  line-height: 1.6;
+}
+
+.pricing-card.featured .pricing-desc { color: rgba(255,255,255,0.55); }
+
+.pricing-features { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; flex: 1; }
+
+.pricing-features li { display: flex; align-items: center; gap: 0.625rem; font-size: 0.875rem; color: var(--ink-3); }
+.pricing-card.featured .pricing-features li { color: rgba(255,255,255,0.82); }
+
+.pricing-check {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--teal-dim);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.pricing-card.featured .pricing-check { background: rgba(45,212,191,0.2); }
+.pricing-check svg { width: 9px; height: 9px; color: var(--teal); }
+
+.btn-plan {
+  display: block;
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s;
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+}
+
+.btn-plan:hover { border-color: var(--ink); }
+.btn-plan.featured { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+.btn-plan.featured:hover { background: #FBBF24; }
+.pricing-card.featured .btn-plan:not(.featured) { border-color: rgba(255,255,255,0.25); color: var(--white); }
+
+.pricing-note {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-top: 2rem;
+}
+
+/* ── CTA FINAL ── */
+.cta-section {
+  background: var(--ink);
+  color: var(--white);
+  text-align: center;
+  padding: 7rem clamp(1.5rem, 5vw, 4rem);
+}
+
+.cta-section .section-inner { max-width: 640px; }
+.cta-section .section-title { color: var(--white); max-width: 100%; }
+.cta-section .section-sub { color: rgba(255,255,255,0.5); max-width: 100%; margin: 1rem auto 2.5rem; }
+.cta-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+.btn-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--amber);
+  color: var(--ink);
+  padding: 0.9375rem 2rem;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.btn-cta-primary:hover { background: #FBBF24; transform: translateY(-1px); }
+
+.btn-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  padding: 0.9375rem 1.75rem;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-cta-secondary:hover { border-color: rgba(255,255,255,0.4); color: white; }
+.cta-fine { font-size: 0.75rem; color: rgba(255,255,255,0.35); margin-top: 1.25rem; }
+
+/* ── FOOTER ── */
+footer { padding: 3rem clamp(1.5rem, 5vw, 4rem); border-top: 1px solid var(--line); }
+
+.footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-copy { font-size: 0.8125rem; color: var(--muted); }
+.footer-links { display: flex; gap: 1.5rem; list-style: none; }
+.footer-links a { font-size: 0.8125rem; color: var(--muted); text-decoration: none; transition: color 0.15s; }
+.footer-links a:hover { color: var(--ink); }
+
+/* ── MOBILE ── */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 80px; }
+  .hero-visual { order: -1; }
+  .hero-visual .frame { height: 260px; }
+  .hero-title { font-size: 2.1rem; }
+  .nav-links { display: none; }
+  .problem-grid { grid-template-columns: 1fr; }
+  .compare { grid-template-columns: 1fr; }
+  .compare-arrow { justify-self: center; transform: rotate(90deg); }
+  .product-panels.active { grid-template-columns: 1fr; }
+  .segments-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .showcase-frame { max-height: 420px; }
+}
+
+@media (max-width: 600px) {
+  .hero-actions { flex-direction: column; }
+  .cta-actions { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="5" height="5" rx="1.5" fill="#F59E0B"/>
+        <rect x="9" y="2" width="5" height="5" rx="1.5" fill="white" opacity="0.4"/>
+        <rect x="2" y="9" width="5" height="5" rx="1.5" fill="white" opacity="0.4"/>
+        <rect x="9" y="9" width="5" height="5" rx="1.5" fill="#2DD4BF" opacity="0.8"/>
+      </svg>
+    </div>
+    Firme
+  </a>
+  <ul class="nav-links">
+    <li><a href="#produto">Produto</a></li>
+    <li><a href="#precos">Preços</a></li>
+    <li><a href="#segmentos">Pra quem é</a></li>
+    <li><a href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Quero%20agendar%20uma%20demonstra%C3%A7%C3%A3o%20do%20Firme." class="nav-cta">Agendar demonstração</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-text">
+    <div class="hero-badge">SALA DE OPERAÇÕES PARA EMPRESAS DE EVENTOS</div>
+    <h1 class="display hero-title">
+      Pare de gerenciar sua<br>
+      operação no <em>WhatsApp</em>.
+    </h1>
+    <p class="hero-sub">
+      Centralize CRM, contratos, equipe, estoque, financeiro e o roteiro do dia do evento em um único lugar — feito pra quem vive de evento, não adaptado de um ERP genérico.
+    </p>
+    <div class="hero-actions">
+      <a href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Quero%20conhecer%20o%20Firme." class="btn-primary">
+        Ver demonstração
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="#produto" class="btn-secondary">Ver como funciona</a>
+    </div>
+    <p class="hero-note">Sem cartão de crédito. 15 minutos pra ver o sistema com dado de verdade.</p>
+  </div>
+
+  <div class="hero-visual">
+    <div class="frame">
+      <div class="frame-bar">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <div class="frame-label">Dashboard — tela real do produto</div>
+      </div>
+      <img class="frame-shot" src="assets/dashboard.png" alt="Dashboard do Firme mostrando eventos do dia, alertas de contrato e faturamento do mês">
+    </div>
+  </div>
+</div>
+
+<!-- BAND -->
+<div class="band">
+  <div class="band-title">UMA PLATAFORMA. TODA A OPERAÇÃO.</div>
+  <div class="band-pills">
+    <span class="band-pill">CRM</span>
+    <span class="band-pill">Contratos</span>
+    <span class="band-pill">Equipe &amp; Escalas</span>
+    <span class="band-pill">Estoque &amp; Logística</span>
+    <span class="band-pill">Financeiro &amp; DRE</span>
+    <span class="band-pill">Roteiro ao vivo</span>
+  </div>
+</div>
+
+<!-- PROBLEMA -->
+<section class="problem" id="problema">
+  <div class="section-inner">
+    <span class="section-tag">O problema que resolvemos</span>
+    <h2 class="display section-title">Seu evento acontece em um lugar. Sua operação está espalhada em cinco.</h2>
+    <p class="section-sub">Orçamento no Word, contrato por e-mail, escala no grupo de WhatsApp, estoque no caderno, financeiro numa planilha à parte. Cada ferramenta a mais é um lugar novo pra esquecer de olhar.</p>
+    <div class="problem-grid">
+      <div class="problem-item">
+        <div class="problem-number">01</div>
+        <div class="problem-title">Horas em tarefa manual, toda semana</div>
+        <div class="problem-desc">Montar orçamento, copiar dado de um lugar pro outro, escrever a mesma mensagem de convocação pra cada freelancer. Tempo que devia ir pro cliente.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-number">02</div>
+        <div class="problem-title">Ninguém sabe onde olhar quando algo falha</div>
+        <div class="problem-desc">O sinal foi pago? Tá no WhatsApp. A equipe confirmou? Tá na planilha. Quando dá problema no dia do evento, o tempo de achar a resposta é o tempo que falta.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-number">03</div>
+        <div class="problem-title">Crescer significa mais planilha, não mais evento</div>
+        <div class="problem-desc">Você fecharia mais contrato se não gastasse metade do dia organizando os que já tem. O gargalo não é falta de cliente — é tempo de gestão.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANTES / DEPOIS -->
+<section id="antes-depois">
+  <div class="section-inner">
+    <span class="section-tag">O que muda</span>
+    <h2 class="display section-title">De seis ferramentas separadas pra uma sala de operações</h2>
+    <p class="section-sub">Nada revolucionário na ideia — só juntar tudo o que já é seu trabalho, num lugar que conversa sozinho.</p>
+    <div class="compare">
+      <div class="compare-col bad">
+        <div class="compare-label">HOJE, ESPALHADO</div>
+        <ul class="compare-list">
+          <li><span class="compare-icon">✕</span> Orçamento no Word ou Excel</li>
+          <li><span class="compare-icon">✕</span> Contrato assinado por e-mail</li>
+          <li><span class="compare-icon">✕</span> Escala combinada no grupo de WhatsApp</li>
+          <li><span class="compare-icon">✕</span> Estoque de cabeça ou em caderno</li>
+          <li><span class="compare-icon">✕</span> Financeiro numa planilha à parte</li>
+          <li><span class="compare-icon">✕</span> Roteiro do evento impresso ou na memória</li>
+        </ul>
+      </div>
+      <div class="compare-arrow">→</div>
+      <div class="compare-col good">
+        <div class="compare-label">COM O FIRME</div>
+        <ul class="compare-list">
+          <li><span class="compare-icon">✓</span> CRM com pipeline visual</li>
+          <li><span class="compare-icon">✓</span> Contrato com portal e assinatura do cliente</li>
+          <li><span class="compare-icon">✓</span> Convocação e confirmação automáticas</li>
+          <li><span class="compare-icon">✓</span> Estoque com checklist por evento</li>
+          <li><span class="compare-icon">✓</span> DRE calculado sozinho, mês a mês</li>
+          <li><span class="compare-icon">✓</span> Roteiro ao vivo, cue a cue, no dia</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUTO -->
+<section id="produto">
+  <div class="section-inner">
+    <span class="section-tag">A plataforma</span>
+    <h2 class="display section-title">Cada módulo, construído pra operação de eventos</h2>
+    <p class="section-sub">Não é um ERP genérico com o nome trocado. As telas abaixo são do sistema de verdade — não é montagem.</p>
+
+    <div class="product-tabs">
+      <button class="product-tab active" onclick="trocarAba(this, 'comercial')">Comercial</button>
+      <button class="product-tab" onclick="trocarAba(this, 'operacao')">Operação</button>
+      <button class="product-tab" onclick="trocarAba(this, 'financeiro')">Financeiro</button>
+      <button class="product-tab" onclick="trocarAba(this, 'equipe')">Equipe</button>
+    </div>
+
+    <div id="aba-comercial" class="product-panels active">
+      <div class="product-feature-list">
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2 4h12M2 8h8M2 12h6"/></svg></div>
+          <div><div class="product-feature-title">CRM com pipeline visual</div><div class="product-feature-desc">Acompanhe cada lead do primeiro contato até o contrato fechado. Funil configurável, sem depender de planilha paralela.</div></div>
+        </div>
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8h6M5 11h4"/></svg></div>
+          <div><div class="product-feature-title">Leads esfriando, taxa de conversão</div><div class="product-feature-desc">Veja quem está há dias sem contato antes de perder o negócio, e acompanhe conversão em tempo real.</div></div>
+        </div>
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 4l4-2 4 2v5l-4 3-4-3V4z"/></svg></div>
+          <div><div class="product-feature-title">Portal do cliente com assinatura digital</div><div class="product-feature-desc">Envie um link pro cliente aprovar itens e assinar o contrato — sem imprimir, sem ir até ele.</div></div>
+        </div>
+      </div>
+      <div class="product-screen frame">
+        <div class="frame-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><div class="frame-label">CRM &amp; Pipeline de Leads</div></div>
+        <img class="frame-shot" src="assets/crm.png" alt="Tela de CRM do Firme com funil de leads, taxa de conversão e leads por etapa">
+      </div>
+    </div>
+
+    <div id="aba-operacao" class="product-panels">
+      <div class="product-feature-list">
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg></div>
+          <div><div class="product-feature-title">Roteiro ao vivo, cue a cue</div><div class="product-feature-desc">O cronograma minuto a minuto do evento, gerado a partir dos horários do contrato. A equipe marca cada etapa concluída em campo.</div></div>
+        </div>
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v4l3 1.5"/><circle cx="8" cy="9" r="5"/></svg></div>
+          <div><div class="product-feature-title">Confirmação de chegada da equipe</div><div class="product-feature-desc">Link público pra freelancer confirmar presença. Você vê em tempo real quem chegou e quem falta.</div></div>
+        </div>
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M5 7h6M5 10h4"/></svg></div>
+          <div><div class="product-feature-title">Checklist de carga e estoque</div><div class="product-feature-desc">Calculadora por número de convidados — saiba o que precisa levar em cada evento e o que falta no estoque.</div></div>
+        </div>
+      </div>
+      <div class="product-screen frame">
+        <div class="frame-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><div class="frame-label">Sala de Operações — ao vivo</div></div>
+        <img class="frame-shot" src="assets/roteiro.png" alt="Cronograma minuto a minuto do evento com cues concluídos e progresso em tempo real">
+      </div>
+    </div>
+
+    <div id="aba-financeiro" class="product-panels">
+      <div class="product-feature-list">
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2 10l4-4 3 3 5-6"/></svg></div>
+          <div><div class="product-feature-title">DRE automático, mês a mês</div><div class="product-feature-desc">Receita, custo e lucro calculados sozinhos a partir dos lançamentos pagos — nunca digitado à parte.</div></div>
+        </div>
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="2" y="4" width="12" height="8" rx="1.5"/><path d="M5 8h2M10 8h1"/></svg></div>
+          <div><div class="product-feature-title">Contratos em risco, saldo pendente</div><div class="product-feature-desc">Alerta automático de saldo em aberto com evento próximo — antes que vire problema em cima da hora.</div></div>
+        </div>
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v12M4 6l4-4 4 4M4 10l4 4 4-4"/></svg></div>
+          <div><div class="product-feature-title">Relatório executivo em 1 clique</div><div class="product-feature-desc">Financeiro, operação e comercial do mês, consolidado em PDF — sem juntar número de vários lugares.</div></div>
+        </div>
+      </div>
+      <div class="product-screen frame">
+        <div class="frame-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><div class="frame-label">DRE</div></div>
+        <img class="frame-shot" src="assets/financeiro.png" alt="Tela de DRE do Firme com receita bruta, custos, lucro líquido e gráfico mensal">
+      </div>
+    </div>
+
+    <div id="aba-equipe" class="product-panels">
+      <div class="product-feature-list">
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/><path d="M11 7c1.5 0 3 1 3 3"/></svg></div>
+          <div><div class="product-feature-title">Convocação de freelancer, direto pelo sistema</div><div class="product-feature-desc">Monte a escala e envie a convocação com um clique — texto pronto, link de confirmação, sem digitar em cada conversa.</div></div>
+        </div>
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8l2 2 4-4"/></svg></div>
+          <div><div class="product-feature-title">Checklist de traje e equipamento</div><div class="product-feature-desc">Saiba quem já confirmou, quem falta e quem está com o uniforme e o EPI prontos antes do evento começar.</div></div>
+        </div>
+        <div class="product-feature">
+          <div class="product-feature-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2L10 6l4 .6-3 2.9.7 4L8 11.4l-3.7 2.1.7-4L2 6.6 6 6z"/></svg></div>
+          <div><div class="product-feature-title">Cadastro de equipe, sem login pra freelancer</div><div class="product-feature-desc">Decisão consciente: freelancer confirma pelo link público, nunca precisa de conta no sistema.</div></div>
+        </div>
+      </div>
+      <div class="product-screen frame">
+        <div class="frame-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><div class="frame-label">Equipe &amp; Escalas</div></div>
+        <img class="frame-shot" src="assets/equipe.png" alt="Tela de Equipe e Escalas com freelancers cadastrados, confirmados e prontos">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- UM EVENTO POR DENTRO -->
+<section class="problem" id="jornada">
+  <div class="section-inner">
+    <span class="section-tag">De ponta a ponta</span>
+    <h2 class="display section-title">Um evento por dentro</h2>
+    <p class="section-sub">O mesmo evento, do primeiro contato até o fechamento financeiro — sem trocar de ferramenta em nenhuma etapa.</p>
+    <div class="timeline-wrap">
+      <div class="timeline">
+        <div class="timeline-step"><div class="timeline-dot"></div><span class="timeline-label">Lead</span></div>
+        <div class="timeline-line"></div>
+        <div class="timeline-step"><div class="timeline-dot"></div><span class="timeline-label">Orçamento</span></div>
+        <div class="timeline-line"></div>
+        <div class="timeline-step"><div class="timeline-dot"></div><span class="timeline-label">Contrato</span></div>
+        <div class="timeline-line"></div>
+        <div class="timeline-step"><div class="timeline-dot"></div><span class="timeline-label">Pré-evento</span></div>
+        <div class="timeline-line"></div>
+        <div class="timeline-step"><div class="timeline-dot"></div><span class="timeline-label">Evento ao vivo</span></div>
+        <div class="timeline-line"></div>
+        <div class="timeline-step"><div class="timeline-dot"></div><span class="timeline-label">Financeiro</span></div>
+        <div class="timeline-line"></div>
+        <div class="timeline-step"><div class="timeline-dot"></div><span class="timeline-label">Pós-evento</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD PROTAGONISTA -->
+<section class="showcase">
+  <div class="section-inner">
+    <span class="section-tag">Visão geral</span>
+    <h2 class="display section-title">Tudo o que acontece na sua operação. Uma tela. Toda a empresa.</h2>
+    <p class="section-sub">Do primeiro contato com o cliente até o fechamento financeiro do evento — o Dashboard junta o que hoje está espalhado em cinco lugares diferentes.</p>
+    <div class="showcase-frame">
+      <img src="assets/dashboard-full.png" alt="Dashboard completo do Firme com eventos do dia, monitor ao vivo, cobertura de equipe e ações rápidas">
+      <div class="showcase-fade"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SEGMENTOS -->
+<section id="segmentos">
+  <div class="section-inner">
+    <span class="section-tag">Pra quem é</span>
+    <h2 class="display section-title">Não é um ERP genérico. É pra quem vive de evento.</h2>
+    <p class="section-sub">Construído a partir da operação real de uma empresa de eventos — funciona pra qualquer negócio com a mesma rotina: orçamento, equipe escalada, dia do evento, financeiro.</p>
+    <div class="segments-grid">
+      <div class="segment-card">
+        <div class="segment-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 6h10l-1 7H4L3 6z"/><path d="M5 6V4a3 3 0 016 0v2"/></svg></div>
+        <div class="segment-title">Bares e coquetelaria para eventos</div>
+        <div class="segment-desc">Escala de bartenders, estoque de insumos por evento, controle de consumo.</div>
+      </div>
+      <div class="segment-card">
+        <div class="segment-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="2" y="5" width="12" height="9" rx="1.5"/><path d="M2 8h12M6 5V3h4v2"/></svg></div>
+        <div class="segment-title">Buffets e casas de festa</div>
+        <div class="segment-desc">Contrato, cardápio, equipe e financeiro do salão num só lugar.</div>
+      </div>
+      <div class="segment-card">
+        <div class="segment-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg></div>
+        <div class="segment-title">Cerimonial e produção de eventos</div>
+        <div class="segment-desc">Roteiro minuto a minuto do dia, com toda a equipe olhando o mesmo cronograma.</div>
+      </div>
+      <div class="segment-card">
+        <div class="segment-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="8" cy="8.5" r="2.5"/><path d="M6 4l1-1.5h2L10 4"/></svg></div>
+        <div class="segment-title">Fotografia e atrações para festas</div>
+        <div class="segment-desc">Agenda, logística de equipamento e portal do cliente pra aprovação de entregas.</div>
+      </div>
+      <div class="segment-card">
+        <div class="segment-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></div>
+        <div class="segment-title">Eventos corporativos</div>
+        <div class="segment-desc">Vários fornecedores, um cronograma só — sem depender de planilha compartilhada.</div>
+      </div>
+      <div class="segment-card">
+        <div class="segment-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2 13l3-9 3 9M2.7 10.5h4.6M9 13l3-9 3 9M9.7 10.5h4.6"/></svg></div>
+        <div class="segment-title">Locação e decoração para eventos</div>
+        <div class="segment-desc">Estoque de itens, logística de veículos e checklist de montagem por evento.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRECOS -->
+<section class="pricing" id="precos">
+  <div class="section-inner">
+    <span class="section-tag">Planos</span>
+    <h2 class="display section-title">Do tamanho da sua operação</h2>
+    <p class="section-sub">Sem gateway de pagamento embutido, sem letra miúda. Conversamos e ajustamos o plano ao que sua empresa precisa hoje.</p>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-plan">ESSENCIAL</div>
+        <div class="pricing-tagline">Pra sair da planilha</div>
+        <p class="pricing-desc">Empresas estruturando a operação comercial — comercial e contrato num só lugar.</p>
+        <ul class="pricing-features">
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> CRM &amp; pipeline de leads</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Orçamentos em PDF</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Contratos e portal do cliente</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Agenda operacional</li>
+        </ul>
+        <a href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Quero%20saber%20mais%20sobre%20o%20plano%20Essencial%20do%20Firme." class="btn-plan">Falar com a gente</a>
+      </div>
+
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Mais escolhido</div>
+        <div class="pricing-plan">OPERAÇÃO</div>
+        <div class="pricing-tagline">Controle do comercial ao financeiro</div>
+        <p class="pricing-desc">Pra quem já roda a operação e quer o dia do evento e o financeiro no mesmo lugar.</p>
+        <ul class="pricing-features">
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Tudo do Essencial</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Equipe, escalas e confirmação</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Estoque e logística</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Financeiro + DRE automático</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Roteiro ao vivo do evento</li>
+        </ul>
+        <a href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Quero%20saber%20mais%20sobre%20o%20plano%20Opera%C3%A7%C3%A3o%20do%20Firme." class="btn-plan featured">Falar com a gente</a>
+      </div>
+
+      <div class="pricing-card">
+        <div class="pricing-plan">ENTERPRISE</div>
+        <div class="pricing-tagline">Pra operações maiores</div>
+        <p class="pricing-desc">Múltiplas equipes, permissões por função e identidade visual própria.</p>
+        <ul class="pricing-features">
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Tudo do Operação</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Usuários e permissões por função</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Onboarding e migração de dado</li>
+          <li><span class="pricing-check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 8l3.5 3.5 6.5-6.5"/></svg></span> Suporte prioritário</li>
+        </ul>
+        <a href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Quero%20falar%20sobre%20o%20plano%20Enterprise%20do%20Firme." class="btn-plan">Falar com a gente</a>
+      </div>
+    </div>
+    <p class="pricing-note">Nenhum valor fixo publicado ainda — o preço de cada plano é definido em conversa, conforme o tamanho da operação.</p>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-section" id="contato">
+  <div class="section-inner">
+    <h2 class="display section-title">Sua próxima operação pode ser diferente.</h2>
+    <p class="section-sub">Veja o Firme funcionando com dado real da sua empresa, em 15 minutos, sem compromisso.</p>
+    <div class="cta-actions">
+      <a href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Quero%20agendar%20uma%20demonstra%C3%A7%C3%A3o%20do%20Firme." class="btn-cta-primary">
+        Agendar demonstração
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="mailto:contato@firme.app" class="btn-cta-secondary">Enviar e-mail</a>
+    </div>
+    <p class="cta-fine">Sem compromisso.</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <span class="footer-copy">© 2026 Firme. Todos os direitos reservados.</span>
+    <ul class="footer-links">
+      <li><a href="#">Política de privacidade</a></li>
+      <li><a href="#">Termos de uso</a></li>
+      <li><a href="#contato">Contato</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+function trocarAba(botao, aba) {
+  document.querySelectorAll('.product-tab').forEach((t) => t.classList.remove('active'));
+  document.querySelectorAll('.product-panels').forEach((p) => p.classList.remove('active'));
+  botao.classList.add('active');
+  document.getElementById('aba-' + aba).classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -10,8 +10,11 @@ sala-de-operacoes/
 ├─ apps/
 │  ├─ eventos/        ← Sala de Operações (Em Cena Eventos) — o produto que
 │  │                     cada empresa cliente usa no dia a dia
-│  └─ painel/         ← Painel da plataforma — ferramenta interna de quem
-│                        opera a plataforma (você), gerencia as empresas
+│  ├─ painel/         ← Painel da plataforma — ferramenta interna de quem
+│  │                     opera a plataforma (você), gerencia as empresas
+│  └─ landing/        ← Site de venda do produto (marca "Firme") — HTML
+│                        estático, sem build, não expõe nenhum dado real
+│                        (ver apps/landing/README.md)
 ├─ supabase/
 │  ├─ migrations/      ← formato padrão do Supabase CLI
 │  │                     (<timestamp>_<descrição>.sql, aplicado com
