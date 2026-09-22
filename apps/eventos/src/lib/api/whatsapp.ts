@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
 import { montarLinkConfirmacao } from './confirmacaoEscala';
 import { FUNCAO_EQUIPE_ROTULO, formatarData, formatarMoeda } from '../status';
-import type { EscalaComMembro, EventoComLead } from '../types';
+import type { EscalaComMembro, EventoComLead, MensagemWhatsapp } from '../types';
 
 /** Dispara UMA convocação via WhatsApp (template `convocacao_freelancer`,
     ver docs/ROADMAP.md > Fase B) — substitui o "copiar mensagem e colar
@@ -68,6 +68,27 @@ export async function conectarWhatsapp(phoneNumberId: string, accessToken: strin
 export async function desconectarWhatsapp(): Promise<void> {
   const { error } = await supabase.from('integracao_whatsapp').delete().eq('id', 'atual');
   if (error) throw new Error(error.message);
+}
+
+/** Credenciais do webhook de RECEBIMENTO (ver supabase/functions/
+    whatsapp-webhook) — separado de `conectarWhatsapp` (envio) porque são
+    passos diferentes na configuração da Meta e o gestor pode preencher
+    em momentos diferentes. `appSecret` é opcional (null = sem verificação
+    de assinatura, ver comentário na Edge Function). */
+export async function salvarConfigWebhook(verifyToken: string, appSecret: string | null): Promise<void> {
+  const { error } = await supabase.from('integracao_whatsapp').update({ webhook_verify_token: verifyToken, app_secret: appSecret || null }).eq('id', 'atual');
+  if (error) throw new Error(error.message);
+}
+
+/** Histórico de mensagens de um lead (migration mensagens_whatsapp_webhook,
+    2026-09-22) — só existe mensagem `recebida` de verdade a partir de
+    quando o webhook for configurado na Meta; antes disso a lista vem
+    sempre vazia (não é bug, é a realidade: sem webhook não tem como
+    saber o que o cliente mandou). */
+export async function listarMensagensWhatsappDoLead(leadId: string): Promise<MensagemWhatsapp[]> {
+  const { data, error } = await supabase.from('mensagens_whatsapp').select('*').eq('lead_id', leadId).order('criado_em', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data as MensagemWhatsapp[];
 }
 
 export type ResultadoConvocacaoLote = {

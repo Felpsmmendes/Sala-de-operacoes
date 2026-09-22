@@ -1,6 +1,6 @@
-import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Smartphone, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, ExternalLink, MessageSquareText, RefreshCw, Smartphone, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { conectarWhatsapp, desconectarWhatsapp, verificarStatusWhatsapp, type StatusWhatsapp } from '../../lib/api/whatsapp';
+import { conectarWhatsapp, desconectarWhatsapp, salvarConfigWebhook, verificarStatusWhatsapp, type StatusWhatsapp } from '../../lib/api/whatsapp';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
 import { toast } from '../../lib/toast';
 import { useConfirmDialog } from '../../lib/useConfirmDialog';
@@ -29,7 +29,36 @@ export function ConectarWhatsapp() {
   const [accessToken, setAccessToken] = useState('');
   const [conectando, setConectando] = useState(false);
   const [desconectando, setDesconectando] = useState(false);
+  const [verifyToken, setVerifyToken] = useState('');
+  const [appSecret, setAppSecret] = useState('');
+  const [salvandoWebhook, setSalvandoWebhook] = useState(false);
   const confirmar = useConfirmDialog();
+
+  const urlCallbackWebhook = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+
+  function gerarVerifyToken() {
+    setVerifyToken(crypto.randomUUID().replace(/-/g, ''));
+  }
+
+  function copiarCallbackUrl() {
+    navigator.clipboard
+      .writeText(urlCallbackWebhook)
+      .then(() => toast.sucesso('URL copiada.'))
+      .catch(() => toast.aviso('Não foi possível copiar automaticamente. URL: ' + urlCallbackWebhook));
+  }
+
+  async function aoSalvarWebhook() {
+    if (!verifyToken.trim()) return;
+    setSalvandoWebhook(true);
+    try {
+      await salvarConfigWebhook(verifyToken.trim(), appSecret.trim() || null);
+      toast.sucesso('Configuração do webhook salva — agora cole a URL e o token no painel da Meta.');
+    } catch (e) {
+      toast.erro(mensagemDeErro(e));
+    } finally {
+      setSalvandoWebhook(false);
+    }
+  }
 
   async function verificar() {
     setCarregando(true);
@@ -156,6 +185,37 @@ export function ConectarWhatsapp() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="rounded-md border border-line bg-raised p-4">
+        <p className="mb-3 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wide text-text-faint">
+          <MessageSquareText className="h-3.5 w-3.5 text-people" strokeWidth={2} /> Receber mensagem do cliente (webhook)
+        </p>
+        <p className="mb-3 text-[12.5px] text-text-dim">
+          Sem isso, o sistema só ENVIA mensagem — não existe jeito de saber o que o cliente respondeu (nem em "Conversas", nem nas automações do CRM). Preencha aqui, depois cole a URL e o token no painel da Meta (App &gt; WhatsApp &gt; Configuration &gt; Webhook).
+        </p>
+        <div className="mb-3 flex items-center gap-2 rounded-sm border border-line bg-input px-3 py-2">
+          <code className="flex-1 truncate font-mono text-[11.5px] text-text">{urlCallbackWebhook}</code>
+          <button type="button" onClick={copiarCallbackUrl} className="flex flex-shrink-0 items-center gap-1 text-[11px] font-medium text-text-dim hover:text-text">
+            <Copy className="h-3.5 w-3.5" strokeWidth={2} /> Copiar
+          </button>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Input rotulo="Verify token" categoria="pessoas" value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} placeholder="Cole aqui ou gere um" />
+            </div>
+            <button type="button" onClick={gerarVerifyToken} title="Gerar um token aleatório" className="flex-shrink-0 rounded-sm border border-line px-2.5 py-2.5 text-[11.5px] text-text-dim hover:bg-panel hover:text-text">
+              Gerar
+            </button>
+          </div>
+          <Input rotulo="App Secret (opcional)" categoria="pessoas" type="password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} placeholder="Meta > Configurações básicas" dica="Sem isso, o webhook funciona, só sem checar assinatura de cada mensagem." />
+          <div className="sm:col-span-2">
+            <button type="button" disabled={salvandoWebhook || !verifyToken.trim()} onClick={aoSalvarWebhook} className="rounded-sm bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-50">
+              {salvandoWebhook ? 'Salvando…' : 'Salvar configuração do webhook'}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="rounded-md border border-line bg-raised p-4">

@@ -730,9 +730,61 @@ export type Database = {
         Relationships: [];
       };
       integracao_whatsapp: {
-        Row: { id: string; phone_number_id: string; access_token: string; conectado_em: string };
-        Insert: { id?: string; phone_number_id: string; access_token: string; conectado_em?: string };
-        Update: { id?: string; phone_number_id?: string; access_token?: string; conectado_em?: string };
+        Row: { id: string; empresa_id: string; phone_number_id: string; access_token: string; webhook_verify_token: string | null; app_secret: string | null; conectado_em: string };
+        Insert: {
+          id?: string;
+          empresa_id?: string;
+          phone_number_id: string;
+          access_token: string;
+          webhook_verify_token?: string | null;
+          app_secret?: string | null;
+          conectado_em?: string;
+        };
+        Update: {
+          id?: string;
+          empresa_id?: string;
+          phone_number_id?: string;
+          access_token?: string;
+          webhook_verify_token?: string | null;
+          app_secret?: string | null;
+          conectado_em?: string;
+        };
+        Relationships: [];
+      };
+      mensagens_whatsapp: {
+        Row: {
+          id: string;
+          empresa_id: string;
+          lead_id: string | null;
+          telefone: string;
+          direcao: string;
+          tipo: string;
+          conteudo: string | null;
+          whatsapp_message_id: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          empresa_id: string;
+          lead_id?: string | null;
+          telefone: string;
+          direcao: string;
+          tipo?: string;
+          conteudo?: string | null;
+          whatsapp_message_id?: string | null;
+          criado_em?: string;
+        };
+        Update: {
+          id?: string;
+          empresa_id?: string;
+          lead_id?: string | null;
+          telefone?: string;
+          direcao?: string;
+          tipo?: string;
+          conteudo?: string | null;
+          whatsapp_message_id?: string | null;
+          criado_em?: string;
+        };
         Relationships: [];
       };
       gestores: {

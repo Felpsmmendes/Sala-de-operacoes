@@ -1,6 +1,7 @@
 import { Search, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { listarInteracoesDoLead, registrarInteracao } from '../../lib/api/leads';
+import { listarMensagensWhatsappDoLead } from '../../lib/api/whatsapp';
 import { Badge } from '../Badge';
 import { SkeletonLinhas } from '../Skeleton';
 import { EstadoVazio } from '../ui/EmptyState';
@@ -8,7 +9,27 @@ import { Select } from '../ui/Select';
 import { mensagemDeErro } from '../../lib/erroAmigavel';
 import { toast } from '../../lib/toast';
 import { funilDoLead, TIPO_INTERACAO_ROTULO, formatarData, formatarMoeda } from '../../lib/status';
-import type { FunilLead, Lead, LeadInteracao, TipoInteracao } from '../../lib/types';
+import type { FunilLead, Lead, LeadInteracao, MensagemWhatsapp, TipoInteracao } from '../../lib/types';
+
+/** Uma linha unificada da thread — funde `lead_interacoes` (log manual)
+    com `mensagens_whatsapp` (webhook, mensagem de verdade recebida do
+    cliente — ver migration mensagens_whatsapp_webhook, 2026-09-22).
+    `recebida` decide o lado da bolha (só mensagem que o CLIENTE mandou
+    fica à esquerda; tudo que a empresa registrou/enviou fica à direita,
+    igual sempre foi). */
+type ItemConversa = { id: string; rotulo: string; texto: string; quando: string; recebida: boolean };
+
+function unificarConversa(interacoes: LeadInteracao[], mensagens: MensagemWhatsapp[]): ItemConversa[] {
+  const doLog: ItemConversa[] = interacoes.map((i) => ({ id: `i-${i.id}`, rotulo: TIPO_INTERACAO_ROTULO[i.tipo], texto: i.conteudo, quando: i.criado_em, recebida: false }));
+  const doWhatsapp: ItemConversa[] = mensagens.map((m) => ({
+    id: `w-${m.id}`,
+    rotulo: 'WhatsApp',
+    texto: m.conteudo ?? '[mensagem sem texto]',
+    quando: m.criado_em,
+    recebida: m.direcao === 'recebida',
+  }));
+  return [...doLog, ...doWhatsapp].sort((a, b) => a.quando.localeCompare(b.quando));
+}
 
 function aoFalhar(e: unknown) {
   toast.erro(mensagemDeErro(e));
@@ -35,6 +56,7 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
   const [busca, setBusca] = useState('');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(leads[0]?.id ?? null);
   const [interacoes, setInteracoes] = useState<LeadInteracao[]>([]);
+  const [mensagensWa, setMensagensWa] = useState<MensagemWhatsapp[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [tipo, setTipo] = useState<TipoInteracao>('nota');
   const [conteudo, setConteudo] = useState('');
@@ -46,10 +68,12 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
 
   const leadSelecionado = leads.find((l) => l.id === selecionadoId) ?? null;
 
-  async function carregarInteracoes(id: string) {
+  async function carregarConversa(id: string) {
     setCarregando(true);
     try {
-      setInteracoes(await listarInteracoesDoLead(id));
+      const [i, m] = await Promise.all([listarInteracoesDoLead(id), listarMensagensWhatsappDoLead(id)]);
+      setInteracoes(i);
+      setMensagensWa(m);
     } catch (e) {
       aoFalhar(e);
     } finally {
@@ -58,9 +82,14 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
   }
 
   useEffect(() => {
-    if (selecionadoId) carregarInteracoes(selecionadoId);
-    else setInteracoes([]);
+    if (selecionadoId) carregarConversa(selecionadoId);
+    else {
+      setInteracoes([]);
+      setMensagensWa([]);
+    }
   }, [selecionadoId]);
+
+  const conversa = unificarConversa(interacoes, mensagensWa);
 
   async function aoEnviar() {
     if (!selecionadoId || !conteudo.trim()) return;
@@ -68,7 +97,7 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
     try {
       await registrarInteracao(selecionadoId, tipo, conteudo.trim());
       setConteudo('');
-      await carregarInteracoes(selecionadoId);
+      await carregarConversa(selecionadoId);
     } catch (e) {
       aoFalhar(e);
     } finally {
@@ -139,17 +168,28 @@ export function Conversas({ leads, funis }: { leads: Lead[]; funis: FunilLead[] 
             <div className="flex-1 overflow-y-auto p-4">
               {carregando ? (
                 <SkeletonLinhas />
-              ) : interacoes.length === 0 ? (
+              ) : conversa.length === 0 ? (
                 <EstadoVazio Icone={Send} titulo="Nenhuma conversa registrada" descricao={`Registre o primeiro contato com ${leadSelecionado.nome} abaixo.`} />
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  {[...interacoes].reverse().map((i) => (
-                    <div key={i.id} className="max-w-[80%] self-end rounded-lg rounded-tr-sm bg-people px-3 py-2 text-accent-ink shadow-sm">
-                      <p className="mb-1 text-[9.5px] font-bold uppercase tracking-wide opacity-70">{TIPO_INTERACAO_ROTULO[i.tipo]}</p>
-                      <p className="whitespace-pre-wrap text-[13px] leading-snug">{i.conteudo}</p>
-                      <p className="mt-1 text-right text-[10px] opacity-70">{formatarData(i.criado_em)}</p>
-                    </div>
-                  ))}
+                  {conversa.map((item) =>
+                    item.recebida ? (
+                      // mensagem que o CLIENTE mandou de verdade (webhook) — única
+                      // coisa que fica à esquerda, pra não confundir com o que a
+                      // empresa registrou/enviou.
+                      <div key={item.id} className="max-w-[80%] self-start rounded-lg rounded-tl-sm bg-raised px-3 py-2 text-text shadow-sm">
+                        <p className="mb-1 text-[9.5px] font-bold uppercase tracking-wide text-text-faint">{item.rotulo} · recebida</p>
+                        <p className="whitespace-pre-wrap text-[13px] leading-snug">{item.texto}</p>
+                        <p className="mt-1 text-[10px] text-text-faint">{formatarData(item.quando)}</p>
+                      </div>
+                    ) : (
+                      <div key={item.id} className="max-w-[80%] self-end rounded-lg rounded-tr-sm bg-people px-3 py-2 text-accent-ink shadow-sm">
+                        <p className="mb-1 text-[9.5px] font-bold uppercase tracking-wide opacity-70">{item.rotulo}</p>
+                        <p className="whitespace-pre-wrap text-[13px] leading-snug">{item.texto}</p>
+                        <p className="mt-1 text-right text-[10px] opacity-70">{formatarData(item.quando)}</p>
+                      </div>
+                    )
+                  )}
                 </div>
               )}
             </div>

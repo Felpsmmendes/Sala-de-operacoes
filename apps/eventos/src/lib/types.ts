@@ -42,6 +42,24 @@ export type LeadInteracao = {
   criado_em: string;
 };
 
+/** Mensagem de WhatsApp de verdade — `direcao: 'recebida'` só existe a
+    partir do webhook (ver supabase/functions/whatsapp-webhook e
+    migration mensagens_whatsapp_webhook, 2026-09-22). Nunca confundir
+    com `LeadInteracao` (log manual/best-effort) — esta tabela só recebe
+    escrita da Edge Function do webhook, o app nunca insere aqui. */
+export type DirecaoMensagemWhatsapp = 'recebida' | 'enviada';
+export type TipoMensagemWhatsapp = 'texto' | 'outro';
+
+export type MensagemWhatsapp = {
+  id: string;
+  lead_id: string | null;
+  telefone: string;
+  direcao: DirecaoMensagemWhatsapp;
+  tipo: TipoMensagemWhatsapp;
+  conteudo: string | null;
+  criado_em: string;
+};
+
 export type CategoriaServico = 'bar' | 'atracao' | 'adicional';
 
 export type Servico = {
