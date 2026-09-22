@@ -1,0 +1,47 @@
+-- Teste de isolamento entre empresas — critério de "pronto" da Etapa 2
+-- (RLS por empresa_id), ainda não escrita. HOJE este teste deve
+-- FALHAR (nenhuma policy usa empresa_id ainda) — é esperado, marca o
+-- ponto de partida. Vira gate de aceite quando a Etapa 2 estiver pronta.
+--
+-- Como simular "logado como fulano" sem precisar de sessão real: a
+-- própria auth.uid() deste projeto lê `request.jwt.claim.sub`
+-- (confirmado em 2026-09-22, ver pg_get_functiondef('auth.uid')), então
+-- basta:
+--
+--   set local role authenticated;
+--   set local request.jwt.claim.sub = '<uuid do usuário de teste>';
+--
+-- dentro da mesma transação, antes de rodar a query como esse usuário.
+--
+-- Setup necessário (não incluído aqui de propósito — mexe em dado,
+-- não é só leitura):
+--   1. Duas empresas de teste em `empresas` (as linhas [TESTE]... já
+--      existentes em produção servem).
+--   2. Um usuário do Supabase Auth por empresa, com linha em
+--      `membros_empresa` apontando pra empresa certa.
+--   3. Pelo menos 1 linha em cada tabela de negócio (eventos, leads,
+--      contratos, escalas, lancamentos_financeiros) marcada com o
+--      empresa_id de cada uma das duas empresas de teste.
+--
+-- Depois do setup, o teste é: logado como o usuário da empresa A,
+-- `select count(*) from eventos` tem que dar exatamente o número de
+-- eventos da empresa A — nunca ver nem um evento da empresa B.
+--
+-- Exemplo (preencher os UUIDs reais antes de rodar):
+--
+-- begin;
+--   set local role authenticated;
+--   set local request.jwt.claim.sub = '<uuid do usuário da empresa A>';
+--   select 'eventos' as tabela, count(*) as visiveis from eventos
+--   union all
+--   select 'leads', count(*) from leads
+--   union all
+--   select 'contratos', count(*) from contratos
+--   union all
+--   select 'escalas', count(*) from escalas
+--   union all
+--   select 'lancamentos_financeiros', count(*) from lancamentos_financeiros;
+--   -- comparar com o total de linhas de cada tabela pertencentes à
+--   -- empresa A (nunca deve bater com o total GERAL se a empresa B
+--   -- também tiver dado).
+-- rollback; -- nunca commitar teste, só ler
