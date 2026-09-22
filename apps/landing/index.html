@@ -688,6 +688,63 @@ section { padding: 6rem clamp(1.5rem, 5vw, 4rem); }
 .btn-cta-secondary:hover { border-color: rgba(255,255,255,0.4); color: white; }
 .cta-fine { font-size: 0.75rem; color: rgba(255,255,255,0.35); margin-top: 1.25rem; }
 
+.cta-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 420px;
+  margin: 2.5rem auto;
+  color: rgba(255,255,255,0.3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.cta-divider::before, .cta-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.12); }
+
+.lead-form {
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.lead-form input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--white);
+}
+
+.lead-form input::placeholder { color: rgba(255,255,255,0.35); }
+.lead-form input:focus { outline: none; border-color: var(--amber); }
+
+.lead-form button {
+  background: var(--amber);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 0.875rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.lead-form button:hover { background: #FBBF24; }
+.lead-form button:disabled { opacity: 0.6; cursor: default; }
+
+.lead-msg { font-size: 0.8125rem; text-align: center; min-height: 1.2em; }
+.lead-msg.ok { color: #2DD4BF; }
+.lead-msg.erro { color: #FCA5A5; }
+
 /* ── FOOTER ── */
 footer { padding: 3rem clamp(1.5rem, 5vw, 4rem); border-top: 1px solid var(--line); }
 
@@ -1101,6 +1158,16 @@ footer { padding: 3rem clamp(1.5rem, 5vw, 4rem); border-top: 1px solid var(--lin
       <a href="mailto:contato@firme.app" class="btn-cta-secondary">Enviar e-mail</a>
     </div>
     <p class="cta-fine">Sem compromisso.</p>
+
+    <div class="cta-divider">OU DEIXE SEU CONTATO</div>
+    <form class="lead-form" id="form-lead">
+      <input type="text" id="lead-empresa" placeholder="Nome da sua empresa" required maxlength="200">
+      <input type="text" id="lead-nome" placeholder="Seu nome" maxlength="200">
+      <input type="tel" id="lead-telefone" placeholder="WhatsApp" maxlength="30">
+      <input type="email" id="lead-email" placeholder="E-mail (opcional)" maxlength="200">
+      <button type="submit" id="lead-botao">Quero conhecer o Firme</button>
+      <p class="lead-msg" id="lead-msg"></p>
+    </form>
   </div>
 </section>
 
@@ -1123,6 +1190,56 @@ function trocarAba(botao, aba) {
   botao.classList.add('active');
   document.getElementById('aba-' + aba).classList.add('active');
 }
+
+// Grava o lead direto no CRM da plataforma (leads_plataforma), via a
+// função pública `criar_lead_publico` (ver
+// supabase/migrations/20260922043602_lead_publico_landing.sql) — a
+// chave abaixo é a "anon" (publishable) do Supabase, feita pra ficar
+// exposta no HTML; quem trava o que ela pode fazer é a RLS/permissão
+// da função no banco, nunca o segredo da chave.
+const SUPABASE_URL = 'https://ugnworqdnensqfzrxahk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_WRw1bkYHYrHIOZkccrGxeA_gCaxWCgc';
+
+document.getElementById('form-lead').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const botao = document.getElementById('lead-botao');
+  const msg = document.getElementById('lead-msg');
+  const empresa = document.getElementById('lead-empresa').value.trim();
+  if (!empresa) return;
+
+  botao.disabled = true;
+  botao.textContent = 'Enviando...';
+  msg.textContent = '';
+  msg.className = 'lead-msg';
+
+  try {
+    const resposta = await fetch(SUPABASE_URL + '/rest/v1/rpc/criar_lead_publico', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        p_nome_empresa: empresa,
+        p_contato_nome: document.getElementById('lead-nome').value.trim() || null,
+        p_contato_telefone: document.getElementById('lead-telefone').value.trim() || null,
+        p_contato_email: document.getElementById('lead-email').value.trim() || null,
+        p_origem: 'Site (Firme)',
+      }),
+    });
+    if (!resposta.ok) throw new Error(await resposta.text());
+    document.getElementById('form-lead').reset();
+    msg.textContent = 'Recebemos seu contato — falamos com você em breve.';
+    msg.className = 'lead-msg ok';
+  } catch (e) {
+    msg.textContent = 'Não deu pra enviar agora — chama a gente no WhatsApp mesmo.';
+    msg.className = 'lead-msg erro';
+  } finally {
+    botao.disabled = false;
+    botao.textContent = 'Quero conhecer o Firme';
+  }
+});
 </script>
 </body>
 </html>
